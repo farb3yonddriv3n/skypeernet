@@ -1,6 +1,6 @@
 #include <common.h>
 
-int eioie_fwrite(char *fname, const char *mode, char *content, int ncontent)
+int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent)
 {
     FILE *pfile;
     int result;
@@ -16,14 +16,16 @@ int eioie_fwrite(char *fname, const char *mode, char *content, int ncontent)
     return !(result == ncontent);
 }
 
-int eioie_fread(char **dst, const char *fname)
+int eioie_fread(char **dst, sn fname)
 {
     FILE *pfile;
-    int lsize;
+    int   lsize;
     char *buffer;
-    int result;
+    int   result;
 
-    pfile = fopen(fname, "rb");
+    char fnbuffer[1024];
+    snprintf(fnbuffer, sizeof(fnbuffer), "%.*s", sn_p(fname));
+    pfile = fopen(fnbuffer, "rb");
     if (pfile == NULL) {
         return -1;
     }
@@ -54,4 +56,20 @@ int eioie_fread(char **dst, const char *fname)
 
     fclose(pfile);
     return result;
+}
+
+void bin2hexstr(char *dst, size_t dstlen,
+                char *src, size_t srclen)
+{
+    char tmp[8];
+    char *step = src;
+    int i, n;
+    for (i = 0; i < srclen; i++) {
+        snprintf(tmp, sizeof(tmp), "%02x", (unsigned char)(*step));
+        n = strlen(tmp);
+        if ((step - src + n) > dstlen) break;
+        memcpy(dst, tmp, n);
+        dst += n;
+        step++;
+    }
 }

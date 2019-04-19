@@ -42,13 +42,14 @@ int rsa_encrypt(RSA *pubkey, const unsigned char *src, const int srclen,
 }
 
 static int read_key(RSA *func(FILE *pfile, RSA **x, pem_password_cb *cb, void *u),
-                    RSA **rsakey, const char *fname, sn *key)
+                    RSA **rsakey, sn fkey, sn *key)
 {
     FILE *pfile;
     *rsakey = NULL;
-    pfile = fopen(fname, "r");
+    sn_to_char(bkey, fkey, 1024);
+    pfile = fopen(bkey, "r");
     if (pfile == NULL) return -1;
-    key->n = eioie_fread(&key->s, fname);
+    key->n = eioie_fread(&key->s, fkey);
     if (key->n == -1) return -1;
     *rsakey = func(pfile, rsakey, NULL, NULL);
     fclose(pfile);
@@ -57,12 +58,15 @@ static int read_key(RSA *func(FILE *pfile, RSA **x, pem_password_cb *cb, void *u
 
 int rsa_load(struct config_s *cfg)
 {
+    sn_initz(fpub, KEY_PUB);
+    sn_initz(fpriv, KEY_PRIV);
+
     int ret = read_key(PEM_read_RSAPublicKey, &cfg->rsakey.public,
-                       KEY_PUB, &cfg->key.public);
+                       fpub, &cfg->key.public);
     if (ret != 0) return ret;
 
     ret = read_key(PEM_read_RSAPrivateKey, &cfg->rsakey.private,
-                   KEY_PRIV, &cfg->key.private);
+                   fpriv, &cfg->key.private);
     if (ret != 0) return ret;
 
     return 0;

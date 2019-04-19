@@ -1,6 +1,6 @@
 #include <common.h>
 
-int file_chunks(const char *bytes, const int nbytes,
+int file_chunks(const char *bytes, size_t nbytes,
                 struct file_chunk_s **chunks, int *nchunks)
 {
     if (nbytes < 1) return -1;
@@ -11,13 +11,21 @@ int file_chunks(const char *bytes, const int nbytes,
     for (i = 0; (i * CHUNK_SIZE) < nbytes; i++) {
         *chunks = realloc(*chunks, sizeof(**chunks) * (i + 1));
         if (*chunks == NULL) return -1;
-        (*chunks)[i].ptr   = (const unsigned char *)(bytes + (i * CHUNK_SIZE));
-        (*chunks)[i].n     = (nbytes < CHUNK_SIZE) ? nbytes :
-                             (((i + 1) * CHUNK_SIZE) > nbytes ?
-                              nbytes - (i * CHUNK_SIZE) :
-                              CHUNK_SIZE);
-        (*chunks)[i].chunk = i;
-        SHA256((*chunks)[i].ptr, (*chunks)[i].n, (*chunks)[i].hash);
+        struct file_chunk_s *fc = &((*chunks)[i]);
+        fc->ptr  = (const unsigned char *)(bytes + (i * CHUNK_SIZE));
+        fc->size = (nbytes < CHUNK_SIZE) ? nbytes :
+                   (((i + 1) * CHUNK_SIZE) > nbytes ?
+                   nbytes - (i * CHUNK_SIZE) :
+                   CHUNK_SIZE);
+        fc->part = i;
+        sha256hex(fc->ptr, fc->size, fc->part_hash);
+
+        char buffer[1024];
+        snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
+                 fc->size, fc->part,
+                 (int)sizeof(fc->part_hash), fc->part_hash);
+        printf("buffer %s\n", buffer);
+        sha256hex((unsigned char *)buffer, strlen(buffer), fc->chunk_hash);
         (*nchunks)++;
     }
 

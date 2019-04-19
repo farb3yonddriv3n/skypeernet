@@ -10,19 +10,25 @@
 
 struct file_chunk_s {
     const unsigned char *ptr;
-    int                  n;
-    int                  chunk;
-    unsigned char        hash[SHA256_DIGEST_LENGTH];
+    size_t               size;
+    int                  part;
+    unsigned char        part_hash[SHA256HEX];
+    unsigned char        chunk_hash[SHA256HEX];
 };
 
 struct file_s {
+    unsigned char hash[SHA256HEX];
     struct {
-        char                *name;
-        uint64_t             size;
-        char                *description;
-        char                *type;
-        struct file_chunk_s *chunks;
+        char          *name;
+        size_t         size;
+        char          *description;
+        char          *type;
     } meta;
+    struct {
+        struct file_chunk_s *array;
+        int                  count;
+        unsigned char        hash[SHA256HEX];
+    } chunks;
     struct {
         char public_key[1024];
     } owner;
@@ -34,7 +40,7 @@ struct file_s {
     unsigned int flags;
 };
 
-int file_chunks(const char *bytes, const int nbytes,
+int file_chunks(const char *bytes, size_t nbytes,
                 struct file_chunk_s **chunks, int *nchunks);
 void file_chunks_free(struct file_chunk_s *chunks);
 

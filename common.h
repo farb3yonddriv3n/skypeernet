@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include <memory.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
@@ -14,5 +16,6 @@
 #include <config.h>
 #include <rsa.h>
 #include <file.h>
+#include <transaction.h>
 
 #endif

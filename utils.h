@@ -7,7 +7,20 @@
 
 #define CHUNK_SIZE    (512 * 10)
 
-int eioie_fwrite(char *fname, const char *mode, char *content, int ncontent);
-int eioie_fread(char **dst, const char *fname);
+#define SHA256HEX     (SHA256_DIGEST_LENGTH * 2)
+
+
+int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent);
+int eioie_fread(char **dst, sn fname);
+void bin2hexstr(char *dst, size_t dstlen,
+                char *src, size_t srclen);
+
+inline static void sha256hex(const unsigned char *src, const int srclen,
+                             unsigned char *hex)
+{
+    unsigned char md[SHA256_DIGEST_LENGTH];
+    SHA256(src, srclen, md);
+    bin2hexstr((char *)hex, SHA256HEX, (char *)md, sizeof(md));
+}
 
 #endif
