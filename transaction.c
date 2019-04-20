@@ -40,8 +40,8 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
     return -1;
 }
 
-static void hash(struct transaction_s *t, unsigned char *sub_hash,
-                 unsigned char *dst_hash)
+static void hash_calc(struct transaction_s *t, unsigned char *sub_hash,
+                      unsigned char *dst_hash)
 {
     char buffer[2048];
     snprintf(buffer, sizeof(buffer), "%d%d%d%.*s",
@@ -64,7 +64,7 @@ static int init(struct transaction_s *t,
     int ret = process(PROCESS_INIT, t, param, sub_hash);
     if (ret != 0) return ret;
 
-    hash(t, sub_hash, t->hash);
+    hash_calc(t, sub_hash, t->hash);
 
     return 0;
 }
@@ -78,12 +78,17 @@ static int validate(struct transaction_s *t, bool *valid)
     if (ret != 0) return ret;
 
     unsigned char transaction_hash[SHA256HEX];
-    hash(t, action_hash, transaction_hash);
+    hash_calc(t, action_hash, transaction_hash);
 
     if (memcmp(t->hash, transaction_hash, sizeof(t->hash)) == 0)
         *valid = true;
 
     return 0;
+}
+
+static unsigned char *hash(struct transaction_s *t)
+{
+    return t->hash;
 }
 
 static void metadump(struct transaction_s *t)
@@ -99,12 +104,12 @@ static int dump(struct transaction_s *t)
     return process(PROCESS_DUMP, t, NULL, NULL);
 }
 
-const struct transaction_mod_s transaction = {
-    .init      = init,
-    //.hash     = hash,
+const struct module_transaction_s transaction = {
+    .init     = init,
+    .hash     = hash,
     .validate = validate,
-    .metadump  = metadump,
-    .dump      = dump,
+    .metadump = metadump,
+    .dump     = dump,
 };
 
 /*

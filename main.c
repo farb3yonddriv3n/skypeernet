@@ -23,23 +23,43 @@ int main()
     if (ret != 0) return ret;
     printf("valid: %d\n", valid);
 
-    /*
-    unsigned char x[SHA256_DIGEST_LENGTH];
-    SHA256("asdf", 4, x);
+    uint64_t nounce;
+    unsigned char newblock[SHA256HEX];
+    block.mine(transaction.hash(&t), newblock, &nounce);
 
-    int n;
-    for (n = 0; n < SHA256_DIGEST_LENGTH; n++)
-        printf("%02x", (unsigned char)x[n]);
-    putchar('\n');
+    block.validate(transaction.hash(&t), newblock, nounce, &valid);
+    printf("valid %d\n", valid);
 
-    char buffer[64];
-    bin2hexstr(buffer, sizeof(buffer), x, sizeof(x));
-
-    printf("start [%.*s] %d\n", sizeof(buffer), buffer, strlen(buffer));
-
-    */
     return 0;
 }
+
+/*
+int main()
+{
+    struct config_s *cfg;
+    int ret = config_init(&cfg);
+    if (ret != 0) return ret;
+
+    struct transaction_s t;
+    struct transaction_param_s param;
+
+    param.type = TFILE_ADD;
+    sn_setz(param.action.add.name, "1012019.pdf");
+
+    ret = transaction.init(&t, &param);
+    if (ret != 0) return ret;
+
+    ret = transaction.dump(&t);
+    if (ret != 0) return ret;
+
+    bool valid;
+    ret = transaction.validate(&t, &valid);
+    if (ret != 0) return ret;
+    printf("valid: %d\n", valid);
+
+    return 0;
+}
+*/
 
 /*
 int main()

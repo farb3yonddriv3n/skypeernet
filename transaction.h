@@ -38,12 +38,13 @@ struct transaction_param_s {
     } action;
 };
 
-struct transaction_mod_s {
+struct module_transaction_s {
     int (*init)(struct transaction_s *t,
                 struct transaction_param_s *param);
     int (*validate)(struct transaction_s *t, bool *valid);
     void (*metadump)(struct transaction_s *t);
     int (*dump)(struct transaction_s *t);
+    unsigned char *(*hash)(struct transaction_s *t);
 };
 
 struct transaction_sub_s {
@@ -54,7 +55,7 @@ struct transaction_sub_s {
     int (*dump)(struct transaction_s *t);
 };
 
-extern const struct transaction_mod_s transaction;
+extern const struct module_transaction_s transaction;
 extern const struct transaction_sub_s transaction_file_add;
 
 #endif

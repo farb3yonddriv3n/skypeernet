@@ -18,5 +18,6 @@
 #include <rsa.h>
 #include <file.h>
 #include <transaction.h>
+#include <block.h>
 
 #endif
