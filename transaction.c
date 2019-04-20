@@ -10,7 +10,7 @@ enum transaction_process_e {
 };
 
 struct transaction_map_s {
-    enum transaction_e       type;
+    enum transaction_e              type;
     const struct transaction_sub_s *module;
 };
 
@@ -19,7 +19,7 @@ static struct transaction_map_s transaction_module[MAX_TRANSACTIONS] = {
 };
 
 static int process(enum transaction_process_e ptype, struct transaction_s *t,
-                   struct transaction_param_s *param, unsigned char **dst_hash)
+                   struct transaction_param_s *param, unsigned char *dst_hash)
 {
     int i;
     for (i = 0; i < MAX_TRANSACTIONS; i++)
@@ -29,7 +29,7 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                     return transaction_module[i].module->init(t, param, dst_hash);
                     break;
                 case PROCESS_VALIDATE:
-                    //return transaction_module[i].module.validate(t, dst_hash);
+                    return transaction_module[i].module->validate(t, dst_hash);
                     break;
                 case PROCESS_DUMP:
                     return transaction_module[i].module->dump(t);
@@ -60,8 +60,8 @@ static int init(struct transaction_s *t,
     t->timestamp = 100;
     t->type      = param->type;
 
-    unsigned char *sub_hash;
-    int ret = process(PROCESS_INIT, t, param, &sub_hash);
+    unsigned char sub_hash[SHA256HEX];
+    int ret = process(PROCESS_INIT, t, param, sub_hash);
     if (ret != 0) return ret;
 
     hash(t, sub_hash, t->hash);
@@ -69,20 +69,22 @@ static int init(struct transaction_s *t,
     return 0;
 }
 
-/*
-static int validate(struct transaction_s *t)
+static int validate(struct transaction_s *t, bool *valid)
 {
-    unsigned char *action_hash;
-    ret = process(PROCESS_VALIDATE, t, NULL, &action_hash);
+    *valid = false;
+
+    unsigned char action_hash[SHA256HEX];
+    int ret = process(PROCESS_VALIDATE, t, NULL, action_hash);
+    if (ret != 0) return ret;
 
     unsigned char transaction_hash[SHA256HEX];
     hash(t, action_hash, transaction_hash);
 
-    if (memcmp(t->hash, transaction_hash) != 0) return 1;
+    if (memcmp(t->hash, transaction_hash, sizeof(t->hash)) == 0)
+        *valid = true;
 
     return 0;
 }
-*/
 
 static void metadump(struct transaction_s *t)
 {
@@ -100,7 +102,7 @@ static int dump(struct transaction_s *t)
 const struct transaction_mod_s transaction = {
     .init      = init,
     //.hash     = hash,
-    //.validate = validate,
+    .validate = validate,
     .metadump  = metadump,
     .dump      = dump,
 };

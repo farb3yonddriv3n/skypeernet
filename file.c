@@ -24,7 +24,6 @@ int file_chunks(const char *bytes, size_t nbytes,
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
                  fc->size, fc->part,
                  (int)sizeof(fc->part_hash), fc->part_hash);
-        printf("buffer %s\n", buffer);
         sha256hex((unsigned char *)buffer, strlen(buffer), fc->chunk_hash);
         (*nchunks)++;
     }

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <memory.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>

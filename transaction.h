@@ -32,21 +32,25 @@ struct transaction_param_s {
         struct {
             sn name;
         } add;
+        struct {
+            bool *valid;
+        } validate;
     } action;
 };
 
 struct transaction_mod_s {
     int (*init)(struct transaction_s *t,
                 struct transaction_param_s *param);
+    int (*validate)(struct transaction_s *t, bool *valid);
     void (*metadump)(struct transaction_s *t);
     int (*dump)(struct transaction_s *t);
-    //int (*validate)(struct transaction_s *t);
 };
 
 struct transaction_sub_s {
     int (*init)(struct transaction_s *t,
                 struct transaction_param_s *param,
-                unsigned char **dst_hash);
+                unsigned char *dst_hash);
+    int (*validate)(struct transaction_s *t, unsigned char *dst_hash);
     int (*dump)(struct transaction_s *t);
 };
 

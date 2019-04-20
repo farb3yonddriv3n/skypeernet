@@ -19,11 +19,15 @@ struct file_chunk_s {
 struct file_s {
     unsigned char hash[SHA256HEX];
     struct {
-        char          *name;
-        size_t         size;
-        char          *description;
-        char          *type;
+        char          name[128];
+        size_t        size;
+        char          description[1024];
+        char          type[32];
+        unsigned char hash[SHA256HEX];
     } meta;
+    struct {
+        unsigned char hash[SHA256HEX];
+    } content;
     struct {
         struct file_chunk_s *array;
         int                  count;
