@@ -11,6 +11,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <json.h>
 
 #include <sn.h>
 #include <utils.h>

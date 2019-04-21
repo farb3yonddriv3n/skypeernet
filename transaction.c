@@ -7,6 +7,7 @@ enum transaction_process_e {
     PROCESS_INIT,
     PROCESS_VALIDATE,
     PROCESS_DUMP,
+    PROCESS_EXPORT,
 };
 
 struct transaction_map_s {
@@ -33,6 +34,10 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                     break;
                 case PROCESS_DUMP:
                     return transaction_module[i].module->dump(t);
+                    break;
+                case PROCESS_EXPORT:
+                    //return transaction_module[i].module->data.export(t);
+                    return 0;
                     break;
                 default:
                     return -1;
@@ -104,12 +109,46 @@ static int dump(struct transaction_s *t)
     return process(PROCESS_DUMP, t, NULL, NULL);
 }
 
+static int export(struct transaction_s *t, json_object **tobj)
+{
+    *tobj = json_object_new_object();
+    json_object *version = json_object_new_int(t->version);
+    json_object_object_add(*tobj, "version", version);
+
+    json_object *timestamp = json_object_new_int(t->timestamp);
+    json_object_object_add(*tobj, "timestamp", timestamp);
+
+    json_object *thash = json_object_new_string_len((const char *)t->hash,
+                                                    sizeof(t->hash));
+    json_object_object_add(*tobj, "hash", thash);
+
+    json_object *type = json_object_new_int(t->type);
+    json_object_object_add(*tobj, "type", type);
+
+    json_object *blockhash = json_object_new_object();
+    json_object_object_add(*tobj, "blockhash", blockhash);
+    json_object *prev = json_object_new_string_len((const char *)t->blockhash.prev,
+                                                   sizeof(t->blockhash.prev));
+    json_object_object_add(blockhash, "prev", prev);
+    json_object *current = json_object_new_string_len((const char *)t->blockhash.current,
+                                                   sizeof(t->blockhash.current));
+    json_object_object_add(blockhash, "current", current);
+
+    /*
+    int ret = process(PROCESS_EXPORT, t, NULL, NULL);
+    if (ret != 0) return ret;
+    */
+    return 0;
+}
+
 const struct module_transaction_s transaction = {
-    .init     = init,
-    .hash     = hash,
-    .validate = validate,
-    .metadump = metadump,
-    .dump     = dump,
+    .init        = init,
+    .hash        = hash,
+    .validate    = validate,
+    .metadump    = metadump,
+    .dump        = dump,
+    //.data.import = import,
+    .data.export = export,
 };
 
 /*

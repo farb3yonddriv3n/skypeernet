@@ -15,6 +15,11 @@ struct transaction_s {
     unsigned char      hash[SHA256HEX];
     enum transaction_e type;
 
+    struct {
+        unsigned char  prev[SHA256HEX];
+        unsigned char  current[SHA256HEX];
+    } blockhash;
+
     union {
         struct file_s        add;
         /*
@@ -45,6 +50,11 @@ struct module_transaction_s {
     void (*metadump)(struct transaction_s *t);
     int (*dump)(struct transaction_s *t);
     unsigned char *(*hash)(struct transaction_s *t);
+
+    struct {
+        int (*import)(struct transaction_s *t);
+        int (*export)(struct transaction_s *t, json_object **tobj);
+    } data;
 };
 
 struct transaction_sub_s {

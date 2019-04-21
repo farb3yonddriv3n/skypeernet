@@ -112,4 +112,5 @@ const struct transaction_sub_s transaction_file_add = {
     .dump     = dump,
     //.hash     = hash;
     //.dispatch = dispatch;
+    //.export   = export,
 };

@@ -30,6 +30,14 @@ int main()
     block.validate(transaction.hash(&t), newblock, nounce, &valid);
     printf("valid %d\n", valid);
 
+    struct block_s b;
+    block.init(&b, transaction.hash(&t), newblock, nounce);
+
+    block.transaction.add(&b, &t);
+    block.transaction.hash(&b);
+
+    block.data.export(&b);
+
     return 0;
 }
 
