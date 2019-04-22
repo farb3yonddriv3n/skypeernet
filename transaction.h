@@ -40,11 +40,14 @@ struct transaction_param_s {
         struct {
             bool *valid;
         } validate;
+        struct {
+            json_object **obj;
+        } export;
     } action;
 };
 
 struct module_transaction_s {
-    int (*init)(struct transaction_s *t,
+    int (*init)(struct transaction_s **t,
                 struct transaction_param_s *param);
     int (*validate)(struct transaction_s *t, bool *valid);
     void (*metadump)(struct transaction_s *t);
@@ -63,6 +66,9 @@ struct transaction_sub_s {
                 unsigned char *dst_hash);
     int (*validate)(struct transaction_s *t, unsigned char *dst_hash);
     int (*dump)(struct transaction_s *t);
+    struct {
+        int (*export)(struct transaction_s *t, json_object **parent);
+    } data;
 };
 
 extern const struct module_transaction_s transaction;

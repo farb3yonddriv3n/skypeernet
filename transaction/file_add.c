@@ -91,6 +91,59 @@ static int validate(struct transaction_s *t, unsigned char *dst_hash)
                 dst_hash);
 }
 
+static int export(struct transaction_s *t, json_object **parent)
+{
+    struct file_s *f = &t->action.add;
+
+    *parent = json_object_new_object();
+    json_object *hash = json_object_new_string_len((const char *)f->hash, sizeof(f->hash));
+    json_object_object_add(*parent, "hash", hash);
+
+    json_object *meta = json_object_new_object();
+    json_object_object_add(*parent, "meta", meta);
+    json_object *meta_name = json_object_new_string(f->meta.name);
+    json_object_object_add(meta, "name", meta_name);
+    json_object *meta_size = json_object_new_int64(f->meta.size);
+    json_object_object_add(meta, "size", meta_size);
+    json_object *meta_desc = json_object_new_string(f->meta.description);
+    json_object_object_add(meta, "desc", meta_desc);
+    json_object *meta_type = json_object_new_string(f->meta.type);
+    json_object_object_add(meta, "type", meta_type);
+    json_object *meta_hash = json_object_new_string_len((const char *)f->meta.hash,
+                                                        sizeof(f->meta.hash));
+    json_object_object_add(meta, "hash", meta_hash);
+
+    json_object *content = json_object_new_object();
+    json_object_object_add(*parent, "content", content);
+    json_object *content_hash = json_object_new_string_len((const char *)f->content.hash,
+                                                           sizeof(f->content.hash));
+    json_object_object_add(content, "hash", content_hash);
+
+    json_object *chunks = json_object_new_object();
+    json_object_object_add(*parent, "chunks", chunks);
+    json_object *chunks_hash = json_object_new_string((const char *)f->chunks.hash);
+    json_object_object_add(chunks, "hash", chunks_hash);
+    json_object *chunks_array = json_object_new_array();
+    json_object_object_add(chunks, "array", chunks_array);
+    int i;
+    for (i = 0; i < f->chunks.count; i++) {
+        struct file_chunk_s *fc = &f->chunks.array[i];
+        struct json_object *chunk = json_object_new_object();
+        json_object_array_add(chunks_array, chunk);
+        json_object *chunk_size = json_object_new_int64(fc->size);
+        json_object_object_add(chunk, "size", chunk_size);
+        json_object *chunk_part = json_object_new_int(fc->part);
+        json_object_object_add(chunk, "part", chunk_part);
+        json_object *chunk_part_hash = json_object_new_string_len((const char *)fc->part_hash,
+                                                                  sizeof(fc->part_hash));
+        json_object_object_add(chunk, "part_hash", chunk_part_hash);
+        json_object *chunk_chunk_hash = json_object_new_string_len((const char *)fc->chunk_hash,
+                                                                   sizeof(fc->chunk_hash));
+        json_object_object_add(chunk, "chunk_hash", chunk_chunk_hash);
+    }
+    return 0;
+}
+
 /*
 static unsigned char *hash(struct transaction_s *t)
 {
@@ -106,11 +159,11 @@ static int dump(struct transaction_s *t)
 }
 
 const struct transaction_sub_s transaction_file_add = {
-    .init     = init,
-    //.clean    = clean;
-    .validate = validate,
-    .dump     = dump,
-    //.hash     = hash;
-    //.dispatch = dispatch;
-    //.export   = export,
+    .init        = init,
+    //.clean     = clean;
+    .validate    = validate,
+    .dump        = dump,
+    //.hash      = hash;
+    //.dispatch  = dispatch;
+    .data.export = export,
 };

@@ -1,5 +1,71 @@
 #include <common.h>
 
+static int t_file_add(const char *filename, struct block_s *b)
+{
+    struct transaction_param_s param;
+    param.type = TFILE_ADD;
+    sn_setz(param.action.add.name, (char *)filename);
+
+    struct transaction_s *t;
+    int ret = transaction.init(&t, &param);
+    if (ret != 0) return ret;
+
+    bool valid;
+    ret = transaction.validate(t, &valid);
+    if (ret != 0) return ret;
+    printf("Transaction file add valid: %d\n", valid);
+
+    block.transaction.add(b, t);
+
+    return 0;
+}
+
+int main()
+{
+    struct config_s *cfg;
+    int ret = config_init(&cfg);
+    if (ret != 0) return ret;
+
+
+    const char *files[] = { "1012019.pdf", "1012019.pdf" };
+    struct root_s r;
+
+    root.init(&r);
+
+    unsigned char prev_block[SHA256HEX];
+    memset(prev_block, 97, sizeof(prev_block));
+
+    int i;
+    for (i = 0; i < 3; i++) {
+        uint64_t nounce;
+        unsigned char newblock[SHA256HEX];
+        block.mine(prev_block, newblock, &nounce);
+
+        bool valid;
+        block.validate(prev_block, newblock, nounce, &valid);
+        printf("Block valid %d\n", valid);
+
+        struct block_s *b;
+        block.init(&b, prev_block, newblock, nounce, i);
+
+        int t;
+        for (t = 0; t < COUNOF(files); t++) {
+            t_file_add(files[t], b);
+        }
+
+        block.transaction.hash(b);
+
+        root.add(&r, b);
+
+        memcpy(prev_block, newblock, sizeof(newblock));
+    }
+
+    root.data.export(&r);
+
+    return 0;
+}
+
+/*
 int main()
 {
     struct config_s *cfg;
@@ -40,6 +106,7 @@ int main()
 
     return 0;
 }
+*/
 
 /*
 int main()

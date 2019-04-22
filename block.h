@@ -2,6 +2,7 @@
 #define BLOCK_H_
 
 struct block_s {
+    uint64_t      index;
     struct {
         unsigned char prev[SHA256HEX];
         unsigned char current[SHA256HEX];
@@ -15,8 +16,9 @@ struct block_s {
 };
 
 struct module_block_s {
-    int (*init)(struct block_s *b, unsigned char *prev,
-                unsigned char *current, const uint64_t nounce);
+    int (*init)(struct block_s **b, unsigned char *prev,
+                unsigned char *current, const uint64_t nounce,
+                const uint64_t index);
     int (*mine)(unsigned char *prev_hash, unsigned char *dst_hash,
                 uint64_t *nounce);
     int (*validate)(unsigned char *prev_hash, unsigned char *dst_hash,
@@ -28,7 +30,7 @@ struct module_block_s {
 
     struct {
         int (*import)(struct block_s *b);
-        int (*export)(struct block_s *b);
+        int (*export)(struct block_s *b, json_object **bobj);
     } data;
 };
 

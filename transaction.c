@@ -36,7 +36,7 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                     return transaction_module[i].module->dump(t);
                     break;
                 case PROCESS_EXPORT:
-                    //return transaction_module[i].module->data.export(t);
+                    return transaction_module[i].module->data.export(t, param->action.export.obj);
                     return 0;
                     break;
                 default:
@@ -58,18 +58,22 @@ static void hash_calc(struct transaction_s *t, unsigned char *sub_hash,
     sha256hex((const unsigned char *)buffer, strlen(buffer), dst_hash);
 }
 
-static int init(struct transaction_s *t,
+static int init(struct transaction_s **t,
                 struct transaction_param_s *param)
 {
-    t->version   = VERSION;
-    t->timestamp = 100;
-    t->type      = param->type;
+    *t = malloc(sizeof(**t));
+    if (!(*t)) return -1;
+    memset(*t, 0, sizeof(**t));
+
+    (*t)->version   = VERSION;
+    (*t)->timestamp = 100;
+    (*t)->type      = param->type;
 
     unsigned char sub_hash[SHA256HEX];
-    int ret = process(PROCESS_INIT, t, param, sub_hash);
+    int ret = process(PROCESS_INIT, *t, param, sub_hash);
     if (ret != 0) return ret;
 
-    hash_calc(t, sub_hash, t->hash);
+    hash_calc(*t, sub_hash, (*t)->hash);
 
     return 0;
 }
@@ -131,13 +135,15 @@ static int export(struct transaction_s *t, json_object **tobj)
                                                    sizeof(t->blockhash.prev));
     json_object_object_add(blockhash, "prev", prev);
     json_object *current = json_object_new_string_len((const char *)t->blockhash.current,
-                                                   sizeof(t->blockhash.current));
+                                                      sizeof(t->blockhash.current));
     json_object_object_add(blockhash, "current", current);
 
-    /*
-    int ret = process(PROCESS_EXPORT, t, NULL, NULL);
+    json_object *fileadd;
+    struct transaction_param_s param = { .action.export.obj = &fileadd };
+    int ret = process(PROCESS_EXPORT, t, &param, NULL);
     if (ret != 0) return ret;
-    */
+    json_object_object_add(*tobj, "fileadd", fileadd);
+
     return 0;
 }
 

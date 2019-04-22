@@ -1,12 +1,16 @@
 #include <common.h>
 
-static int init(struct block_s *b, unsigned char *prev,
-                unsigned char *current, const uint64_t nounce)
+static int init(struct block_s **b, unsigned char *prev,
+                unsigned char *current, const uint64_t nounce,
+                const uint64_t index)
 {
-    memset(b, 0, sizeof(*b));
-    memcpy(b->hash.prev, prev, SHA256HEX);
-    memcpy(b->hash.current, current, SHA256HEX);
-    b->hash.nounce = nounce;
+    *b = malloc(sizeof(**b));
+    if (!(*b)) return -1;
+    memset(*b, 0, sizeof(**b));
+    memcpy((*b)->hash.prev, prev, SHA256HEX);
+    memcpy((*b)->hash.current, current, SHA256HEX);
+    (*b)->hash.nounce = nounce;
+    (*b)->index = index;
     return 0;
 }
 
@@ -83,11 +87,13 @@ static int import(struct block_s *b)
     return 0;
 }
 
-static int export(struct block_s *b)
+static int export(struct block_s *b, json_object **blockobj)
 {
-    json_object *blockobj = json_object_new_object();
+    *blockobj = json_object_new_object();
     json_object *hash = json_object_new_object();
-    json_object_object_add(blockobj, "hash", hash);
+    json_object *index = json_object_new_int64(b->index);
+    json_object_object_add(*blockobj, "index", index);
+    json_object_object_add(*blockobj, "hash", hash);
 
     json_object *prev = json_object_new_string_len((const char *)b->hash.prev,
                                                    sizeof(b->hash.prev));
@@ -100,7 +106,7 @@ static int export(struct block_s *b)
 
     int i;
     json_object *transactions = json_object_new_array();
-    json_object_object_add(blockobj, "transactions", transactions);
+    json_object_object_add(*blockobj, "transactions", transactions);
     for (i = 0; i < b->transactions.size; i++) {
         json_object *tobj;
         int ret = transaction.data.export(b->transactions.array[i], &tobj);
@@ -108,7 +114,6 @@ static int export(struct block_s *b)
         json_object_array_add(transactions, tobj);
     }
 
-    printf("json: %s\n", json_object_to_json_string(blockobj));
     return 0;
 }
 

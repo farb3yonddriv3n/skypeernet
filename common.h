@@ -20,5 +20,6 @@
 #include <file.h>
 #include <transaction.h>
 #include <block.h>
+#include <root.h>
 
 #endif
