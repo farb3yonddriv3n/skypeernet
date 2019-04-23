@@ -12,6 +12,7 @@ struct module_root_s {
     int (*init)(struct root_s *r);
     int (*add)(struct root_s *r, struct block_s *b);
     struct {
+        int (*import)(struct root_s *r, const char *filename);
         int (*export)(struct root_s *r);
     } data;
 };

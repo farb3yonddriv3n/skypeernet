@@ -18,13 +18,13 @@ int file_chunks(const char *bytes, size_t nbytes,
                    nbytes - (i * CHUNK_SIZE) :
                    CHUNK_SIZE);
         fc->part = i;
-        sha256hex(fc->ptr, fc->size, fc->part_hash);
+        sha256hex(fc->ptr, fc->size, fc->hash.content);
 
         char buffer[1024];
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
                  fc->size, fc->part,
-                 (int)sizeof(fc->part_hash), fc->part_hash);
-        sha256hex((unsigned char *)buffer, strlen(buffer), fc->chunk_hash);
+                 (int)sizeof(fc->hash.content), fc->hash.content);
+        sha256hex((unsigned char *)buffer, strlen(buffer), fc->hash.chunk);
         (*nchunks)++;
     }
 

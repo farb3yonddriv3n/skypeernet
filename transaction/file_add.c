@@ -11,7 +11,7 @@ static int hash_chunks(struct transaction_s *t,
         char buffer[SHA256HEX * 4];
         snprintf(buffer, sizeof(buffer), "%.*s%.*s",
                  (int)sizeof(prev), prev,
-                 (int)sizeof(fc->chunk_hash), fc->chunk_hash);
+                 (int)sizeof(fc->hash.chunk), fc->hash.chunk);
         sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
         memcpy(prev, dst_hash, SHA256HEX);
     }
@@ -91,13 +91,53 @@ static int validate(struct transaction_s *t, unsigned char *dst_hash)
                 dst_hash);
 }
 
+static int import(struct transaction_s *t, json_object *tobj)
+{
+    struct file_s *f = &t->action.add;
+    json_object *fadd;
+    json_object_object_get_ex(tobj, "fileadd", &fadd);
+
+#define BIND_STR(m_dst, m_name, m_src, m_obj)\
+        assert(json_object_object_get_ex(m_obj, m_name, &m_src) == true);\
+        if (json_object_get_string_len(m_src) == sizeof(f->m_dst))\
+            memcpy(f->m_dst, json_object_get_string(m_src),\
+                   json_object_get_string_len(m_src));
+
+#define BIND_STRLEN(m_dst, m_name, m_src, m_obj)\
+        json_object_object_get_ex(m_obj, m_name, &m_src);\
+        if (json_object_get_string_len(m_src) < sizeof(f->m_dst))\
+            memcpy(f->m_dst, json_object_get_string(m_src),\
+                   json_object_get_string_len(m_src));
+
+#define BIND_INT64(m_dst, m_name, m_src, m_obj)\
+        json_object_object_get_ex(m_obj, m_name, &m_src);\
+        f->m_dst = json_object_get_int64(m_src);
+
+    json_object *obj;
+    json_object *fcontent;
+    json_object_object_get_ex(fadd, "content", &fcontent);
+    BIND_STR(content.hash, "hash", obj, fcontent);
+
+    json_object *fmeta;
+    json_object_object_get_ex(fadd, "meta", &fmeta);
+    BIND_STRLEN(meta.description,   "desc", obj, fmeta);
+    BIND_STR(meta.hash,             "hash", obj, fmeta);
+    BIND_STRLEN(meta.name,          "name", obj, fmeta);
+    BIND_STRLEN(meta.type,          "type", obj, fmeta);
+    BIND_INT64(meta.size,           "size", obj, fmeta);
+
+    BIND_STR(hash, "hash", obj, fadd);
+
+    return 0;
+}
+
 static int export(struct transaction_s *t, json_object **parent)
 {
     struct file_s *f = &t->action.add;
 
     *parent = json_object_new_object();
-    json_object *hash = json_object_new_string_len((const char *)f->hash, sizeof(f->hash));
-    json_object_object_add(*parent, "hash", hash);
+    json_object *fhash = json_object_new_string_len((const char *)f->hash, sizeof(f->hash));
+    json_object_object_add(*parent, "hash", fhash);
 
     json_object *meta = json_object_new_object();
     json_object_object_add(*parent, "meta", meta);
@@ -134,12 +174,15 @@ static int export(struct transaction_s *t, json_object **parent)
         json_object_object_add(chunk, "size", chunk_size);
         json_object *chunk_part = json_object_new_int(fc->part);
         json_object_object_add(chunk, "part", chunk_part);
-        json_object *chunk_part_hash = json_object_new_string_len((const char *)fc->part_hash,
-                                                                  sizeof(fc->part_hash));
-        json_object_object_add(chunk, "part_hash", chunk_part_hash);
-        json_object *chunk_chunk_hash = json_object_new_string_len((const char *)fc->chunk_hash,
-                                                                   sizeof(fc->chunk_hash));
-        json_object_object_add(chunk, "chunk_hash", chunk_chunk_hash);
+
+        struct json_object *chunk_hash = json_object_new_object();
+        json_object_object_add(chunk, "hash", chunk_hash);
+        json_object *chunk_hash_content = json_object_new_string_len((const char *)fc->hash.content,
+                                                                     sizeof(fc->hash.content));
+        json_object_object_add(chunk_hash, "content", chunk_hash_content);
+        json_object *chunk_hash_chunk = json_object_new_string_len((const char *)fc->hash.chunk,
+                                                                   sizeof(fc->hash.chunk));
+        json_object_object_add(chunk_hash, "chunk", chunk_hash_chunk);
     }
     return 0;
 }
@@ -165,5 +208,6 @@ const struct transaction_sub_s transaction_file_add = {
     .dump        = dump,
     //.hash      = hash;
     //.dispatch  = dispatch;
+    .data.import = import,
     .data.export = export,
 };

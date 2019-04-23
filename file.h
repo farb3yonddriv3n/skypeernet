@@ -6,14 +6,16 @@
 #define FILE_DELETED     FLAG(2) // considered to be deleted
 #define FILE_ENCRYPTED   FLAG(3) // file chunks are encrypted
 
-#define CHUNK_SIZE (512 * 10) // 512kB
+#define CHUNK_SIZE (512 * 100) // 512kB
 
 struct file_chunk_s {
     const unsigned char *ptr;
     size_t               size;
     int                  part;
-    unsigned char        part_hash[SHA256HEX];
-    unsigned char        chunk_hash[SHA256HEX];
+    struct {
+        unsigned char content[SHA256HEX];
+        unsigned char chunk[SHA256HEX];
+    } hash;
 };
 
 struct file_s {

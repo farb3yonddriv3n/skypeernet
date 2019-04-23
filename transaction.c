@@ -7,6 +7,7 @@ enum transaction_process_e {
     PROCESS_INIT,
     PROCESS_VALIDATE,
     PROCESS_DUMP,
+    PROCESS_IMPORT,
     PROCESS_EXPORT,
 };
 
@@ -28,17 +29,14 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
             switch (ptype) {
                 case PROCESS_INIT:
                     return transaction_module[i].module->init(t, param, dst_hash);
-                    break;
                 case PROCESS_VALIDATE:
                     return transaction_module[i].module->validate(t, dst_hash);
-                    break;
                 case PROCESS_DUMP:
                     return transaction_module[i].module->dump(t);
-                    break;
+                case PROCESS_IMPORT:
+                    return transaction_module[i].module->data.import(t, param->action.import.obj);
                 case PROCESS_EXPORT:
                     return transaction_module[i].module->data.export(t, param->action.export.obj);
-                    return 0;
-                    break;
                 default:
                     return -1;
             }
@@ -58,12 +56,18 @@ static void hash_calc(struct transaction_s *t, unsigned char *sub_hash,
     sha256hex((const unsigned char *)buffer, strlen(buffer), dst_hash);
 }
 
-static int init(struct transaction_s **t,
-                struct transaction_param_s *param)
+static int mallocz(struct transaction_s **t)
 {
     *t = malloc(sizeof(**t));
     if (!(*t)) return -1;
     memset(*t, 0, sizeof(**t));
+    return 0;
+}
+
+static int init(struct transaction_s **t,
+                struct transaction_param_s *param)
+{
+    if (mallocz(t) != 0) return -1;
 
     (*t)->version   = VERSION;
     (*t)->timestamp = 100;
@@ -113,6 +117,35 @@ static int dump(struct transaction_s *t)
     return process(PROCESS_DUMP, t, NULL, NULL);
 }
 
+static int import(struct transaction_s **t, json_object *tobj)
+{
+    if (mallocz(t) != 0) return -1;
+
+#define BIND_STR(m_dst, m_name, m_src, m_obj)\
+        json_object_object_get_ex(m_obj, m_name, &m_src);\
+        if (json_object_get_string_len(m_src) == sizeof((*t)->m_dst))\
+            memcpy((*t)->m_dst, json_object_get_string(m_src),\
+                   json_object_get_string_len(m_src));
+
+#define BIND_INT(m_dst, m_name, m_src, m_obj)\
+        json_object_object_get_ex(m_obj, m_name, &m_src);\
+        (*t)->m_dst = json_object_get_int(m_src);
+
+    json_object *obj;
+    BIND_INT(version,   "version",   obj, tobj);
+    BIND_INT(timestamp, "timestamp", obj, tobj);
+    BIND_STR(hash,      "hash",      obj, tobj);
+
+    json_object *blockhash;
+    json_object_object_get_ex(tobj, "blockhash", &blockhash);
+
+    BIND_STR(blockhash.prev,    "prev",    obj, blockhash);
+    BIND_STR(blockhash.current, "current", obj, blockhash);
+
+    struct transaction_param_s param = { .action.import.obj = tobj };
+    return process(PROCESS_IMPORT, *t, &param, NULL);
+}
+
 static int export(struct transaction_s *t, json_object **tobj)
 {
     *tobj = json_object_new_object();
@@ -153,7 +186,7 @@ const struct module_transaction_s transaction = {
     .validate    = validate,
     .metadump    = metadump,
     .dump        = dump,
-    //.data.import = import,
+    .data.import = import,
     .data.export = export,
 };
 

@@ -5,8 +5,6 @@
 
 #define MAX_FILE_SIZE (1024 * 1024 * 1024) // 1GB
 
-#define CHUNK_SIZE    (512 * 10)
-
 #define SHA256HEX     (SHA256_DIGEST_LENGTH * 2)
 
 #define COUNOF(m_a)   (sizeof(m_a) / sizeof(m_a[0]))

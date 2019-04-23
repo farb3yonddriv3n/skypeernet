@@ -1,5 +1,20 @@
 #include <common.h>
 
+int main()
+{
+    struct config_s *cfg;
+    int ret = config_init(&cfg);
+    if (ret != 0) return ret;
+
+    struct root_s r;
+    root.data.import(&r, "input");
+
+    root.data.export(&r);
+
+    return 0;
+}
+
+/*
 static int t_file_add(const char *filename, struct block_s *b)
 {
     struct transaction_param_s param;
@@ -27,7 +42,7 @@ int main()
     if (ret != 0) return ret;
 
 
-    const char *files[] = { "1012019.pdf", "1012019.pdf" };
+    const char *files[] = { "1012019.pdf", "9004l1.txt" };
     struct root_s r;
 
     root.init(&r);
@@ -64,6 +79,7 @@ int main()
 
     return 0;
 }
+*/
 
 /*
 int main()
