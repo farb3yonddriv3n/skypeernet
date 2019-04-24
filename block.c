@@ -60,7 +60,7 @@ static int validate(unsigned char *prev_hash, unsigned char *dst_hash,
     return 0;
 }
 
-static int add(struct block_s *b, struct transaction_s *t)
+static int transaction_add(struct block_s *b, struct transaction_s *t)
 {
     b->transactions.size++;
     b->transactions.array = realloc(b->transactions.array,
@@ -166,7 +166,7 @@ const struct module_block_s block = {
     .init             = init,
     .mine             = mine,
     .validate         = validate,
-    .transaction.add  = add,
+    .transaction.add  = transaction_add,
     .transaction.hash = transaction_hash,
     .data.import      = import,
     .data.export      = export,

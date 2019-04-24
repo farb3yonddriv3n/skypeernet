@@ -32,7 +32,7 @@ struct file_s {
     } content;
     struct {
         struct file_chunk_s *array;
-        int                  count;
+        size_t               size;
         unsigned char        hash[SHA256HEX];
     } chunks;
     struct {
@@ -46,8 +46,9 @@ struct file_s {
     unsigned int flags;
 };
 
+int file_chunks_alloc(struct file_s *f, const int size);
 int file_chunks(const char *bytes, size_t nbytes,
-                struct file_chunk_s **chunks, int *nchunks);
+                struct file_chunk_s **chunks, size_t *nchunks);
 void file_chunks_free(struct file_chunk_s *chunks);
 
 #endif

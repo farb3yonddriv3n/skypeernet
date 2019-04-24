@@ -6,7 +6,7 @@ static int hash_chunks(struct transaction_s *t,
     unsigned char prev[SHA256HEX];
     memset(prev, 0, sizeof(prev));
     int i;
-    for (i = 0; i < t->action.add.chunks.count; i++) {
+    for (i = 0; i < t->action.add.chunks.size; i++) {
         struct file_chunk_s *fc = &t->action.add.chunks.array[i];
         char buffer[SHA256HEX * 4];
         snprintf(buffer, sizeof(buffer), "%.*s%.*s",
@@ -60,7 +60,7 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     sha256hex((unsigned char *)fcontent, size, t->action.add.content.hash);
 
     ret = file_chunks(fcontent, size, &t->action.add.chunks.array,
-                          &t->action.add.chunks.count);
+                      &t->action.add.chunks.size);
     if (ret != 0) return -1;
     ret = hash_chunks(t, t->action.add.chunks.hash);
     if (ret != 0) return -1;
@@ -99,34 +99,59 @@ static int import(struct transaction_s *t, json_object *tobj)
 
 #define BIND_STR(m_dst, m_name, m_src, m_obj)\
         assert(json_object_object_get_ex(m_obj, m_name, &m_src) == true);\
-        if (json_object_get_string_len(m_src) == sizeof(f->m_dst))\
-            memcpy(f->m_dst, json_object_get_string(m_src),\
+        if (json_object_get_string_len(m_src) == sizeof(m_dst))\
+            memcpy(m_dst, json_object_get_string(m_src),\
                    json_object_get_string_len(m_src));
 
 #define BIND_STRLEN(m_dst, m_name, m_src, m_obj)\
         json_object_object_get_ex(m_obj, m_name, &m_src);\
-        if (json_object_get_string_len(m_src) < sizeof(f->m_dst))\
-            memcpy(f->m_dst, json_object_get_string(m_src),\
+        if (json_object_get_string_len(m_src) < sizeof(m_dst))\
+            memcpy(m_dst, json_object_get_string(m_src),\
                    json_object_get_string_len(m_src));
 
 #define BIND_INT64(m_dst, m_name, m_src, m_obj)\
         json_object_object_get_ex(m_obj, m_name, &m_src);\
-        f->m_dst = json_object_get_int64(m_src);
+        m_dst = json_object_get_int64(m_src);
 
     json_object *obj;
     json_object *fcontent;
     json_object_object_get_ex(fadd, "content", &fcontent);
-    BIND_STR(content.hash, "hash", obj, fcontent);
+    BIND_STR(f->content.hash, "hash", obj, fcontent);
 
     json_object *fmeta;
-    json_object_object_get_ex(fadd, "meta", &fmeta);
-    BIND_STRLEN(meta.description,   "desc", obj, fmeta);
-    BIND_STR(meta.hash,             "hash", obj, fmeta);
-    BIND_STRLEN(meta.name,          "name", obj, fmeta);
-    BIND_STRLEN(meta.type,          "type", obj, fmeta);
-    BIND_INT64(meta.size,           "size", obj, fmeta);
+    json_object_object_get_ex(fadd,  "meta", &fmeta);
+    BIND_STRLEN(f->meta.description, "desc", obj, fmeta);
+    BIND_STR(f->meta.hash,           "hash", obj, fmeta);
+    BIND_STRLEN(f->meta.name,        "name", obj, fmeta);
+    BIND_STRLEN(f->meta.type,        "type", obj, fmeta);
+    BIND_INT64(f->meta.size,         "size", obj, fmeta);
 
-    BIND_STR(hash, "hash", obj, fadd);
+    BIND_STR(f->hash, "hash", obj, fadd);
+
+    json_object *fchunks;
+    json_object_object_get_ex(fadd, "chunks", &fchunks);
+    BIND_STR(f->chunks.hash, "hash", obj, fchunks);
+
+    json_object *farray;
+    json_object_object_get_ex(fchunks, "array", &farray);
+    if (json_object_get_type(farray) == json_type_array) {
+        array_list *chunks_array = json_object_get_array(farray);
+        int i;
+        if (file_chunks_alloc(f, array_list_length(chunks_array)) != 0)
+            return -1;
+        for (i = 0; i < array_list_length(chunks_array); i++) {
+            json_object *chunk_item = array_list_get_idx(chunks_array, i);
+
+            BIND_INT64(f->chunks.array[i].size, "size", obj, chunk_item);
+            BIND_INT64(f->chunks.array[i].part, "part", obj, chunk_item);
+
+            json_object *chash;
+            json_object_object_get_ex(chunk_item, "hash", &chash);
+
+            BIND_STR(f->chunks.array[i].hash.chunk,   "chunk",   obj, chash);
+            BIND_STR(f->chunks.array[i].hash.content, "content", obj, chash);
+        }
+    }
 
     return 0;
 }
@@ -166,7 +191,7 @@ static int export(struct transaction_s *t, json_object **parent)
     json_object *chunks_array = json_object_new_array();
     json_object_object_add(chunks, "array", chunks_array);
     int i;
-    for (i = 0; i < f->chunks.count; i++) {
+    for (i = 0; i < f->chunks.size; i++) {
         struct file_chunk_s *fc = &f->chunks.array[i];
         struct json_object *chunk = json_object_new_object();
         json_object_array_add(chunks_array, chunk);
@@ -187,13 +212,6 @@ static int export(struct transaction_s *t, json_object **parent)
     return 0;
 }
 
-/*
-static unsigned char *hash(struct transaction_s *t)
-{
-    return t->action.add.hash;
-}
-*/
-
 static int dump(struct transaction_s *t)
 {
     transaction.metadump(t);
@@ -203,11 +221,8 @@ static int dump(struct transaction_s *t)
 
 const struct transaction_sub_s transaction_file_add = {
     .init        = init,
-    //.clean     = clean;
     .validate    = validate,
     .dump        = dump,
-    //.hash      = hash;
-    //.dispatch  = dispatch;
     .data.import = import,
     .data.export = export,
 };

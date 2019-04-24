@@ -1,7 +1,15 @@
 #include <common.h>
 
+int file_chunks_alloc(struct file_s *f, const int size)
+{
+    f->chunks.array = malloc(size * sizeof(*(f->chunks.array)));
+    if (!f->chunks.array) return -1;
+    f->chunks.size = size;
+    return 0;
+}
+
 int file_chunks(const char *bytes, size_t nbytes,
-                struct file_chunk_s **chunks, int *nchunks)
+                struct file_chunk_s **chunks, size_t *nchunks)
 {
     if (nbytes < 1) return -1;
 
