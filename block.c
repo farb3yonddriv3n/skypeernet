@@ -89,6 +89,24 @@ static int transaction_hash(struct block_s *b)
     return 0;
 }
 
+static int compare(struct block_s *local, struct block_s *remote,
+                   struct block_equal_s *equal)
+{
+    if (!local || !remote) return -1;
+    equal->verdict = true;
+    if (memcmp(local->hash.prev, remote->hash.prev, sizeof(local->hash.prev)) != 0)
+        return -1;
+    if (memcmp(local->hash.current, remote->hash.current, sizeof(local->hash.current)) != 0)
+        equal->verdict = false;
+    size_t ls, rs;
+    if (block.size(local,  &ls) != 0) return -1;
+    if (block.size(remote, &rs) != 0) return -1;
+    equal->winner = (ls >= rs) ?
+                    BLOCK_LOCAL :
+                    BLOCK_REMOTE;
+    return 0;
+}
+
 static int import(struct block_s **b, json_object *bobj)
 {
     if (mallocz(b) != 0) return -1;
@@ -162,10 +180,19 @@ static int export(struct block_s *b, json_object **blockobj)
     return 0;
 }
 
+static int size(struct block_s *b, size_t *s)
+{
+    if (!b || !s) return -1;
+    *s = b->transactions.size;
+    return 0;
+}
+
 const struct module_block_s block = {
     .init             = init,
     .mine             = mine,
     .validate         = validate,
+    .compare          = compare,
+    .size             = size,
     .transaction.add  = transaction_add,
     .transaction.hash = transaction_hash,
     .data.import      = import,

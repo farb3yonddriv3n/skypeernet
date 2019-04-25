@@ -7,7 +7,7 @@
 
 #define SHA256HEX     (SHA256_DIGEST_LENGTH * 2)
 
-#define COUNOF(m_a)   (sizeof(m_a) / sizeof(m_a[0]))
+#define COUNTOF(m_a)  (sizeof(m_a) / sizeof(m_a[0]))
 
 int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent);
 int eioie_fread(char **dst, sn fname);
