@@ -2,13 +2,11 @@
 #include <cu.h>
 
 static struct test_s list[] = {
-    /*
-    { "root import and export",             t1_root_import_export },
+    { "root load and save",                 t1_root_load_save },
     { "mine block and append transactions", t2_mine_block_append_transactions },
     { "block append transactions",          t3_block_append_transactions },
     { "rsa encrypt and decrypt",            t4_rsa_encrypt_decrypt },
-    */
-    { "root _compare",                      t5_root_compare },
+    { "root compare",                       t5_root_compare },
 };
 
 static int init_suite()

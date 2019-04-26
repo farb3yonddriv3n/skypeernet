@@ -42,10 +42,10 @@ struct transaction_param_s {
         } validate;
         struct {
             json_object **obj;
-        } export;
+        } save;
         struct {
             json_object *obj;
-        } import;
+        } load;
     } action;
 };
 
@@ -58,8 +58,8 @@ struct module_transaction_s {
     unsigned char *(*hash)(struct transaction_s *t);
 
     struct {
-        int (*import)(struct transaction_s **t, json_object *tobj);
-        int (*export)(struct transaction_s *t, json_object **tobj);
+        int (*load)(struct transaction_s **t, json_object *tobj);
+        int (*save)(struct transaction_s *t, json_object **tobj);
     } data;
 };
 
@@ -70,8 +70,8 @@ struct transaction_sub_s {
     int (*validate)(struct transaction_s *t, unsigned char *dst_hash);
     int (*dump)(struct transaction_s *t);
     struct {
-        int (*import)(struct transaction_s *t, json_object *tobj);
-        int (*export)(struct transaction_s *t, json_object **parent);
+        int (*load)(struct transaction_s *t, json_object *tobj);
+        int (*save)(struct transaction_s *t, json_object **parent);
     } data;
 };
 

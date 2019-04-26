@@ -35,14 +35,10 @@ void t2_mine_block_append_transactions()
     memset(prev_block, 97, sizeof(prev_block));
 
     int i;
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 4; i++) {
         uint64_t nounce;
         unsigned char newblock[SHA256HEX];
         A(block.mine(prev_block, newblock, &nounce), 0);
-
-        bool valid;
-        A(block.validate(prev_block, newblock, nounce, &valid), 0);
-        A(valid, true);
 
         struct block_s *b;
         A(block.init(&b, prev_block, newblock, nounce, i), 0);
@@ -54,10 +50,15 @@ void t2_mine_block_append_transactions()
 
         A(block.transaction.hash(b), 0);
 
+        bool valid;
+        A(block.validate(b, &valid), 0);
+        A(valid, true);
+
         A(root.blocks.add(&r, b), 0);
 
-        memcpy(prev_block, newblock, sizeof(newblock));
+        memcpy(prev_block, b->hash.current, sizeof(b->hash.current));
     }
 
-    A(root.data.export(&r), 0);
+    json_object *dst;
+    A(root.data.save(&r, &dst), 0);
 }

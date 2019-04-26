@@ -26,15 +26,15 @@ void t3_block_append_transactions()
     unsigned char newblock[SHA256HEX];
     A(block.mine(prev_block, newblock, &nounce), 0);
 
-    A(block.validate(prev_block, newblock, nounce, &valid), 0);
-    A(valid, true);
-
     struct block_s *b;
     A(block.init(&b, prev_block, newblock, nounce, 0), 0);
 
     A(block.transaction.add(b, t), 0);
     A(block.transaction.hash(b), 0);
 
+    A(block.validate(b, &valid), 0);
+    A(valid, true);
+
     json_object *bobj;
-    A(block.data.export(b, &bobj), 0);
+    A(block.data.save(b, &bobj), 0);
 }

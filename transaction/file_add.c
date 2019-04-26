@@ -91,7 +91,7 @@ static int validate(struct transaction_s *t, unsigned char *dst_hash)
                 dst_hash);
 }
 
-static int import(struct transaction_s *t, json_object *tobj)
+static int load(struct transaction_s *t, json_object *tobj)
 {
     struct file_s *f = &t->action.add;
     json_object *fadd;
@@ -156,7 +156,7 @@ static int import(struct transaction_s *t, json_object *tobj)
     return 0;
 }
 
-static int export(struct transaction_s *t, json_object **parent)
+static int save(struct transaction_s *t, json_object **parent)
 {
     struct file_s *f = &t->action.add;
 
@@ -223,6 +223,6 @@ const struct transaction_sub_s transaction_file_add = {
     .init        = init,
     .validate    = validate,
     .dump        = dump,
-    .data.import = import,
-    .data.export = export,
+    .data.load   = load,
+    .data.save   = save,
 };

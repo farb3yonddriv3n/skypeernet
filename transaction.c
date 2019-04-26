@@ -34,9 +34,9 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                 case PROCESS_DUMP:
                     return transaction_module[i].module->dump(t);
                 case PROCESS_IMPORT:
-                    return transaction_module[i].module->data.import(t, param->action.import.obj);
+                    return transaction_module[i].module->data.load(t, param->action.load.obj);
                 case PROCESS_EXPORT:
-                    return transaction_module[i].module->data.export(t, param->action.export.obj);
+                    return transaction_module[i].module->data.save(t, param->action.save.obj);
                 default:
                     return -1;
             }
@@ -84,7 +84,7 @@ static int init(struct transaction_s **t,
 
 static int validate(struct transaction_s *t, bool *valid)
 {
-    *valid = false;
+    *valid = true;
 
     unsigned char action_hash[SHA256HEX];
     int ret = process(PROCESS_VALIDATE, t, NULL, action_hash);
@@ -93,8 +93,8 @@ static int validate(struct transaction_s *t, bool *valid)
     unsigned char transaction_hash[SHA256HEX];
     hash_calc(t, action_hash, transaction_hash);
 
-    if (memcmp(t->hash, transaction_hash, sizeof(t->hash)) == 0)
-        *valid = true;
+    if (memcmp(t->hash, transaction_hash, sizeof(t->hash)) != 0)
+        *valid = false;
 
     return 0;
 }
@@ -117,7 +117,7 @@ static int dump(struct transaction_s *t)
     return process(PROCESS_DUMP, t, NULL, NULL);
 }
 
-static int import(struct transaction_s **t, json_object *tobj)
+static int load(struct transaction_s **t, json_object *tobj)
 {
     if (mallocz(t) != 0) return -1;
 
@@ -142,11 +142,11 @@ static int import(struct transaction_s **t, json_object *tobj)
     BIND_STR(blockhash.prev,    "prev",    obj, blockhash);
     BIND_STR(blockhash.current, "current", obj, blockhash);
 
-    struct transaction_param_s param = { .action.import.obj = tobj };
+    struct transaction_param_s param = { .action.load.obj = tobj };
     return process(PROCESS_IMPORT, *t, &param, NULL);
 }
 
-static int export(struct transaction_s *t, json_object **tobj)
+static int save(struct transaction_s *t, json_object **tobj)
 {
     *tobj = json_object_new_object();
     json_object *version = json_object_new_int(t->version);
@@ -172,7 +172,7 @@ static int export(struct transaction_s *t, json_object **tobj)
     json_object_object_add(blockhash, "current", current);
 
     json_object *fileadd;
-    struct transaction_param_s param = { .action.export.obj = &fileadd };
+    struct transaction_param_s param = { .action.save.obj = &fileadd };
     int ret = process(PROCESS_EXPORT, t, &param, NULL);
     if (ret != 0) return ret;
     json_object_object_add(*tobj, "fileadd", fileadd);
@@ -186,25 +186,6 @@ const struct module_transaction_s transaction = {
     .validate    = validate,
     .metadump    = metadump,
     .dump        = dump,
-    .data.import = import,
-    .data.export = export,
+    .data.load   = load,
+    .data.save   = save,
 };
-
-/*
-void transaction_dump()
-{
-    int i;
-    printf("nchunks %d\n", nchunks);
-    for (i = 0; i < nchunks; i++) {
-        printf("%d %p\n", chunks[i].n, chunks[i].ptr);
-        int n;
-        for (n = 0; n < SHA256_DIGEST_LENGTH; n++)
-            printf("%02x", (unsigned char)chunks[i].hash[n]);
-        putchar('\n');
-    }
-    int n;
-    for (n = 0; n < SHA256_DIGEST_LENGTH; n++)
-        printf("%02x", (unsigned char)md[n]);
-    putchar('\n');
-}
-*/
