@@ -9,8 +9,11 @@ static int hash_chunks(struct transaction_s *t,
     for (i = 0; i < t->action.add.chunks.size; i++) {
         struct file_chunk_s *fc = &t->action.add.chunks.array[i];
         char buffer[SHA256HEX * 4];
-        snprintf(buffer, sizeof(buffer), "%.*s%.*s",
+        snprintf(buffer, sizeof(buffer), "%.*s%ld%d%.*s%.*s",
                  (int)sizeof(prev), prev,
+                 fc->size,
+                 fc->part,
+                 (int)sizeof(fc->hash.content), fc->hash.content,
                  (int)sizeof(fc->hash.chunk), fc->hash.chunk);
         sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
         memcpy(prev, dst_hash, SHA256HEX);
@@ -31,14 +34,14 @@ static int hash_meta(struct transaction_s *t,
     return 0;
 }
 
-static int hash(unsigned char *hash_meta,
+static int hash(unsigned char *hash_cmeta,
                 unsigned char *hash_content,
                 unsigned char *hash_chunks,
                 unsigned char *dst_hash)
 {
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), "%.*s%.*s%.*s",
-             SHA256HEX, hash_meta,
+             SHA256HEX, hash_cmeta,
              SHA256HEX, hash_content,
              SHA256HEX, hash_chunks);
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
@@ -75,20 +78,28 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     return 0;
 }
 
-static int validate(struct transaction_s *t, unsigned char *dst_hash)
+static int validate(struct transaction_s *t, unsigned char *dst_hash,
+                    bool *valid)
 {
     unsigned char hmeta[SHA256HEX];
-    int ret = hash_meta(t, hmeta);
-    if (ret != 0) return ret;
+    if (hash_meta(t, hmeta) != 0) return -1;
+    if (memcmp(t->action.add.meta.hash, hmeta, sizeof(hmeta)) != 0) {
+        *valid = false;
+        return 0;
+    }
 
     unsigned char hchunks[SHA256HEX];
-    ret = hash_chunks(t, hchunks);
-    if (ret != 0) return ret;
+    if (hash_chunks(t, hchunks) != 0) return -1;
+    if (memcmp(t->action.add.chunks.hash, hchunks, sizeof(hchunks)) != 0) {
+        *valid = false;
+        return 0;
+    }
 
-    return hash(hmeta,
-                t->action.add.content.hash,
-                hchunks,
-                dst_hash);
+    hash(hmeta, t->action.add.content.hash, hchunks, dst_hash);
+    if (memcmp(t->action.add.hash, dst_hash, sizeof(t->action.add.hash)) != 0)
+        *valid = false;
+
+    return 0;
 }
 
 static int load(struct transaction_s *t, json_object *tobj)

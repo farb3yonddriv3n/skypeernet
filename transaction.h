@@ -67,7 +67,8 @@ struct transaction_sub_s {
     int (*init)(struct transaction_s *t,
                 struct transaction_param_s *param,
                 unsigned char *dst_hash);
-    int (*validate)(struct transaction_s *t, unsigned char *dst_hash);
+    int (*validate)(struct transaction_s *t, unsigned char *dst_hash,
+                    bool *valid);
     int (*dump)(struct transaction_s *t);
     struct {
         int (*load)(struct transaction_s *t, json_object *tobj);

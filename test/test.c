@@ -2,10 +2,10 @@
 #include <cu.h>
 
 static struct test_s list[] = {
-    { "root load and save",                 t1_root_load_save },
-    { "mine block and append transactions", t2_mine_block_append_transactions },
-    { "block append transactions",          t3_block_append_transactions },
-    { "rsa encrypt and decrypt",            t4_rsa_encrypt_decrypt },
+    //{ "root load and save",                 t1_root_load_save },
+    //{ "mine block and append transactions", t2_mine_block_append_transactions },
+    //{ "block append transactions",          t3_block_append_transactions },
+    //{ "rsa encrypt and decrypt",            t4_rsa_encrypt_decrypt },
     { "root compare",                       t5_root_compare },
 };
 

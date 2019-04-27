@@ -35,7 +35,7 @@ void t2_mine_block_append_transactions()
     memset(prev_block, 97, sizeof(prev_block));
 
     int i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         uint64_t nounce;
         unsigned char newblock[SHA256HEX];
         A(block.mine(prev_block, newblock, &nounce), 0);

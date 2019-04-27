@@ -30,7 +30,8 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                 case PROCESS_INIT:
                     return transaction_module[i].module->init(t, param, dst_hash);
                 case PROCESS_VALIDATE:
-                    return transaction_module[i].module->validate(t, dst_hash);
+                    return transaction_module[i].module->validate(t, dst_hash,
+                                                                  param->action.validate.valid);
                 case PROCESS_DUMP:
                     return transaction_module[i].module->dump(t);
                 case PROCESS_IMPORT:
@@ -51,8 +52,7 @@ static void hash_calc(struct transaction_s *t, unsigned char *sub_hash,
              t->version,
              t->timestamp,
              t->type,
-             SHA256HEX,
-             sub_hash);
+             SHA256HEX, sub_hash);
     sha256hex((const unsigned char *)buffer, strlen(buffer), dst_hash);
 }
 
@@ -86,9 +86,11 @@ static int validate(struct transaction_s *t, bool *valid)
 {
     *valid = true;
 
+    struct transaction_param_s param = { .action.validate.valid = valid };
     unsigned char action_hash[SHA256HEX];
-    int ret = process(PROCESS_VALIDATE, t, NULL, action_hash);
+    int ret = process(PROCESS_VALIDATE, t, &param, action_hash);
     if (ret != 0) return ret;
+    if (*valid == false) return 0;
 
     unsigned char transaction_hash[SHA256HEX];
     hash_calc(t, action_hash, transaction_hash);
