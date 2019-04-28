@@ -42,6 +42,7 @@ static int load_object(struct root_s *r, const json_object *obj)
             if (root.blocks.append(r, block_item) != 0) return -1;
         }
     }
+    json_object_put((json_object *)obj);
     return 0;
 }
 
@@ -56,6 +57,7 @@ static int load_file(struct root_s *r, const char *filename)
     struct json_tokener *tok = json_tokener_new();
     struct json_object *obj = json_tokener_parse_ex(tok, content, n);
     json_tokener_free(tok);
+    if (content) free(content);
     if (!obj) return -1;
 
     return root.data.load.object(r, obj);
@@ -133,6 +135,7 @@ static int blocks_export(const struct root_s *r, const uint64_t blockidx,
 
 static int copy(struct root_s *dst, const struct root_s *src)
 {
+    if (!dst || !src) return -1;
     json_object *obj;
     if (root.data.save(src, &obj) != 0) return -1;
     if (root.data.load.object(dst, obj) != 0) return -1;
@@ -141,6 +144,7 @@ static int copy(struct root_s *dst, const struct root_s *src)
 
 static int validate(const struct root_s *r, bool *valid)
 {
+    if (!r || !valid) return -1;
     unsigned char *block_prev = (unsigned char *)default_hash;
     *valid = true;
     int i;
@@ -154,7 +158,18 @@ static int validate(const struct root_s *r, bool *valid)
         if (*valid != true) return 0;
         block_prev = b->hash.current;
     }
+    return 0;
+}
 
+static int clean(struct root_s *r)
+{
+    if (!r) return -1;
+    int i;
+    for (i = 0; i < r->blocks.size; i++) {
+        struct block_s *b = r->blocks.array[i];
+        if (block.clean(b) != 0) return -1;
+    }
+    free(r->blocks.array);
     return 0;
 }
 
@@ -164,6 +179,7 @@ const struct module_root_s root = {
     //.cut              = cut,
     .copy             = copy,
     .validate         = validate,
+    .clean            = clean,
     .blocks.add       = blocks_add,
     .blocks.append    = blocks_append,
     .blocks.size      = blocks_size,

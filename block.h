@@ -29,6 +29,7 @@ struct module_block_s {
     int (*size)(struct block_s *b, size_t *s);
     int (*compare)(struct block_s *local, struct block_s *remote,
                    struct root_diff_s *equal);
+    int (*clean)(struct block_s *b);
     struct {
         int (*add)(struct block_s *b, struct transaction_s *t);
         int (*hash)(struct block_s *b);

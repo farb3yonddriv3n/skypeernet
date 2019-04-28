@@ -56,7 +56,7 @@ struct module_transaction_s {
     void (*metadump)(struct transaction_s *t);
     int (*dump)(struct transaction_s *t);
     unsigned char *(*hash)(struct transaction_s *t);
-
+    int (*clean)(struct transaction_s *t);
     struct {
         int (*load)(struct transaction_s **t, json_object *tobj);
         int (*save)(struct transaction_s *t, json_object **tobj);
@@ -70,6 +70,7 @@ struct transaction_sub_s {
     int (*validate)(struct transaction_s *t, unsigned char *dst_hash,
                     bool *valid);
     int (*dump)(struct transaction_s *t);
+    int (*clean)(struct transaction_s *t);
     struct {
         int (*load)(struct transaction_s *t, json_object *tobj);
         int (*save)(struct transaction_s *t, json_object **parent);

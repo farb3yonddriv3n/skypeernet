@@ -14,6 +14,7 @@ struct module_root_s {
                    struct root_diff_s *diff);
     int (*copy)(struct root_s *dst, const struct root_s *src);
     int (*validate)(const struct root_s *r, bool *valid);
+    int (*clean)(struct root_s *r);
     struct {
         int (*add)(struct root_s *r, struct block_s *b);
         int (*append)(struct root_s *r, const json_object *blockobj);

@@ -10,6 +10,12 @@ void t5_root_compare()
     A(root.data.load.file(&r[0], FROOT_VALID),  0);
     A(root.data.load.file(&r[1], FROOT_VALID2), 0);
 
+    size_t rsize;
+    A(root.blocks.size(&r[0], &rsize), 0);
+    A(rsize, 3);
+    A(root.blocks.size(&r[1], &rsize), 0);
+    A(rsize, 4);
+
     struct root_diff_s diff;
     A(root.compare(&r[0], &r[1], &diff), 0);
     A(diff.verdict, false);
@@ -29,7 +35,13 @@ void t5_root_compare()
     A(diff.winner, ROOT_LOCAL);
 
     A(root.blocks.append(&r[0], b), 0);
+    json_object_put(b);
 
     A(root.compare(&r[0], &r[1], &diff), 0);
     A(diff.verdict, true);
+
+    A(root.clean(&r[0]), 0);
+    A(root.clean(&r[1]), 0);
+
+    config_free(cfg);
 }

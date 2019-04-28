@@ -37,4 +37,9 @@ void t3_block_append_transactions()
 
     json_object *bobj;
     A(block.data.save(b, &bobj), 0);
+    json_object_put(bobj);
+
+    A(block.clean(b), 0);
+
+    config_free(cfg);
 }

@@ -215,12 +215,25 @@ static int size(struct block_s *b, size_t *s)
     return 0;
 }
 
+static int clean(struct block_s *b)
+{
+    if (!b) return -1;
+    int i;
+    for (i = 0; i < b->transactions.size; i++) {
+        if (transaction.clean(b->transactions.array[i]) != 0) return -1;
+    }
+    free(b->transactions.array);
+    free(b);
+    return 0;
+}
+
 const struct module_block_s block = {
     .init             = init,
     .mine             = mine,
     .validate         = validate,
     .compare          = compare,
     .size             = size,
+    .clean            = clean,
     .transaction.add  = transaction_add,
     .transaction.hash = transaction_hashall,
     .data.load        = load,

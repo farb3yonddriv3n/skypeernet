@@ -9,6 +9,7 @@ enum transaction_process_e {
     PROCESS_DUMP,
     PROCESS_IMPORT,
     PROCESS_EXPORT,
+    PROCESS_CLEAN,
 };
 
 struct transaction_map_s {
@@ -38,6 +39,8 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                     return transaction_module[i].module->data.load(t, param->action.load.obj);
                 case PROCESS_EXPORT:
                     return transaction_module[i].module->data.save(t, param->action.save.obj);
+                case PROCESS_CLEAN:
+                    return transaction_module[i].module->clean(t);
                 default:
                     return -1;
             }
@@ -182,12 +185,21 @@ static int save(struct transaction_s *t, json_object **tobj)
     return 0;
 }
 
+static int clean(struct transaction_s *t)
+{
+    if (!t) return -1;
+    if (process(PROCESS_CLEAN, t, NULL, NULL) != 0) return -1;
+    free(t);
+    return 0;
+}
+
 const struct module_transaction_s transaction = {
     .init        = init,
     .hash        = hash,
     .validate    = validate,
     .metadump    = metadump,
     .dump        = dump,
+    .clean       = clean,
     .data.load   = load,
     .data.save   = save,
 };

@@ -65,6 +65,7 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     ret = file_chunks(fcontent, size, &t->action.add.chunks.array,
                       &t->action.add.chunks.size);
     if (ret != 0) return -1;
+    free(fcontent);
     ret = hash_chunks(t, t->action.add.chunks.hash);
     if (ret != 0) return -1;
 
@@ -230,10 +231,18 @@ static int dump(struct transaction_s *t)
     return 0;
 }
 
+static int clean(struct transaction_s *t)
+{
+    if (!t) return -1;
+    file_chunks_free(t->action.add.chunks.array);
+    return 0;
+}
+
 const struct transaction_sub_s transaction_file_add = {
     .init        = init,
     .validate    = validate,
     .dump        = dump,
+    .clean       = clean,
     .data.load   = load,
     .data.save   = save,
 };

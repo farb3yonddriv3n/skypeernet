@@ -16,4 +16,9 @@ void t1_root_load_save()
     A(diff.verdict, true);
 
     A(root.data.load.file(&r[2], FROOT_INVALID), -1);
+
+    A(root.clean(&r[0]), 0);
+    A(root.clean(&r[1]), 0);
+
+    config_free(cfg);
 }

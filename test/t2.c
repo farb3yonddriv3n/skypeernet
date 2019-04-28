@@ -61,4 +61,9 @@ void t2_mine_block_append_transactions()
 
     json_object *dst;
     A(root.data.save(&r, &dst), 0);
+    json_object_put(dst);
+
+    A(root.clean(&r), 0);
+
+    config_free(cfg);
 }
