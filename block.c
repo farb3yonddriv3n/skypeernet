@@ -8,43 +8,35 @@ static int mallocz(struct block_s **b)
     return 0;
 }
 
-static int init(struct block_s **b, unsigned char *prev,
-                unsigned char *pow, const uint64_t nounce,
-                const uint64_t index)
+static int init(struct block_s **b, unsigned char *prev_hash)
 {
     if (mallocz(b) != 0) return -1;
-    memcpy((*b)->hash.prev, prev, SHA256HEX);
-    memcpy((*b)->hash.pow, pow, SHA256HEX);
-    (*b)->hash.nounce = nounce;
-    (*b)->index = index;
+    memcpy((*b)->hash.prev, prev_hash, sizeof((*b)->hash.prev));
     return 0;
 }
 
-static void hash_calc(char *buffer, const int nbuffer, unsigned char *md,
-                      const uint64_t nounce, unsigned char *prev_hash)
+static void hash_calc(char *buffer, const int nbuffer, unsigned char *pow,
+                      const uint64_t nounce, unsigned char *prev_hash,
+                      unsigned char *transactions)
 {
-    snprintf(buffer, nbuffer, "%.*s%ld",
-             SHA256HEX,
-             prev_hash,
+    snprintf(buffer, nbuffer, "%.*s%.*s%ld",
+             SHA256HEX, transactions,
+             SHA256HEX, prev_hash,
              nounce);
-    sha256hex((unsigned char *)buffer, strlen(buffer), md);
+    sha256hex((unsigned char *)buffer, strlen(buffer), pow);
 }
 
-static int mine(unsigned char *prev_hash, unsigned char *dst_hash,
-                uint64_t *nounce)
+static int mine(struct block_s *b)
 {
-    char buffer[128];
-    unsigned char md[SHA256HEX];
+    char buffer[1024];
     char target[2];
     memset(target, '0', sizeof(target));
-
-    for (*nounce = 0; /* void */; (*nounce)++) {
-        hash_calc(buffer, sizeof(buffer), md, *nounce, prev_hash);
-        if (memcmp(md, target, sizeof(target)) == 0) break;
+    for (b->hash.nounce = 0; /* void */; b->hash.nounce++) {
+        hash_calc(buffer, sizeof(buffer), b->hash.pow,
+                  b->hash.nounce, b->hash.prev,
+                  b->hash.transactions);
+        if (memcmp(b->hash.pow, target, sizeof(target)) == 0) break;
     }
-
-    memcpy(dst_hash, md, sizeof(md));
-
     return 0;
 }
 
@@ -60,18 +52,19 @@ static void hash_trans(struct transaction_s *t, unsigned char *prev_hash,
 
 static int validate(struct block_s *b, bool *valid)
 {
-    char buffer[128];
+    char buffer[1024];
     unsigned char md[SHA256HEX];
     *valid = true;
 
-    hash_calc(buffer, sizeof(buffer), md, b->hash.nounce, b->hash.prev);
+    hash_calc(buffer, sizeof(buffer), md, b->hash.nounce,
+              b->hash.prev, b->hash.transactions);
     if (memcmp(md, b->hash.pow, SHA256HEX) != 0) {
         *valid = false;
         return 0;
     }
 
     size_t i;
-    unsigned char *prev = b->hash.pow;
+    unsigned char *prev = b->hash.prev;
     for (i = 0; i < b->transactions.size; i++) {
         struct transaction_s *t = b->transactions.array[i];
         if (transaction.validate(t, valid) != 0) return -1;
@@ -92,7 +85,7 @@ static int validate(struct block_s *b, bool *valid)
     return 0;
 }
 
-static int transaction_add(struct block_s *b, struct transaction_s *t)
+static int transactions_add(struct block_s *b, struct transaction_s *t)
 {
     b->transactions.size++;
     b->transactions.array = realloc(b->transactions.array,
@@ -102,10 +95,10 @@ static int transaction_add(struct block_s *b, struct transaction_s *t)
     return 0;
 }
 
-static int transaction_hashall(struct block_s *b)
+static int transactions_lock(struct block_s *b)
 {
     struct transaction_s *t;
-    unsigned char *prev = b->hash.pow;
+    unsigned char *prev = b->hash.prev;
     size_t i;
     for (i = 0; i < b->transactions.size; i++) {
         t = b->transactions.array[i];
@@ -113,7 +106,7 @@ static int transaction_hashall(struct block_s *b)
         hash_trans(t, prev, t->blockhash.current);
         prev = t->blockhash.current;
     }
-    memcpy(b->hash.current, prev, SHA256HEX);
+    memcpy(b->hash.transactions, prev, SHA256HEX);
     return 0;
 }
 
@@ -122,9 +115,14 @@ static int compare(struct block_s *local, struct block_s *remote,
 {
     if (!local || !remote) return -1;
     diff->verdict = true;
-    if (memcmp(local->hash.prev, remote->hash.prev, sizeof(local->hash.prev)) != 0)
+    if (memcmp(local->hash.prev, remote->hash.prev,
+               sizeof(local->hash.prev)) != 0)
         return -1;
-    if (memcmp(local->hash.current, remote->hash.current, sizeof(local->hash.current)) != 0)
+    if (memcmp(local->hash.transactions, remote->hash.transactions,
+               sizeof(local->hash.transactions)) != 0)
+        diff->verdict = false;
+    if (memcmp(local->hash.pow, remote->hash.pow,
+               sizeof(local->hash.pow)) != 0)
         diff->verdict = false;
     size_t ls, rs;
     if (block.size(local,  &ls) != 0) return -1;
@@ -155,7 +153,7 @@ static int load(struct block_s **b, const json_object *bobj)
     json_object *obj;
     BIND_STR(hash.prev,        "prev",        obj, bhash);
     BIND_STR(hash.pow,         "pow",         obj, bhash);
-    BIND_STR(hash.current,     "current",     obj, bhash);
+    BIND_STR(hash.transactions,"transactions",obj, bhash);
     BIND_INT(hash.nounce,      "nounce",      obj, bhash);
     BIND_INT(index,            "index",       obj, bobj);
 
@@ -168,7 +166,7 @@ static int load(struct block_s **b, const json_object *bobj)
             json_object *transaction_item = array_list_get_idx(transactions_array, i);
             struct transaction_s *t;
             transaction.data.load(&t, transaction_item);
-            block.transaction.add(*b, t);
+            block.transactions.add(*b, t);
         }
     }
 
@@ -189,9 +187,9 @@ static int save(const struct block_s *b, json_object **blockobj)
     json_object *pow = json_object_new_string_len((const char *)b->hash.pow,
                                                   sizeof(b->hash.pow));
     json_object_object_add(hash, "pow", pow);
-    json_object *current = json_object_new_string_len((const char *)b->hash.current,
-                                                      sizeof(b->hash.current));
-    json_object_object_add(hash, "current", current);
+    json_object *thash = json_object_new_string_len((const char *)b->hash.transactions,
+                                                    sizeof(b->hash.transactions));
+    json_object_object_add(hash, "transactions", thash);
     json_object *nounce = json_object_new_int64(b->hash.nounce);
     json_object_object_add(hash, "nounce", nounce);
 
@@ -228,14 +226,14 @@ static int clean(struct block_s *b)
 }
 
 const struct module_block_s block = {
-    .init             = init,
-    .mine             = mine,
-    .validate         = validate,
-    .compare          = compare,
-    .size             = size,
-    .clean            = clean,
-    .transaction.add  = transaction_add,
-    .transaction.hash = transaction_hashall,
-    .data.load        = load,
-    .data.save        = save,
+    .init              = init,
+    .mine              = mine,
+    .validate          = validate,
+    .compare           = compare,
+    .size              = size,
+    .clean             = clean,
+    .transactions.add  = transactions_add,
+    .transactions.lock = transactions_lock,
+    .data.load         = load,
+    .data.save         = save,
 };

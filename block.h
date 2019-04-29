@@ -8,9 +8,9 @@ struct block_s {
     uint64_t index;
     struct {
         unsigned char prev[SHA256HEX];
-        unsigned char pow[SHA256HEX];
-        unsigned char current[SHA256HEX];
+        unsigned char transactions[SHA256HEX];
         uint64_t      nounce;
+        unsigned char pow[SHA256HEX];
     } hash;
 
     struct {
@@ -20,11 +20,8 @@ struct block_s {
 };
 
 struct module_block_s {
-    int (*init)(struct block_s **b, unsigned char *prev,
-                unsigned char *pow, const uint64_t nounce,
-                const uint64_t index);
-    int (*mine)(unsigned char *prev_hash, unsigned char *dst_hash,
-                uint64_t *nounce);
+    int (*init)(struct block_s **b, unsigned char *prev_hash);
+    int (*mine)(struct block_s *b);
     int (*validate)(struct block_s *b, bool *valid);
     int (*size)(struct block_s *b, size_t *s);
     int (*compare)(struct block_s *local, struct block_s *remote,
@@ -32,8 +29,8 @@ struct module_block_s {
     int (*clean)(struct block_s *b);
     struct {
         int (*add)(struct block_s *b, struct transaction_s *t);
-        int (*hash)(struct block_s *b);
-    } transaction;
+        int (*lock)(struct block_s *b);
+    } transactions;
 
     struct {
         int (*load)(struct block_s **b, const json_object *bobj);

@@ -156,7 +156,7 @@ static int validate(const struct root_s *r, bool *valid)
         }
         if (block.validate(b, valid) != 0) return -1;
         if (*valid != true) return 0;
-        block_prev = b->hash.current;
+        block_prev = b->hash.pow;
     }
     return 0;
 }
@@ -176,7 +176,6 @@ static int clean(struct root_s *r)
 const struct module_root_s root = {
     .init             = init,
     .compare          = compare,
-    //.cut              = cut,
     .copy             = copy,
     .validate         = validate,
     .clean            = clean,

@@ -22,15 +22,14 @@ void t3_block_append_transactions()
 
     unsigned char prev_block[SHA256HEX];
     memset(prev_block, 97, sizeof(prev_block));
-    uint64_t nounce;
-    unsigned char newblock[SHA256HEX];
-    A(block.mine(prev_block, newblock, &nounce), 0);
 
     struct block_s *b;
-    A(block.init(&b, prev_block, newblock, nounce, 0), 0);
+    A(block.init(&b, prev_block), 0);
 
-    A(block.transaction.add(b, t), 0);
-    A(block.transaction.hash(b), 0);
+    A(block.transactions.add(b, t), 0);
+    A(block.transactions.lock(b), 0);
+
+    A(block.mine(b), 0);
 
     A(block.validate(b, &valid), 0);
     A(valid, true);

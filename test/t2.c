@@ -16,7 +16,7 @@ static int t_file_add(const char *filename, struct block_s *b)
     if (ret != 0) return ret;
     A(valid, true);
 
-    A(block.transaction.add(b, t), 0);
+    A(block.transactions.add(b, t), 0);
 
     return 0;
 }
@@ -35,20 +35,18 @@ void t2_mine_block_append_transactions()
     memset(prev_block, 97, sizeof(prev_block));
 
     int i;
-    for (i = 0; i < 3; i++) {
-        uint64_t nounce;
-        unsigned char newblock[SHA256HEX];
-        A(block.mine(prev_block, newblock, &nounce), 0);
-
+    for (i = 0; i < 4; i++) {
         struct block_s *b;
-        A(block.init(&b, prev_block, newblock, nounce, i), 0);
+        A(block.init(&b, prev_block), 0);
 
         int t;
         for (t = 0; t < COUNTOF(files); t++) {
             A(t_file_add(files[t], b), 0);
         }
 
-        A(block.transaction.hash(b), 0);
+        A(block.transactions.lock(b), 0);
+
+        A(block.mine(b), 0);
 
         bool valid;
         A(block.validate(b, &valid), 0);
@@ -56,7 +54,7 @@ void t2_mine_block_append_transactions()
 
         A(root.blocks.add(&r, b), 0);
 
-        memcpy(prev_block, b->hash.current, sizeof(b->hash.current));
+        memcpy(prev_block, b->hash.pow, sizeof(b->hash.pow));
     }
 
     json_object *dst;
