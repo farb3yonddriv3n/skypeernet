@@ -9,9 +9,6 @@
 #define F256BIN  "test/files/file256kb.bin"
 #define F512BIN  "test/files/file512kb.bin"
 #define F1024BIN "test/files/file1024kb.bin"
-#define FROOT_VALID   "test/files/root_valid.json"
-#define FROOT_VALID2  "test/files/root_valid2.json"
-#define FROOT_INVALID "test/files/root_invalid.json"
 
 #define A(m_a, m_b) (CU_ASSERT(m_b == m_a))
 
@@ -20,10 +17,11 @@ struct test_s {
     void (*func)(void);
 };
 
-void t1_root_load_save();
-void t2_mine_block_append_transactions();
+void t1_group_mine_block_append_transactions();
+void t2_group_root_load_save();
 void t3_block_append_transactions();
 void t4_rsa_encrypt_decrypt();
 void t5_root_compare();
+void t6_group();
 
 #endif

@@ -2,10 +2,17 @@
 
 static const char *default_hash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-static int init(struct root_s *r)
+static int mallocz(struct root_s **r)
 {
-    if (!r) return -1;
-    memset(r, 0, sizeof(*r));
+    *r = malloc(sizeof(**r));
+    if (!(*r)) return -1;
+    memset(*r, 0, sizeof(**r));
+    return 0;
+}
+
+static int init(struct root_s **r)
+{
+    if (mallocz(r) != 0) return -1;
     return 0;
 }
 
@@ -17,6 +24,7 @@ static int blocks_add(struct root_s *r, struct block_s *b)
                               sizeof(void *) * r->blocks.size);
     if (!r->blocks.array) return -1;
     r->blocks.array[r->blocks.size - 1] = b;
+    memcpy(r->hash, b->hash.pow, sizeof(b->hash.pow));
     return 0;
 }
 
@@ -27,26 +35,26 @@ static int blocks_append(struct root_s *r, const json_object *blockobj)
     return root.blocks.add(r, b);
 }
 
-static int load_object(struct root_s *r, const json_object *obj)
+static int load_object(struct root_s **r, const json_object *obj)
 {
     if (!r || !obj) return -1;
 
     json_object *blocks;
     json_object_object_get_ex(obj, "blocks", &blocks);
     if (json_object_get_type(blocks) == json_type_array) {
-        root.init(r);
+        if (root.init(r) != 0) return -1;
         array_list *blocks_array = json_object_get_array(blocks);
         int i;
         for (i = 0; i < array_list_length(blocks_array); i++) {
             json_object *block_item = array_list_get_idx(blocks_array, i);
-            if (root.blocks.append(r, block_item) != 0) return -1;
+            if (root.blocks.append(*r, block_item) != 0) return -1;
         }
     }
     json_object_put((json_object *)obj);
     return 0;
 }
 
-static int load_file(struct root_s *r, const char *filename)
+static int load_file(struct root_s **r, const char *filename)
 {
     if (!r || !filename) return -1;
     sn_initz(fn, (char *)filename);
@@ -93,12 +101,10 @@ static int compare(struct root_s *local, struct root_s *remote,
                           diff) != 0) return -1;
     }
 
-    printf("sizes: %ld %ld %ld\n", size.local, size.remote, diff->blockidx);
     if (diff->verdict == true && size.local != size.remote) {
         diff->verdict = false;
         diff->winner  = (size.local > size.remote) ?
                         ROOT_LOCAL : ROOT_REMOTE;
-
     }
 
     return 0;
@@ -110,7 +116,6 @@ static int save(const struct root_s *r, json_object **robj)
     *robj = json_object_new_object();
     json_object *blocks = json_object_new_array();
     json_object_object_add(*robj, "blocks", blocks);
-
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         json_object *bobj;
@@ -118,9 +123,6 @@ static int save(const struct root_s *r, json_object **robj)
         if (ret != 0) return ret;
         json_object_array_add(blocks, bobj);
     }
-
-    printf("json: %s\n", json_object_to_json_string(*robj));
-
     return 0;
 }
 
@@ -133,9 +135,9 @@ static int blocks_export(const struct root_s *r, const uint64_t blockidx,
     return 0;
 }
 
-static int copy(struct root_s *dst, const struct root_s *src)
+static int copy(struct root_s **dst, const struct root_s *src)
 {
-    if (!dst || !src) return -1;
+    if (!src) return -1;
     json_object *obj;
     if (root.data.save(src, &obj) != 0) return -1;
     if (root.data.load.object(dst, obj) != 0) return -1;
@@ -170,6 +172,7 @@ static int clean(struct root_s *r)
         if (block.clean(b) != 0) return -1;
     }
     free(r->blocks.array);
+    free(r);
     return 0;
 }
 

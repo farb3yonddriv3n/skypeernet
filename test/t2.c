@@ -21,21 +21,18 @@ static int t_file_add(const char *filename, struct block_s *b)
     return 0;
 }
 
-void t2_mine_block_append_transactions()
+static struct root_s *root_add(const int blocks)
 {
-    struct config_s *cfg;
-    A(config_init(&cfg), 0);
+    char *files[] = { F64BIN, F512BIN };
+    struct root_s *r;
 
-    const char *files[] = { F64BIN, F512BIN };
-    struct root_s r;
-
-    root.init(&r);
+    A(root.init(&r), 0);
 
     unsigned char prev_block[SHA256HEX];
     memset(prev_block, 97, sizeof(prev_block));
 
     int i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < blocks; i++) {
         struct block_s *b;
         A(block.init(&b, prev_block), 0);
 
@@ -52,16 +49,41 @@ void t2_mine_block_append_transactions()
         A(block.validate(b, &valid), 0);
         A(valid, true);
 
-        A(root.blocks.add(&r, b), 0);
+        A(root.blocks.add(r, b), 0);
 
         memcpy(prev_block, b->hash.pow, sizeof(b->hash.pow));
     }
 
-    json_object *dst;
-    A(root.data.save(&r, &dst), 0);
-    json_object_put(dst);
+    return r;
+}
 
-    A(root.clean(&r), 0);
+void t1_group_mine_block_append_transactions()
+{
+    struct config_s *cfg;
+    A(config_init(&cfg), 0);
+
+    struct group_s *g[2];
+
+    // save
+    A(group.init(&g[0]), 0);
+    int i;
+    for (i = 1; i < 5; i++) {
+        struct root_s *r = root_add(i);
+        CU_ASSERT(r != NULL);
+        A(group.roots.add(g[0], r), 0);
+    }
+    A(group.db.save(g[0]), 0);
+
+    // load
+    A(group.init(&g[1]), 0);
+    A(group.db.load(g[1]), 0);
+
+    bool equal;
+    A(group.compare(g[0], g[1], &equal), 0);
+    A(equal, true);
+
+    group.clean(g[0]);
+    group.clean(g[1]);
 
     config_free(cfg);
 }

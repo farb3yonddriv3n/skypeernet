@@ -34,7 +34,7 @@ int eioie_fread(char **dst, sn fname)
     lsize = ftell(pfile);
     rewind(pfile);
 
-    if (lsize > MAX_FILE_SIZE) {
+    if (lsize > MAX_FILE_SIZE || lsize == -1) {
         fclose(pfile);
         return -1;
     }
