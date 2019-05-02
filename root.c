@@ -81,7 +81,7 @@ static int blocks_size(struct root_s *r, size_t *size)
 static int compare(struct root_s *local, struct root_s *remote,
                    struct root_diff_s *diff)
 {
-    if (!local || !remote) return -1;
+    if (!local || !remote || !diff) return -1;
 
     struct { size_t local; size_t remote; } size; 
     if (root.blocks.size(local,  &size.local)  != 0) return -1;
@@ -93,20 +93,48 @@ static int compare(struct root_s *local, struct root_s *remote,
     if (root.validate(remote, &valid) != 0) return -1;
     if (valid == false) return -1;
 
-    for (diff->blockidx = 0, diff->verdict = true;
-        ((diff->blockidx < size.local && diff->blockidx < size.remote) && diff->verdict == true);
+    diff->winner = ROOT_NONE;
+    for (diff->blockidx = 0, diff->equal = true;
+        ((diff->blockidx < size.local && diff->blockidx < size.remote) && diff->equal == true);
         diff->blockidx++) {
         if (block.compare(local->blocks.array[diff->blockidx],
                           remote->blocks.array[diff->blockidx],
                           diff) != 0) return -1;
     }
 
-    if (diff->verdict == true && size.local != size.remote) {
-        diff->verdict = false;
+    if (diff->equal == true && size.local != size.remote) {
+        diff->equal = false;
         diff->winner  = (size.local > size.remote) ?
-                        ROOT_LOCAL : ROOT_REMOTE;
+                        ROOT_DST : ROOT_SRC;
     }
 
+    return 0;
+}
+
+static int merge(struct root_s *dst, struct root_s *src,
+                 bool *merged)
+{
+    *merged = false;
+    struct root_diff_s diff;
+    if (root.compare(dst, src, &diff) != 0) return -1;
+    if (diff.equal == true) {
+        *merged = true;
+        return 0;
+    }
+    int i;
+    size_t dstsize, srcsize;
+    if (root.blocks.size(src, &srcsize) != 0) return -1;
+    if (root.blocks.size(dst, &dstsize) != 0) return -1;
+    if (diff.winner == ROOT_SRC && diff.blockidx == dstsize) {
+        for (i = diff.blockidx; i < srcsize; i++) {
+            json_object *b;
+            if (root.blocks.export(src, i, &b) != 0) return -1;
+            if (root.blocks.append(dst, b) != 0) return -1;
+            json_object_put(b);
+        }
+    }
+    if (root.compare(dst, src, &diff) != 0) return -1;
+    *merged = diff.equal;
     return 0;
 }
 
@@ -181,6 +209,7 @@ const struct module_root_s root = {
     .compare          = compare,
     .copy             = copy,
     .validate         = validate,
+    .merge            = merge,
     .clean            = clean,
     .blocks.add       = blocks_add,
     .blocks.append    = blocks_append,

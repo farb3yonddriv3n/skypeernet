@@ -110,26 +110,26 @@ static int transactions_lock(struct block_s *b)
     return 0;
 }
 
-static int compare(struct block_s *local, struct block_s *remote,
+static int compare(struct block_s *dst, struct block_s *src,
                    struct root_diff_s *diff)
 {
-    if (!local || !remote) return -1;
-    diff->verdict = true;
-    if (memcmp(local->hash.prev, remote->hash.prev,
-               sizeof(local->hash.prev)) != 0)
+    if (!dst || !src) return -1;
+    diff->equal = true;
+    if (memcmp(dst->hash.prev, src->hash.prev,
+               sizeof(dst->hash.prev)) != 0)
         return -1;
-    if (memcmp(local->hash.transactions, remote->hash.transactions,
-               sizeof(local->hash.transactions)) != 0)
-        diff->verdict = false;
-    if (memcmp(local->hash.pow, remote->hash.pow,
-               sizeof(local->hash.pow)) != 0)
-        diff->verdict = false;
-    size_t ls, rs;
-    if (block.size(local,  &ls) != 0) return -1;
-    if (block.size(remote, &rs) != 0) return -1;
-    diff->winner = (ls >= rs) ?
-                   ROOT_LOCAL :
-                   ROOT_REMOTE;
+    if (memcmp(dst->hash.transactions, src->hash.transactions,
+               sizeof(dst->hash.transactions)) != 0)
+        diff->equal = false;
+    if (memcmp(dst->hash.pow, src->hash.pow,
+               sizeof(dst->hash.pow)) != 0)
+        diff->equal = false;
+    size_t ds, ss;
+    if (block.size(dst, &ds) != 0) return -1;
+    if (block.size(src, &ss) != 0) return -1;
+    diff->winner = (ds >= ss) ?
+                   ROOT_DST   :
+                   ROOT_SRC;
     return 0;
 }
 

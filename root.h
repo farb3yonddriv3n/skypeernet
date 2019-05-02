@@ -15,6 +15,8 @@ struct module_root_s {
                    struct root_diff_s *diff);
     int (*copy)(struct root_s **dst, const struct root_s *src);
     int (*validate)(const struct root_s *r, bool *valid);
+    int (*merge)(struct root_s *dst, struct root_s *src,
+                 bool *merged);
     int (*clean)(struct root_s *r);
     struct {
         int (*add)(struct root_s *r, struct block_s *b);
@@ -33,12 +35,13 @@ struct module_root_s {
 };
 
 enum root_diff_e {
-    ROOT_LOCAL,
-    ROOT_REMOTE
+    ROOT_NONE,
+    ROOT_DST,
+    ROOT_SRC
 };
 
 struct root_diff_s {
-    bool             verdict;
+    bool             equal;
     enum root_diff_e winner;
     uint64_t         blockidx;
 };

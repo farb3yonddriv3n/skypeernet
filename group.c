@@ -57,7 +57,7 @@ static int compare(struct group_s *local, struct group_s *remote,
                 if (root.compare(local->roots.array[i],
                                  remote->roots.array[j],
                                  &diff) != 0) return -1;
-                if (diff.verdict == false) {
+                if (diff.equal == false) {
                     *equal = false;
                     return 0;
                 }

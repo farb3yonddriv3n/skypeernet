@@ -16,36 +16,24 @@ void t5_root_compare()
 
     size_t rsize;
     A(root.blocks.size(r[0], &rsize), 0);
-    A(rsize, 3);
-    A(root.blocks.size(r[1], &rsize), 0);
     A(rsize, 4);
+    A(root.blocks.size(r[1], &rsize), 0);
+    A(rsize, 1);
 
     struct root_diff_s diff;
     A(root.compare(r[0], r[1], &diff), 0);
-    A(diff.verdict, false);
-    A(diff.winner, ROOT_REMOTE);
+    A(diff.equal, false);
+    A(diff.winner, ROOT_DST);
 
-    json_object *b;
-    A(root.blocks.export(r[1], diff.blockidx, &b), 0);
-
-    printf("block: %s\n", json_object_to_json_string(b));
-
+    bool merged;
+    A(root.merge(r[0], r[1], &merged), 0);
+    A(merged, false);
+    A(root.merge(r[1], r[0], &merged), 0);
+    A(merged, true);
     A(root.compare(r[0], r[1], &diff), 0);
-    A(diff.verdict, false);
-    A(diff.winner, ROOT_REMOTE);
+    A(diff.equal, true);
 
-    A(root.compare(r[1], r[0], &diff), 0);
-    A(diff.verdict, false);
-    A(diff.winner, ROOT_LOCAL);
-
-    A(root.blocks.append(r[0], b), 0);
-    json_object_put(b);
-
-    A(root.compare(r[0], r[1], &diff), 0);
-    A(diff.verdict, true);
-
-    A(root.clean(r[0]), 0);
-    A(root.clean(r[1]), 0);
+    A(group.clean(g), 0);
 
     config_free(cfg);
 }

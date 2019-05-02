@@ -19,7 +19,7 @@ void t2_group_root_load_save()
 
     struct root_diff_s diff;
     A(root.compare(r[0], r[1], &diff), 0);
-    A(diff.verdict, true);
+    A(diff.equal, true);
 
     A(root.data.load.file(&r[2], F64BIN), -1);
 
