@@ -1,6 +1,8 @@
 #ifndef ROOT_H_
 #define ROOT_H_
 
+#define DISTFS_BASE_ROOT_HASH "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
 struct root_s {
     char hash[SHA256HEX];
     struct {
@@ -15,6 +17,8 @@ struct module_root_s {
                    struct root_diff_s *diff);
     int (*copy)(struct root_s **dst, const struct root_s *src);
     int (*validate)(const struct root_s *r, bool *valid);
+    int (*canmerge)(struct root_s *dst, struct root_s *src,
+                    struct root_diff_s *diff);
     int (*merge)(struct root_s *dst, struct root_s *src,
                  bool *merged);
     int (*clean)(struct root_s *r);
@@ -34,6 +38,12 @@ struct module_root_s {
     } data;
 };
 
+enum root_merge_e {
+    MERGE_NOT_NEEDED,
+    MERGE_POSSIBLE,
+    MERGE_IMPOSSIBLE
+};
+
 enum root_diff_e {
     ROOT_NONE,
     ROOT_DST,
@@ -41,9 +51,18 @@ enum root_diff_e {
 };
 
 struct root_diff_s {
-    bool             equal;
-    enum root_diff_e winner;
-    uint64_t         blockidx;
+    bool              equal;
+    enum root_diff_e  winner;
+    uint64_t          blockidx;
+    struct {
+        struct root_s *ptr;
+        size_t         size;
+    } src;
+    struct {
+        struct root_s *ptr;
+        size_t         size;
+    } dst;
+    enum root_merge_e canmerge;
 };
 
 extern const struct module_root_s root;

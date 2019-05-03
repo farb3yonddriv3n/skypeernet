@@ -21,15 +21,15 @@ static int t_file_add(const char *filename, struct block_s *b)
     return 0;
 }
 
-static struct root_s *root_add(const int blocks)
+static struct root_s *root_add(const int blocks, char **files,
+                               const int nfiles)
 {
-    char *files[] = { F64BIN, F512BIN };
     struct root_s *r;
 
     A(root.init(&r), 0);
 
     unsigned char prev_block[SHA256HEX];
-    memset(prev_block, 97, sizeof(prev_block));
+    memcpy(prev_block, DISTFS_BASE_ROOT_HASH, sizeof(prev_block));
 
     int i;
     for (i = 0; i < blocks; i++) {
@@ -37,7 +37,7 @@ static struct root_s *root_add(const int blocks)
         A(block.init(&b, prev_block), 0);
 
         int t;
-        for (t = 0; t < COUNTOF(files); t++) {
+        for (t = 0; t < nfiles; t++) {
             A(t_file_add(files[t], b), 0);
         }
 
@@ -64,16 +64,17 @@ void t1_group_mine_block_append_transactions()
 
     struct group_s *g[2];
 
+    char *files[] = { F64BIN, F128BIN, F256BIN };
+
     // save
     A(group.init(&g[0]), 0);
     int i;
-    for (i = 1; i < 5; i++) {
-        struct root_s *r = root_add(i);
+    for (i = 1; i < 3; i++) {
+        struct root_s *r = root_add(i, files, COUNTOF(files));
         CU_ASSERT(r != NULL);
         A(group.roots.add(g[0], r), 0);
     }
     A(group.db.save(g[0]), 0);
-
     // load
     A(group.init(&g[1]), 0);
     A(group.db.load(g[1]), 0);

@@ -1,7 +1,5 @@
 #include <common.h>
 
-static const char *default_hash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
 static int mallocz(struct root_s **r)
 {
     *r = malloc(sizeof(**r));
@@ -111,30 +109,54 @@ static int compare(struct root_s *local, struct root_s *remote,
     return 0;
 }
 
+static int canmerge(struct root_s *dst, struct root_s *src,
+                    struct root_diff_s *diff)
+{
+    if (!dst || !src || !diff) return -1;
+    if (root.compare(dst, src, diff) != 0) return -1;
+    diff->canmerge = MERGE_NOT_NEEDED;
+    if (diff->equal == true) return 0;
+    size_t sdst, ssrc;
+    if (root.blocks.size(src, &ssrc) != 0) return -1;
+    if (root.blocks.size(dst, &sdst) != 0) return -1;
+    if (diff->winner == ROOT_SRC && diff->blockidx == sdst) {
+        diff->src.ptr  = src;
+        diff->src.size = ssrc;
+        diff->dst.ptr  = dst;
+        diff->dst.size = sdst;
+        diff->canmerge = MERGE_POSSIBLE;
+    } else if (diff->winner == ROOT_DST && diff->blockidx == ssrc) {
+        diff->src.ptr  = dst;
+        diff->src.size = sdst;
+        diff->dst.ptr  = src;
+        diff->dst.size = ssrc;
+        diff->canmerge = MERGE_POSSIBLE;
+    } else diff->canmerge = MERGE_IMPOSSIBLE;
+    return 0;
+}
+
 static int merge(struct root_s *dst, struct root_s *src,
                  bool *merged)
 {
     *merged = false;
     struct root_diff_s diff;
-    if (root.compare(dst, src, &diff) != 0) return -1;
-    if (diff.equal == true) {
+    if (root.canmerge(dst, src, &diff) != 0) return -1;
+    if (diff.canmerge == MERGE_NOT_NEEDED) {
         *merged = true;
+    } else if (diff.canmerge == MERGE_IMPOSSIBLE) {
         return 0;
-    }
-    int i;
-    size_t dstsize, srcsize;
-    if (root.blocks.size(src, &srcsize) != 0) return -1;
-    if (root.blocks.size(dst, &dstsize) != 0) return -1;
-    if (diff.winner == ROOT_SRC && diff.blockidx == dstsize) {
-        for (i = diff.blockidx; i < srcsize; i++) {
+    } else {
+        int i;
+        for (i = diff.blockidx; i < diff.src.size; i++) {
             json_object *b;
-            if (root.blocks.export(src, i, &b) != 0) return -1;
-            if (root.blocks.append(dst, b) != 0) return -1;
+            if (root.blocks.export(diff.src.ptr, i, &b) != 0) return -1;
+            if (root.blocks.append(diff.dst.ptr, b) != 0) return -1;
             json_object_put(b);
         }
     }
     if (root.compare(dst, src, &diff) != 0) return -1;
     *merged = diff.equal;
+    if (*merged != true) return -1;
     return 0;
 }
 
@@ -175,7 +197,7 @@ static int copy(struct root_s **dst, const struct root_s *src)
 static int validate(const struct root_s *r, bool *valid)
 {
     if (!r || !valid) return -1;
-    unsigned char *block_prev = (unsigned char *)default_hash;
+    unsigned char *block_prev = (unsigned char *)DISTFS_BASE_ROOT_HASH;
     *valid = true;
     int i;
     for (i = 0; i < r->blocks.size; i++) {
@@ -209,6 +231,7 @@ const struct module_root_s root = {
     .compare          = compare,
     .copy             = copy,
     .validate         = validate,
+    .canmerge         = canmerge,
     .merge            = merge,
     .clean            = clean,
     .blocks.add       = blocks_add,
