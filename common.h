@@ -22,5 +22,6 @@
 #include <block.h>
 #include <root.h>
 #include <group.h>
+#include <packet.h>
 
 #endif

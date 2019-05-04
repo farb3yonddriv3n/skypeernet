@@ -7,6 +7,7 @@ static struct test_s list[] = {
     { "block append transactions",                 t3_block_append_transactions },
     { "rsa encrypt and decrypt",                   t4_rsa_encrypt_decrypt },
     { "root compare",                              t5_root_compare },
+    { "packet",                                    t6_packet },
 };
 
 static int init_suite()
