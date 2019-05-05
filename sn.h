@@ -202,4 +202,12 @@ typedef struct snb_s {
     int  offset;  /**< Offset from start of region */
 } snb;
 
+inline static int sn_bytes_append_raw(sn dst, char *src, int nsrc)
+{
+    if (nsrc + dst.offset > dst.n) return -1;
+    memcpy(dst.s + dst.offset, src, nsrc);
+    dst.offset += nsrc;
+    return 0;
+}
+
 #endif
