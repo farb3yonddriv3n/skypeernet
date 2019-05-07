@@ -1,7 +1,8 @@
 #ifndef PACKET_H_
 #define PACKET_H_
 
-#define UDP_PACKET_PAYLOAD (534 - sizeof(struct header_s) - SHA256HEX)
+#define UDP_PACKET         534
+#define UDP_PACKET_PAYLOAD (UDP_PACKET - sizeof(struct header_s) - SHA256HEX)
 
 struct header_s {
     unsigned int index;

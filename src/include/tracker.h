@@ -2,30 +2,26 @@
 #define TRACKER_H_
 
 #define TRACKER_PORT        5775
-#define TRACKER_BUFFER_SIZE 1024
+#define TRACKER_HOST        "93.185.105.138"
 
 #define PEER_NEW (1 << 0)
 
-struct peer_s {
+struct tracker_peer_s {
     int            host;
     unsigned short port;
     unsigned int   flags;
-    struct peer_s *prev;
-    struct peer_s *next;
+    struct tracker_peer_s *prev;
+    struct tracker_peer_s *next;
 };
 
 struct tracker_s {
-    int                sd;
-    struct sockaddr_in addr;
-    int                addr_len;
-    char               data[TRACKER_BUFFER_SIZE];
-    int                index;
-    struct ev_loop    *loop;
-    struct ev_io       read;
-    struct ev_io       write;
+    struct net_s       net;
+    struct net_ev_s    ev;
+    struct net_send_s  send;
+    struct net_recv_s  recv;
     struct {
-        struct peer_s *list;
-        int            count;
+        struct tracker_peer_s *list;
+        int                    count;
     } peers;
 };
 

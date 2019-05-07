@@ -8,7 +8,10 @@
 #include <stdbool.h>
 #include <memory.h>
 #include <errno.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <resolv.h>
 #include <unistd.h>
 
@@ -29,7 +32,9 @@
 #include <root.h>
 #include <group.h>
 #include <packet.h>
+#include <net.h>
 #include <data.h>
 #include <tracker.h>
+#include <peer.h>
 
 #endif

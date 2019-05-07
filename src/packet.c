@@ -8,11 +8,11 @@ static int packet_create(char *buffer, int nbuffer, struct packet_s **packets,
     *packets = realloc(*packets, sizeof(**packets) * (*npackets));
     if (!(*packets)) return -1;
     struct packet_s *p = &(*packets)[*npackets - 1];
+    memset(p, 0, sizeof(*p));
     p->header.index    = index;
     p->header.sequence = sequence;
     p->header.total    = total;
     p->header.length   = nbuffer;
-    memset(p->payload, 0, sizeof(p->payload));
     memcpy(p->payload, buffer, nbuffer);
     unsigned char md[SHA256HEX];
     sha256hex((unsigned char *)p, sizeof(struct header_s) + nbuffer, md);
@@ -30,10 +30,10 @@ static int chunk(char *buffer, size_t nbuffer, struct packet_s **packets,
     for (i = 0; i < chunks; i++) {
         if (i + 1 == chunks && remaining > 0) {
             if (packet_create(buffer + (i * UDP_PACKET_PAYLOAD), remaining,
-                             packets, npackets, index, i, chunks) != 0) return -1;
+                              packets, npackets, index, i, chunks) != 0) return -1;
         } else {
             if (packet_create(buffer + (i * UDP_PACKET_PAYLOAD), UDP_PACKET_PAYLOAD,
-                               packets, npackets, index, i, chunks) != 0) return -1;
+                              packets, npackets, index, i, chunks) != 0) return -1;
         }
     }
     return 0;
