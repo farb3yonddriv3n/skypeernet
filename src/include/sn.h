@@ -197,16 +197,35 @@ typedef struct sn_s {
  * Defines memory region for later manipulation
  */
 typedef struct snb_s {
-    char s[256];  /**< Pointer to a memory region */
+    char s[1024]; /**< Pointer to a memory region */
     int  n;       /**< Size of memory region snb#s */
     int  offset;  /**< Offset from start of region */
 } snb;
 
+inline static int sn_bytes(char *buffer, int *offset, int size,
+                           char *src, int nsrc)
+{
+    if (nsrc + *offset > size) return -1;
+    memcpy(buffer + *offset, src, nsrc);
+    *offset += nsrc;
+    return 0;
+}
+
 inline static int sn_bytes_append_raw(sn *dst, char *src, int nsrc)
 {
-    if (nsrc + dst->offset > dst->n) return -1;
-    memcpy(dst->s + dst->offset, src, nsrc);
-    dst->offset += nsrc;
+    return sn_bytes(dst->s, &dst->offset, dst->n, src, nsrc);
+}
+
+inline static int snb_bytes_append_raw(snb *dst, char *src, int nsrc)
+{
+    return sn_bytes(dst->s, &dst->offset, dst->n, src, nsrc);
+}
+
+inline static int sn_read(char *dst, int ndst, sn *src)
+{
+    if (src->offset + ndst > src->n) return -1;
+    memcpy(dst, src->s + src->offset, ndst);
+    src->offset += ndst;
     return 0;
 }
 

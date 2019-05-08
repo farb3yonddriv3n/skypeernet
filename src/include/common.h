@@ -14,6 +14,8 @@
 #include <sys/ioctl.h>
 #include <resolv.h>
 #include <unistd.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
@@ -36,5 +38,6 @@
 #include <data.h>
 #include <tracker.h>
 #include <peer.h>
+#include <world.h>
 
 #endif

@@ -16,8 +16,8 @@ int net_send(struct nb_s **nb, int *nnb)
     for (i = 0; i < *nnb; i++) {
         sendto((*nb)[i].sd,
                (*nb)[i].buffer.s,
-               (*nb)[i].buffer.n,
-               0, 
+               (*nb)[i].buffer.offset,
+               0,
                (struct sockaddr *)&(*nb)[i].remote.addr,
                (*nb)[i].remote.len);
     }

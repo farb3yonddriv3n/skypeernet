@@ -2,9 +2,16 @@
 
 static int announce_cb(struct data_s *d, void *userdata)
 {
-    struct peer_s *new = (struct peer_s *)userdata;
-    if (data.write.integer(d, new->net.self.addr.sin_addr.s_addr) != 0) return -1;
-    if (data.write.integer(d, new->net.self.addr.sin_port)        != 0) return -1;
+    struct peer_s *p = (struct peer_s *)userdata;
+    if (!p) return -1;
+    if (data.write.integer(d, p->net.self.addr.sin_addr.s_addr) != 0) return -1;
+    if (data.write.shortint(d, p->net.self.addr.sin_port)       != 0) return -1;
+    return 0;
+}
+
+static int announce_size(struct data_s *d, void *userdata)
+{
+    d->size = DATA_SIZE_INT + DATA_SIZE_SHORT;
     return 0;
 }
 
@@ -21,17 +28,21 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     socklen_t bytes = recvfrom(p->net.sd, p->recv.data, sizeof(p->recv.data), 0,
                                (struct sockaddr *)&p->net.remote.addr,
                                &p->net.remote.len);
-    if (bytes == -1) abort();
+    if (bytes == -1) return;
     bool valid;
-    packet.validate(p->recv.data, sizeof(p->recv.data), &valid);
+    struct packet_s pck;
+    if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid, &pck) != 0)
+        return;
+    printf("received valid packet: %d\n", valid);
+    if (!valid) return;
+    if (world.parse(p, &pck) != 0) return;
 }
 
 static int announce(struct peer_s *p)
 {
     struct data_s d;
-    if (data.init(&d, DATA_PEER_ANNOUNCE, announce_cb,
-                  (void *)p, sizeof(int) * 2) != 0)
-        return -1;
+    if (data.init(&d, COMMAND_PEER_ANNOUNCE, announce_cb, announce_size,
+                  (void *)p) != 0) return -1;
     if (data.send(&d, p->net.sd, &p->net.remote.addr,
                   p->net.remote.len, 0,
                   p->net.remote.addr.sin_addr.s_addr,
@@ -39,6 +50,25 @@ static int announce(struct peer_s *p)
                   &p->send.data, &p->send.len) != 0) return -1;
     ev_io_start(p->ev.loop, &p->ev.write);
     return 0;
+}
+
+void rlhandler(char *line)
+{
+    if (line==NULL) {
+    } else {
+        if (*line != 0) {
+            add_history(line);
+        }
+        printf("\n%s\n", line);
+        free(line);
+    }
+}
+
+static void stdin_cb(EV_P_ ev_io *w, int revents)
+{
+    if (revents & EV_READ) {
+        rl_callback_read_char();
+    }
 }
 
 static int init(struct peer_s *p)
@@ -61,11 +91,12 @@ static int init(struct peer_s *p)
     p->tracker.port = p->net.remote.addr.sin_port;
 
     p->ev.loop = ev_default_loop(0);
-    ev_io_init(&p->ev.read,  read_cb,  p->net.sd, EV_READ);
-    ev_io_init(&p->ev.write, write_cb, p->net.sd, EV_WRITE);
+    rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
+    ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
+    ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
+    ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
     p->ev.read.data  = (void *)p;
     p->ev.write.data = (void *)p;
-
     return 0;
 }
 
@@ -74,6 +105,7 @@ int main()
     struct peer_s p;
     if (init(&p) != 0) return -1;
     if (announce(&p) != 0) return -1;
+    ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ev_io_start(p.ev.loop, &p.ev.read);
     ev_loop(p.ev.loop, 0);
     close(p.net.sd);

@@ -29,6 +29,12 @@ static int peer_add(struct tracker_s *t, struct tracker_peer_s *p)
     return 0;
 }
 
+static int announce_size(struct data_s *d, void *userdata)
+{
+    d->size = DATA_SIZE_INT + DATA_SIZE_SHORT;
+    return 0;
+}
+
 static int announce_cb(struct data_s *d, void *userdata)
 {
     struct tracker_peer_s *new = (struct tracker_peer_s *)userdata;
@@ -43,9 +49,8 @@ static int announce(struct tracker_s *t)
     for (n = t->peers.list; n != NULL; n = n->next) {
         if (!(n->flags & PEER_NEW)) continue;
         struct data_s d;
-        if (data.init(&d, DATA_PEER_ANNOUNCE, announce_cb,
-                      (void *)n, sizeof(n->host) + sizeof(n->port)) != 0)
-            return -1;
+        if (data.init(&d, COMMAND_PEER_ANNOUNCE, announce_cb, announce_size,
+                      (void *)n) != 0) return -1;
         for (l = t->peers.list; l != NULL; l = l->next) {
             if (data.send(&d, t->net.sd, &t->net.remote.addr, t->net.remote.len, 0,
                           l->host, l->port, &t->send.data, &t->send.len) != 0)
@@ -84,6 +89,10 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     if (packet.deserialize.init(t->recv.data, sizeof(t->recv.data),
                                 &valid) != 0) return;
     if (!valid) return;
+    struct packet_s *p = (struct packet_s *)t->recv.data;
+    printf("Received packet %d from %x:%d\n", p->header.command,
+                                              NET_IP(t->net.remote.addr),
+                                              NET_PORT(t->net.remote.addr));
     peer_update(t, t->net.remote.addr.sin_addr.s_addr,
                 t->net.remote.addr.sin_port);
 }
@@ -99,13 +108,11 @@ static int init(struct tracker_s *t)
     if (bind(t->net.sd, (struct sockaddr *)&t->net.self.addr,
              sizeof(t->net.self.addr)) != 0)
         return -1;
-
     t->ev.loop = ev_default_loop(0);
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
     t->ev.read.data  = t;
     t->ev.write.data = t;
-
     return 0;
 }
 

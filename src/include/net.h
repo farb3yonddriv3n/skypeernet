@@ -1,12 +1,12 @@
 #ifndef NET_H_
 #define NET_H_
 
+#define NET_IP(m_dst) m_dst.sin_addr.s_addr
+#define NET_PORT(m_dst) m_dst.sin_port
+
 struct nb_s {
     int sd;
-    struct {
-        char s[UDP_PACKET];
-        int  n;
-    } buffer;
+    snb buffer;
     struct {
         struct sockaddr_in addr;
         socklen_t          len;
@@ -42,13 +42,8 @@ struct net_ev_s {
     struct ev_loop *loop;
     struct ev_io    read;
     struct ev_io    write;
+    struct ev_io    stdinwatch;
 };
-
-inline static int nonblocking(int sd)
-{
-    int nb = 1;
-    return ioctl(sd, FIONBIO, &nb);
-}
 
 int net_recv(int sd, char *data, int len,
              struct sockaddr_in *addr, socklen_t *naddr);
