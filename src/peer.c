@@ -1,20 +1,5 @@
 #include <common.h>
 
-static int announce_cb(struct data_s *d, void *userdata)
-{
-    struct peer_s *p = (struct peer_s *)userdata;
-    if (!p) return -1;
-    if (data.write.integer(d, p->net.self.addr.sin_addr.s_addr) != 0) return -1;
-    if (data.write.shortint(d, p->net.self.addr.sin_port)       != 0) return -1;
-    return 0;
-}
-
-static int announce_size(struct data_s *d, void *userdata)
-{
-    d->size = DATA_SIZE_INT + DATA_SIZE_SHORT;
-    return 0;
-}
-
 static void write_cb(EV_P_ ev_io *w, int revents)
 {
     struct peer_s *p = w->data;
@@ -35,21 +20,10 @@ static void read_cb(EV_P_ ev_io *w, int revents)
         return;
     printf("received valid packet: %d\n", valid);
     if (!valid) return;
-    if (world.parse(p, &pck) != 0) return;
-}
-
-static int announce(struct peer_s *p)
-{
-    struct data_s d;
-    if (data.init(&d, COMMAND_PEER_ANNOUNCE, announce_cb, announce_size,
-                  (void *)p) != 0) return -1;
-    if (data.send(&d, p->net.sd, &p->net.remote.addr,
-                  p->net.remote.len, 0,
-                  p->net.remote.addr.sin_addr.s_addr,
-                  p->net.remote.addr.sin_port,
-                  &p->send.data, &p->send.len) != 0) return -1;
-    ev_io_start(p->ev.loop, &p->ev.write);
-    return 0;
+    if (world.parse(p, &pck) != 0) {
+        abort();
+        return;
+    }
 }
 
 void rlhandler(char *line)
@@ -104,7 +78,9 @@ int main()
 {
     struct peer_s p;
     if (init(&p) != 0) return -1;
-    if (announce(&p) != 0) return -1;
+    if (payload.send.peer(&p, COMMAND_PEER_ANNOUNCE_PEER,
+                          NET_IP(p.net.remote.addr),
+                          NET_PORT(p.net.remote.addr)) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ev_io_start(p.ev.loop, &p.ev.read);
     ev_loop(p.ev.loop, 0);

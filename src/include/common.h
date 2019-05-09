@@ -33,11 +33,13 @@
 #include <block.h>
 #include <root.h>
 #include <group.h>
+
 #include <packet.h>
 #include <net.h>
 #include <data.h>
 #include <tracker.h>
 #include <peer.h>
 #include <world.h>
+#include <payload.h>
 
 #endif

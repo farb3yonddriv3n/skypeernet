@@ -6,8 +6,9 @@
 
 enum command_e {
     COMMAND_NONE,
-    COMMAND_PEER_ANNOUNCE,
-    COMMAND_MSG,
+    COMMAND_PEER_ANNOUNCE_PEER,
+    COMMAND_TRACKER_ANNOUNCE_PEER,
+    COMMAND_MESSAGE,
 };
 
 struct header_s {

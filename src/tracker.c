@@ -29,25 +29,12 @@ static int peer_add(struct tracker_s *t, struct tracker_peer_s *p)
     return 0;
 }
 
-static int announce_size(struct data_s *d, void *userdata)
-{
-    d->size = DATA_SIZE_INT + DATA_SIZE_SHORT;
-    return 0;
-}
-
-static int announce_cb(struct data_s *d, void *userdata)
-{
-    struct tracker_peer_s *new = (struct tracker_peer_s *)userdata;
-    if (data.write.integer(d, new->host) != 0) return -1;
-    if (data.write.shortint(d, new->port) != 0) return -1;
-    return 0;
-}
-
-static int announce(struct tracker_s *t)
+static int announce_all(struct tracker_s *t)
 {
     struct tracker_peer_s *l, *n;
     for (n = t->peers.list; n != NULL; n = n->next) {
         if (!(n->flags & PEER_NEW)) continue;
+        /*
         struct data_s d;
         if (data.init(&d, COMMAND_PEER_ANNOUNCE, announce_cb, announce_size,
                       (void *)n) != 0) return -1;
@@ -55,9 +42,14 @@ static int announce(struct tracker_s *t)
             if (data.send(&d, t->net.sd, &t->net.remote.addr, t->net.remote.len, 0,
                           l->host, l->port, &t->send.data, &t->send.len) != 0)
                 return -1;
+        }*/
+
+        for (l = t->peers.list; l != NULL; l = l->next) {
+            if (payload.send.tracker(t, COMMAND_TRACKER_ANNOUNCE_PEER,
+                                     l->host,
+                                     l->port) != 0) return -1;
         }
     }
-    ev_io_start(t->ev.loop, &t->ev.write);
     return 0;
 }
 
@@ -68,7 +60,7 @@ static void peer_update(struct tracker_s *t, int host, unsigned short port)
     if (peer_exists(t->peers.list, (void *)&p, &exists) != 0) return;
     if (exists) return;
     if (peer_add(t, &p) != 0) return;
-    announce(t);
+    announce_all(t);
 }
 
 static void write_cb(EV_P_ ev_io *w, int revents)
