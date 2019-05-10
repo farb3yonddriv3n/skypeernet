@@ -1,13 +1,20 @@
 #include <common.h>
 
-
 static int peer_add(struct world_peer_s *wp)
 {
     return 0;
 }
 
+static int peer_idx(struct peer_s *p, char *buffer, int nbuffer)
+{
+    int idx;
+    sn_initr(bf, buffer, nbuffer);
+    if (sn_read((void *)&idx, sizeof(idx), &bf) != 0) return -1;
+    return net.ack(&p->ev, &p->send, idx);
+}
+
 static int peer_read(struct peer_s *p, struct world_peer_s *wp,
-                     char *buffer, char nbuffer)
+                     char *buffer, int nbuffer)
 {
     sn_initr(bf, buffer, nbuffer);
     if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
@@ -16,32 +23,27 @@ static int peer_read(struct peer_s *p, struct world_peer_s *wp,
     printf("peer read: %x:%d\n", wp->host, wp->port);
 
     return payload.send.peer(p, COMMAND_MESSAGE, wp->host, wp->port);
-    /*
-    struct data_s d;
-    if (data.init(&d, COMMAND_MSG, msg_cb, msg_size,
-                  (void *)p) != 0) return -1;
-    if (data.send(&d, p->net.sd, &p->net.remote.addr,
-                  p->net.remote.len, 0,
-                  wp->host,
-                  wp->port,
-                  &p->send.data, &p->send.len) != 0) return -1;
-    ev_io_start(p->ev.loop, &p->ev.write);
-    return 0;
-    */
 }
 
-static int parse(struct peer_s *pr, struct packet_s *p)
+static int parse(struct peer_s *p)
 {
-    switch (p->header.command) {
+    switch (p->received.header.command) {
         case COMMAND_TRACKER_ANNOUNCE_PEER: {
             struct world_peer_s wp;
-            if (peer_read(pr, &wp, p->buffer.payload, p->header.length) != 0) return -1;
+            if (peer_read(p, &wp, p->received.buffer.payload,
+                          p->received.header.length) != 0) return -1;
             if (peer_add(&wp) != 0) return -1;
             } break;
         case COMMAND_MESSAGE: {
-            printf("message: %.*s from %x:%d\n", p->header.length, p->buffer.payload,
-                                      NET_IP(pr->net.remote.addr),
-                                      NET_PORT(pr->net.remote.addr));
+            printf("message: %.*s from %x:%d\n", p->received.header.length,
+                                                 p->received.buffer.payload,
+                                                 ADDR_IP(p->net.remote.addr),
+                                                 ADDR_PORT(p->net.remote.addr));
+            } break;
+        case COMMAND_ACK_TRACKER:
+        case COMMAND_ACK_PEER: {
+             if (peer_idx(p, p->received.buffer.payload,
+                          p->received.header.length) != 0) return -1;
             } break;
         default:
             return -1;

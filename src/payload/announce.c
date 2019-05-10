@@ -4,8 +4,8 @@ int announce_write_peer(struct data_s *d, void *userdata)
 {
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
-    if (data.write.integer(d, p->net.self.addr.sin_addr.s_addr) != 0) return -1;
-    if (data.write.shortint(d, p->net.self.addr.sin_port)       != 0) return -1;
+    if (data.write.integer(d, ADDR_IP(p->net.self.addr))    != 0) return -1;
+    if (data.write.shortint(d, ADDR_PORT(p->net.self.addr)) != 0) return -1;
     return 0;
 }
 
@@ -13,15 +13,15 @@ int announce_write_tracker(struct data_s *d, void *userdata)
 {
     struct tracker_s *t = (struct tracker_s *)userdata;
     if (!t || !d) return -1;
-    if (data.write.integer(d, t->net.remote.addr.sin_addr.s_addr) != 0) return -1;
-    if (data.write.shortint(d, t->net.remote.addr.sin_port)       != 0) return -1;
+    if (data.write.integer(d, ADDR_IP(t->net.remote.addr)) != 0) return -1;
+    if (data.write.shortint(d, ADDR_PORT(t->net.remote.addr))       != 0) return -1;
     return 0;
 }
 
-int announce_size(struct data_s *d, void *userdata)
+int announce_size(int *sz, void *userdata)
 {
-    if (!d) return -1;
-    d->size = DATA_SIZE_INT + DATA_SIZE_SHORT;
+    if (!sz) return -1;
+    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT;
     return 0;
 }
 

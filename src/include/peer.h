@@ -10,6 +10,7 @@ struct peer_s {
         int            host;
         unsigned short port;
     } tracker;
+    struct packet_s    received;
 };
 
 #endif

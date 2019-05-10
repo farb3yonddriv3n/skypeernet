@@ -61,6 +61,7 @@
     m_dst.s = realloc(m_dst.s, m_dst.n + m_nsrc);\
     memcpy(m_dst.s + m_dst.n, m_src, m_nsrc);\
     m_dst.n += m_nsrc;
+
 /*
  * Allocate m_size bytes from heap
  *
@@ -68,7 +69,18 @@
  */
 #define sn_bytes_new(m_var, m_size)\
     sn m_var = { .s = malloc(m_size), .n = m_size, .offset = 0 };\
-    assert(m_var.s != NULL);
+    if (!m_var.s) return -1;
+
+/*
+ * Allocate m_size bytes from heap
+ *
+ * See sn_bytes_append(), sn_bytes_delete()
+ */
+#define sn_bytes_init_new(m_var, m_size)\
+    m_var.s = malloc(m_size);\
+    m_var.n = m_size;\
+    m_var.offset = 0;\
+    if (!m_var.s) return -1;
 
 /*
  * Append m_src string to m_var string
@@ -76,10 +88,12 @@
  *
  * See sn_bytes_new(), sn_bytes_delete()
  */
+/*
 #define sn_bytes_append(m_var, m_src)\
     assert((m_var.offset + m_src.n) <= m_var.n);\
     memcpy(m_var.s + m_var.offset, m_src.s, m_src.n);\
     m_var.offset += m_src.n;
+*/
 
 /*
  * Free allocated m_var allocated
@@ -202,8 +216,8 @@ typedef struct snb_s {
     int  offset;  /**< Offset from start of region */
 } snb;
 
-inline static int sn_bytes(char *buffer, int *offset, int size,
-                           char *src, int nsrc)
+inline static int sn_bytes_append_raw(char *buffer, int *offset, int size,
+                                  char *src, int nsrc)
 {
     if (nsrc + *offset > size) return -1;
     memcpy(buffer + *offset, src, nsrc);
@@ -211,14 +225,14 @@ inline static int sn_bytes(char *buffer, int *offset, int size,
     return 0;
 }
 
-inline static int sn_bytes_append_raw(sn *dst, char *src, int nsrc)
+inline static int sn_bytes_append(sn *dst, char *src, int nsrc)
 {
-    return sn_bytes(dst->s, &dst->offset, dst->n, src, nsrc);
+    return sn_bytes_append_raw(dst->s, &dst->offset, dst->n, src, nsrc);
 }
 
-inline static int snb_bytes_append_raw(snb *dst, char *src, int nsrc)
+inline static int snb_bytes_append(snb *dst, char *src, int nsrc)
 {
-    return sn_bytes(dst->s, &dst->offset, dst->n, src, nsrc);
+    return sn_bytes_append_raw(dst->s, &dst->offset, dst->n, src, nsrc);
 }
 
 inline static int sn_read(char *dst, int ndst, sn *src)

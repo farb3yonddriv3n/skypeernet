@@ -3,8 +3,7 @@
 static void write_cb(EV_P_ ev_io *w, int revents)
 {
     struct peer_s *p = w->data;
-    net_send(&p->send.data, &p->send.len);
-    ev_io_stop(p->ev.loop, &p->ev.write);
+    net.dispatch(&p->ev, &p->send);
 }
 
 static void read_cb(EV_P_ ev_io *w, int revents)
@@ -15,20 +14,23 @@ static void read_cb(EV_P_ ev_io *w, int revents)
                                &p->net.remote.len);
     if (bytes == -1) return;
     bool valid;
-    struct packet_s pck;
-    if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid, &pck) != 0)
+    if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid,
+                        &p->recieved) != 0)
         return;
     printf("received valid packet: %d\n", valid);
     if (!valid) return;
-    if (world.parse(p, &pck) != 0) {
-        abort();
-        return;
-    }
+    if (world.parse(p) != 0) return;
+
+    // Do not ack the ack command
+    if (p->header.command != COMMAND_ACK)
+        if (payload.send.peer(p, COMMAND_ACK,
+                              ADDR_IP(p->net.remote.addr),
+                              ADDR_PORT(p->net.remote.addr)) != 0) return;
 }
 
 void rlhandler(char *line)
 {
-    if (line==NULL) {
+    if (line == NULL) {
     } else {
         if (*line != 0) {
             add_history(line);
@@ -40,9 +42,7 @@ void rlhandler(char *line)
 
 static void stdin_cb(EV_P_ ev_io *w, int revents)
 {
-    if (revents & EV_READ) {
-        rl_callback_read_char();
-    }
+    if (revents & EV_READ) rl_callback_read_char();
 }
 
 static int init(struct peer_s *p)
@@ -61,14 +61,19 @@ static int init(struct peer_s *p)
     if (inet_aton(TRACKER_HOST, &p->net.remote.addr.sin_addr) == 0)
         return -1;
 
-    p->tracker.host = p->net.remote.addr.sin_addr.s_addr;
-    p->tracker.port = p->net.remote.addr.sin_port;
+    p->tracker.host = ADDR_IP(p->net.remote.addr);
+    p->tracker.port = ADDR_PORT(p->net.remote.addr.sin_port);
+
+    rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
 
     p->ev.loop = ev_default_loop(0);
-    rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
     ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
+    ev_init(&p->send.timer, net_timer);
+    p->send.timer.repeat = 2.0;
+    p->send.timer.data = (void *)p;
+    p->ev.stdinwatch.data = (void *)p;
     p->ev.read.data  = (void *)p;
     p->ev.write.data = (void *)p;
     return 0;
@@ -79,8 +84,8 @@ int main()
     struct peer_s p;
     if (init(&p) != 0) return -1;
     if (payload.send.peer(&p, COMMAND_PEER_ANNOUNCE_PEER,
-                          NET_IP(p.net.remote.addr),
-                          NET_PORT(p.net.remote.addr)) != 0) return -1;
+                          p->tracker.host,
+                          p->tracker.port) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ev_io_start(p.ev.loop, &p.ev.read);
     ev_loop(p.ev.loop, 0);

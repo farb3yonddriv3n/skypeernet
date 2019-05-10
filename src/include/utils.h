@@ -9,6 +9,8 @@
 
 #define COUNTOF(m_a)  (sizeof(m_a) / sizeof(m_a[0]))
 
+#define ALIGN16(m_src) char align16[m_src]
+
 int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent);
 int eioie_fread(char **dst, sn fname);
 void bin2hexstr(char *dst, size_t dstlen,

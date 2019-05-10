@@ -7,9 +7,9 @@ struct world_peer_s {
 };
 
 struct module_world_s {
-    int (*parse)(struct peer_s *pr, struct packet_s *p);
+    int (*parse)(struct peer_s *p);
     struct {
-        int (*read)(struct peer_s *p, struct world_peer_s *wp, char *buffer, char nbuffer);
+        int (*read)(struct peer_s *p, struct world_peer_s *wp, char *buffer, int nbuffer);
         int (*add)(struct world_peer_s *wp);
     } peer;
 };

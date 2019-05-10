@@ -19,12 +19,13 @@ extern const struct module_payload_s payload;
 
 int announce_write_peer(struct data_s *d, void *userdata);
 int announce_write_tracker(struct data_s *d, void *userdata);
-int announce_size(struct data_s *d, void *userdata);
+int announce_size(int *sz, void *userdata);
 
 int message_write(struct data_s *d, void *userdata);
-int message_size(struct data_s *d, void *userdata);
+int message_size(int *sz, void *userdata);
 
-//extern const struct module_handler_s message;
-//extern const struct module_handler_s announce;
+int ack_write_peer(struct data_s *d, void *userdata);
+int ack_write_tracker(struct data_s *d, void *userdata);
+int ack_size(int *sz, void *userdata);
 
 #endif

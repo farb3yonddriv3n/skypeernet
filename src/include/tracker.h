@@ -23,6 +23,7 @@ struct tracker_s {
         struct tracker_peer_s *list;
         int                    count;
     } peers;
+    struct packet_s    received;
 };
 
 #endif

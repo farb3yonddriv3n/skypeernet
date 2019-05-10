@@ -9,6 +9,8 @@ enum command_e {
     COMMAND_PEER_ANNOUNCE_PEER,
     COMMAND_TRACKER_ANNOUNCE_PEER,
     COMMAND_MESSAGE,
+    COMMAND_ACK_PEER,
+    COMMAND_ACK_TRACKER,
 };
 
 struct header_s {
@@ -17,6 +19,7 @@ struct header_s {
     unsigned int   total;
     unsigned int   length;
     enum command_e command;
+    ALIGN16(12);
 };
 
 struct packet_s {
@@ -31,8 +34,8 @@ struct module_packet_s {
     int (*validate)(char *buffer, size_t nbuffer, bool *valid, struct packet_s *p);
     int (*clean)(struct packet_s *packets);
     struct {
-        int (*init)(enum command_e, char *buffer, size_t nbuffer,
-                    struct packet_s **packets, int *npackets, int index);
+        int (*init)(enum command_e, char *buffer, int nbuffer,
+                    struct packet_s **packets, int *npackets);
         int (*validate)(struct packet_s *packets, size_t nbuffer, bool *valid);
     } serialize;
     struct {

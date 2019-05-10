@@ -8,10 +8,10 @@ int message_write(struct data_s *d, void *userdata)
     return 0;
 }
 
-int message_size(struct data_s *d, void *userdata)
+int message_size(int *sz, void *userdata)
 {
-    if (!d) return -1;
-    d->size = 10;
+    if (!sz) return -1;
+    *sz = 10;
     return 0;
 }
 
