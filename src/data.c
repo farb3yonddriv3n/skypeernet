@@ -70,6 +70,7 @@ static int packet_set(snb *dst, struct packet_s *p, int index)
 
 static int packet_get(struct packet_s *p, char *buffer, int nbuffer)
 {
+    memset(p, 0, sizeof(*p));
     sn_initr(b, buffer, nbuffer);
     if (sn_read((void *)&p->header.index,    sizeof(p->header.index), &b)    != 0) return -1;
     if (sn_read((void *)&p->header.sequence, sizeof(p->header.sequence), &b) != 0) return -1;

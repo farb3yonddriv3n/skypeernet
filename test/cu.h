@@ -23,5 +23,6 @@ void t3_block_append_transactions();
 void t4_rsa_encrypt_decrypt();
 void t5_root_compare();
 void t6_packet();
+void t7_list();
 
 #endif

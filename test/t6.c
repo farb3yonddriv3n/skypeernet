@@ -7,8 +7,8 @@ void t6_packet()
     memset(tblock, 0, sizeof(tblock));
     struct packet_s *packets;
     int npackets;
-    A(packet.serialize.init(tblock, sizeof(tblock), &packets,
-                            &npackets, 0), 0);
+    A(packet.serialize.init(COMMAND_MESSAGE, tblock, sizeof(tblock), &packets,
+                            &npackets), 0);
     bool valid;
     A(packet.serialize.validate(packets, npackets, &valid), 0);
     A(valid, true);
