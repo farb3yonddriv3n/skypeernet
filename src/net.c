@@ -35,7 +35,7 @@ static int dispatch_idx(struct net_ev_s *ev, struct net_send_s *ns, int idx)
                            0,
                            (struct sockaddr *)&nb->remote.addr,
                            nb->remote.len);
-    if (bytes <= 0) return -1;
+    if (bytes <= 0) printf("Dispatch error: %s\n", strerror(errno));
     nb->status = NET_ACK_WAITING;
     nb->write  = &ev->write;
     ev_timer_again(ev->loop, &nb->timer);
@@ -45,21 +45,23 @@ static int dispatch_idx(struct net_ev_s *ev, struct net_send_s *ns, int idx)
 static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
 {
     int i;
+    ev_io_stop(ev->loop, &ev->write);
     for (i = 0; i < ns->len; i++) {
         struct nb_s *nb = &ns->data[i];
         if (nb->status != NET_INIT) continue;
         if (dispatch_idx(ev, ns, i) != 0) return -1;
     }
-    ev_io_stop(ev->loop, &ev->write);
     return 0;
 }
 
 void timeout(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
-    struct nb_s *nb = (struct nb_s *)timer->data;
-    if (!nb) return;
-    nb->status = NET_INIT;
-    ev_io_start(loop, nb->write);
+    struct net_send_timer_s *nst = (struct net_send_timer_s *)timer->data;
+    if (!nst) return;
+    struct nb_s **nb = nst->data;
+    (*nb)[nst->idx].status = NET_INIT;
+    ev_timer_stop(loop, &(*nb)[nst->idx].timer);
+    ev_io_start(loop, (*nb)[nst->idx].write);
 }
 
 const struct module_net_s net = {

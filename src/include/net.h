@@ -29,6 +29,11 @@ struct net_send_s {
     int          progress;
 };
 
+struct net_send_timer_s {
+    struct nb_s **data;
+    int           idx;
+};
+
 struct net_recv_s {
     char data[UDP_PACKET];
 };

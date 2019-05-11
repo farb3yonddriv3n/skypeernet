@@ -15,15 +15,15 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     if (bytes == -1) return;
     bool valid;
     if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid,
-                        &p->recieved) != 0)
+                        &p->received) != 0)
         return;
     printf("received valid packet: %d\n", valid);
     if (!valid) return;
     if (world.parse(p) != 0) return;
 
     // Do not ack the ack command
-    if (p->header.command != COMMAND_ACK)
-        if (payload.send.peer(p, COMMAND_ACK,
+    if (p->received.header.command != COMMAND_ACK_PEER)
+        if (payload.send.peer(p, COMMAND_ACK_PEER,
                               ADDR_IP(p->net.remote.addr),
                               ADDR_PORT(p->net.remote.addr)) != 0) return;
 }
@@ -62,7 +62,7 @@ static int init(struct peer_s *p)
         return -1;
 
     p->tracker.host = ADDR_IP(p->net.remote.addr);
-    p->tracker.port = ADDR_PORT(p->net.remote.addr.sin_port);
+    p->tracker.port = ADDR_PORT(p->net.remote.addr);
 
     rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
 
@@ -70,9 +70,6 @@ static int init(struct peer_s *p)
     ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
-    ev_init(&p->send.timer, net_timer);
-    p->send.timer.repeat = 2.0;
-    p->send.timer.data = (void *)p;
     p->ev.stdinwatch.data = (void *)p;
     p->ev.read.data  = (void *)p;
     p->ev.write.data = (void *)p;
@@ -84,8 +81,8 @@ int main()
     struct peer_s p;
     if (init(&p) != 0) return -1;
     if (payload.send.peer(&p, COMMAND_PEER_ANNOUNCE_PEER,
-                          p->tracker.host,
-                          p->tracker.port) != 0) return -1;
+                          p.tracker.host,
+                          p.tracker.port) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ev_io_start(p.ev.loop, &p.ev.read);
     ev_loop(p.ev.loop, 0);

@@ -91,21 +91,25 @@ static int data_send(struct data_s *d, int sd, struct sockaddr_in *addr,
     int npackets;
     if (packet.serialize.init(d->command, d->payload.s, d->payload.n, &packets,
                               &npackets) != 0) return -1;
-    int i;
-    for (i = *nnb; i < (npackets + *nnb); i++) {
+    int i, j;
+    int top = npackets + *nnb;
+    for (i = *nnb, j = 0; i < top && j < npackets; i++, j++) {
         *nb = realloc(*nb, sizeof(**nb) * (++(*nnb)));
         int idx = *nnb - 1;
         (*nb)[idx].idx = idx;
         (*nb)[idx].sd  = sd;
-        if (packet_set(&(*nb)[idx].buffer, &packets[i], idx) != 0)
+        if (packet_set(&(*nb)[idx].buffer, &packets[j], idx) != 0)
             return -1;
         memcpy(&(*nb)[idx].remote.addr, addr, sizeof(*addr));
         (*nb)[idx].remote.len                  = addr_len;
         (*nb)[idx].remote.addr.sin_addr.s_addr = host;
         (*nb)[idx].remote.addr.sin_port        = port;
-        ev_init(&(*nb)[idx].timer, net.timeout);
-        (*nb)[idx].timer.repeat = 2.0;
-        (*nb)[idx].timer.data = &((*nb)[idx]);
+        ev_timer_init(&(*nb)[idx].timer, net.timeout, .0, 3.0);
+        struct net_send_timer_s *nst = malloc(sizeof(*nst));
+        nst->data = nb;
+        nst->idx  = idx;
+        (*nb)[idx].timer.data = nst;
+        (*nb)[idx].status = NET_INIT;
     }
     return 0;
 }
