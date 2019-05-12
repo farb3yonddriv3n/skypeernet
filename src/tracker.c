@@ -76,18 +76,21 @@ static void read_cb(EV_P_ ev_io *w, int revents)
 
     net.receive(t->net.sd, t->recv.data, sizeof(t->recv.data),
                 &t->net.remote.addr, &t->net.remote.len);
+    if (ADDR_IP(t->net.remote.addr) == 0 &&
+        ADDR_PORT(t->net.remote.addr) == 0) return;
     bool valid;
     if (packet.validate(t->recv.data, sizeof(t->recv.data), &valid,
                         &t->received) != 0) return;
-    printf("Received packet %d from %x:%d\n", t->received.header.command,
-                                              ADDR_IP(t->net.remote.addr),
-                                              ADDR_PORT(t->net.remote.addr));
-    if (payload.send.tracker(t, COMMAND_ACK_TRACKER,
-                             ADDR_IP(t->net.remote.addr),
-                             ADDR_PORT(t->net.remote.addr)) != 0) return;
+    if (!valid) return;
+    if (t->received.header.command != COMMAND_ACK_PEER &&
+        t->received.header.command != COMMAND_ACK_TRACKER)
+        if (payload.send.tracker(t, COMMAND_ACK_TRACKER,
+                                 ADDR_IP(t->net.remote.addr),
+                                 ADDR_PORT(t->net.remote.addr)) != 0) return;
 
-    peer_update(t, ADDR_IP(t->net.remote.addr),
-                ADDR_PORT(t->net.remote.addr));
+    if (t->received.header.command == COMMAND_PEER_ANNOUNCE_PEER)
+        peer_update(t, ADDR_IP(t->net.remote.addr),
+                    ADDR_PORT(t->net.remote.addr));
 }
 
 static int init(struct tracker_s *t)

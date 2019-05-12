@@ -33,9 +33,11 @@ struct packet_s {
 struct module_packet_s {
     int (*validate)(char *buffer, size_t nbuffer, bool *valid, struct packet_s *p);
     int (*clean)(struct packet_s *packets);
+    void (*dump)(struct packet_s *p);
     struct {
         int (*init)(enum command_e, char *buffer, int nbuffer,
-                    struct packet_s **packets, int *npackets);
+                    struct packet_s **packets, int *npackets,
+                    int *index);
         int (*validate)(struct packet_s *packets, size_t nbuffer, bool *valid);
     } serialize;
     struct {

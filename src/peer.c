@@ -17,12 +17,13 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid,
                         &p->received) != 0)
         return;
-    printf("received valid packet: %d\n", valid);
     if (!valid) return;
+    packet.dump(&p->received);
     if (world.parse(p) != 0) return;
 
     // Do not ack the ack command
-    if (p->received.header.command != COMMAND_ACK_PEER)
+    if (p->received.header.command != COMMAND_ACK_PEER &&
+        p->received.header.command != COMMAND_ACK_TRACKER)
         if (payload.send.peer(p, COMMAND_ACK_PEER,
                               ADDR_IP(p->net.remote.addr),
                               ADDR_PORT(p->net.remote.addr)) != 0) return;

@@ -17,8 +17,8 @@ struct module_data_s {
                 int (*callback_size)(int*, void*),
                 void *userdata);
     int (*send)(struct data_s *d, int sd, struct sockaddr_in *addr,
-                int addr_len, int index, int host, unsigned short port,
-                struct nb_s **nb, int *nnb);
+                int addr_len, int host, unsigned short port,
+                struct list_s *nbl, struct net_ev_s *ne);
     int (*get)(struct packet_s *p, char *buffer, int nbuffer);
     int (*size)(struct data_s *d, size_t *sz);
     struct {

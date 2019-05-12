@@ -8,11 +8,12 @@ struct list_s {
 };
 
 struct module_list_s {
-    int (*init)(struct list_s **l);
+    int (*init)(struct list_s *l);
     int (*add)(struct list_s *l, void *userdata, int (*clean)(void *ptr));
     int (*del)(struct list_s *l, void *userdata);
-    int (*map)(struct list_s *l, int (*cb)(struct list_s*, void*));
-    int (*clean)(struct list_s **l);
+    int (*map)(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
+               void *userdata);
+    int (*clean)(struct list_s *l);
 };
 
 extern const struct module_list_s list;

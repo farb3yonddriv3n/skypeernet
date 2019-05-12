@@ -2,7 +2,7 @@
 #define TRACKER_H_
 
 #define TRACKER_PORT        5775
-#define TRACKER_HOST        "127.0.0.1"
+#define TRACKER_HOST        "192.168.88.14"
 
 #define PEER_NEW (1 << 0)
 

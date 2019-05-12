@@ -2,7 +2,7 @@
 
 static int packet_create(enum command_e cmd, char *buffer, int nbuffer,
                          struct packet_s **packets, int *npackets,
-                         int sequence, int total)
+                         int sequence, int total, int *index)
 {
     if (!packets || !npackets) return -1;
     (*npackets)++;
@@ -10,7 +10,7 @@ static int packet_create(enum command_e cmd, char *buffer, int nbuffer,
     if (!(*packets)) return -1;
     struct packet_s *p = &(*packets)[*npackets - 1];
     memset(p, 0, sizeof(*p));
-    p->header.index    = -1;
+    p->header.index    = (*index)++;
     p->header.sequence = sequence;
     p->header.total    = total;
     p->header.length   = nbuffer;
@@ -23,7 +23,7 @@ static int packet_create(enum command_e cmd, char *buffer, int nbuffer,
 }
 
 static int chunk(enum command_e command, char *buffer, size_t nbuffer,
-                 struct packet_s **packets, int *npackets)
+                 struct packet_s **packets, int *npackets, int *index)
 {
     int i;
     int chunks    = nbuffer / UDP_PACKET_PAYLOAD;
@@ -32,22 +32,23 @@ static int chunk(enum command_e command, char *buffer, size_t nbuffer,
     for (i = 0; i < chunks; i++) {
         if (i + 1 == chunks && remaining > 0) {
             if (packet_create(command, buffer + (i * UDP_PACKET_PAYLOAD), remaining,
-                              packets, npackets, i, chunks) != 0) return -1;
+                              packets, npackets, i, chunks, index) != 0) return -1;
         } else {
             if (packet_create(command, buffer + (i * UDP_PACKET_PAYLOAD), UDP_PACKET_PAYLOAD,
-                              packets, npackets, i, chunks) != 0) return -1;
+                              packets, npackets, i, chunks, index) != 0) return -1;
         }
     }
     return 0;
 }
 
 static int serialize_init(enum command_e cmd, char *buffer, int nbuffer,
-                          struct packet_s **packets, int *npackets)
+                          struct packet_s **packets, int *npackets,
+                          int *index)
 {
     if (!buffer || nbuffer < 1) return -1;
     *packets = NULL;
     *npackets = 0;
-    if (chunk(cmd, buffer, nbuffer, packets, npackets) != 0) return -1;
+    if (chunk(cmd, buffer, nbuffer, packets, npackets, index) != 0) return -1;
     return 0;
 }
 
@@ -95,9 +96,24 @@ static int deserialize_init(char *buffer, size_t nbuffer, bool *valid)
     return 0;
 }
 
+static void dump(struct packet_s *p)
+{
+    printf("Index: %d\n", p->header.index);
+    printf("Sequence: %d\n", p->header.sequence);
+    printf("Total: %d\n", p->header.total);
+    printf("Length: %d\n", p->header.length);
+    printf("Command: %d\n", p->header.command);
+    int i;
+    for (i = 0; i < p->header.length; i++) {
+        printf("%d:%x ", i, p->buffer.payload[i]);
+    }
+    printf("Hash: %.*s\n", sizeof(p->buffer.hash), p->buffer.hash);
+}
+
 const struct module_packet_s packet = {
     .validate           = validate,
     .clean              = clean,
+    .dump               = dump,
     .serialize.init     = serialize_init,
     .serialize.validate = serialize_validate,
     .deserialize.init   = deserialize_init,

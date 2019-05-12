@@ -7,7 +7,7 @@
 enum net_status_e {
     NET_INIT,
     NET_ACK_WAITING,
-    NET_OK,
+    NET_ONESHOT,
 };
 
 struct nb_s {
@@ -18,20 +18,20 @@ struct nb_s {
         struct sockaddr_in addr;
         socklen_t          len;
     } remote;
-    struct ev_timer timer;
-    struct ev_io *write;
+    struct ev_timer   timer;
+    struct ev_io     *write;
     enum net_status_e status;
+    int               retry;
 };
 
 struct net_send_s {
-    struct nb_s *data;
-    int          len;
-    int          progress;
+    struct list_s nbl;
 };
 
 struct net_send_timer_s {
-    struct nb_s **data;
-    int           idx;
+    struct nb_s     *nb;
+    struct list_s   *nbl;
+    struct net_ev_s *nev;
 };
 
 struct net_recv_s {
@@ -67,6 +67,10 @@ struct module_net_s {
     int (*ack)(struct net_ev_s *ev, struct net_send_s *ns, int idx);
     int (*dispatch)(struct net_ev_s *ev, struct net_send_s *ns);
     void (*timeout)(struct ev_loop *loop, struct ev_timer *timer, int revents);
+
+    struct {
+        int (*clean)(void *ptr);
+    } nb;
 };
 
 extern const struct module_net_s net;

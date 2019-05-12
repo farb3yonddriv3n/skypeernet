@@ -9,11 +9,10 @@ struct list_internal_s {
     } data;
 };
 
-static int init(struct list_s **l)
+static int init(struct list_s *l)
 {
-    *l = malloc(sizeof(**l));
-    if (!*l) return -1;
-    memset(*l, 0, sizeof(**l));
+    if (!l) return -1;
+    memset(l, 0, sizeof(*l));
     return 0;
 }
 
@@ -61,28 +60,32 @@ static int del(struct list_s *l, void *userdata)
     return -1;
 }
 
-static int map(struct list_s *l, int (*cb)(struct list_s*, void*))
+static int map(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
+               void *userdata)
 {
     if (!l) return -1;
-    struct list_internal_s *li;
-    for (li = l->head; li != NULL; li = li->next) {
-        if (cb && cb(l, li->data.ptr) != 0) return 0;
+    struct list_internal_s *li, *op;
+    for (li = l->head; li != NULL; ) {
+        op = li;
+        li = li->next;
+        int ret = cb(l, op->data.ptr, userdata);
+        if (ret == -1)     return ret;
+        else if (ret == 1) return 0;
     }
     return 0;
 }
 
-static int clean(struct list_s **l)
+static int clean(struct list_s *l)
 {
-    if (!*l) return -1;
+    if (!l) return -1;
     struct list_internal_s *li, *d;
-    for (li = (*l)->head; li != NULL; ) {
+    for (li = l->head; li != NULL; ) {
         if (li->data.clean(li->data.ptr) != 0) return -1;
         d = li;
         li = li->next;
         free(d);
     }
-    free(*l);
-    *l = NULL;
+    if (init(l) != 0) return -1;
     return 0;
 }
 

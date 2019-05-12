@@ -16,6 +16,7 @@ static int peer_idx(struct peer_s *p, char *buffer, int nbuffer)
 static int peer_read(struct peer_s *p, struct world_peer_s *wp,
                      char *buffer, int nbuffer)
 {
+    /*
     sn_initr(bf, buffer, nbuffer);
     if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
     if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
@@ -23,6 +24,8 @@ static int peer_read(struct peer_s *p, struct world_peer_s *wp,
     printf("peer read: %x:%d\n", wp->host, wp->port);
 
     return payload.send.peer(p, COMMAND_MESSAGE, wp->host, wp->port);
+    */
+    return 0;
 }
 
 static int parse(struct peer_s *p)

@@ -21,8 +21,8 @@ static int exec(void *parent, enum command_e cmd,
 {
     struct data_s d;
     if (data.init(&d, cmd, cb_write, cb_size, parent) != 0) return -1;
-    if (data.send(&d, n->sd, &n->remote.addr, n->remote.len, 0,
-                  host, port, &ns->data, &ns->len) != 0) return -1;
+    if (data.send(&d, n->sd, &n->remote.addr, n->remote.len,
+                  host, port, &ns->nbl, ne) != 0) return -1;
     ev_io_start(ne->loop, &ne->write);
     return 0;
 }
