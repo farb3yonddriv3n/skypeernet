@@ -42,5 +42,6 @@
 #include <peer.h>
 #include <world.h>
 #include <payload.h>
+#include <cli.h>
 
 #endif

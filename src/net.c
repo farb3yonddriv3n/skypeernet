@@ -57,6 +57,10 @@ static int dispatch_item(struct list_s *l, struct net_ev_s *ev,
                            0,
                            (struct sockaddr *)&nb->remote.addr,
                            nb->remote.len);
+    printf("Sending packet %d of %d bytes to %x:%d retry: %d\n", nb->idx, bytes,
+                                                     ADDR_IP(nb->remote.addr),
+                                                     ADDR_PORT(nb->remote.addr),
+                                                     nb->retry);
     if (nb->status == NET_ONESHOT) return list.del(l, nb);
     if (bytes <= 0) printf("Dispatch error: %s\n", strerror(errno));
     nb->status = NET_ACK_WAITING;

@@ -4,14 +4,11 @@
 struct world_peer_s {
     int            host;
     unsigned short port;
+    bool           found;
 };
 
 struct module_world_s {
-    int (*parse)(struct peer_s *p);
-    struct {
-        int (*read)(struct peer_s *p, struct world_peer_s *wp, char *buffer, int nbuffer);
-        int (*add)(struct world_peer_s *wp);
-    } peer;
+    int (*handle)(struct instance_s *ins);
 };
 
 extern const struct module_world_s world;

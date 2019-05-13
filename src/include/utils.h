@@ -11,6 +11,8 @@
 
 #define ALIGN16(m_src) char align16[m_src]
 
+#define ifr(m_src) if (m_src != 0) return -1
+
 int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent);
 int eioie_fread(char **dst, sn fname);
 void bin2hexstr(char *dst, size_t dstlen,

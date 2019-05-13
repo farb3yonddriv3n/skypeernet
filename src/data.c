@@ -96,6 +96,7 @@ static int data_send(struct data_s *d, int sd, struct sockaddr_in *addr,
                               &npackets, &pidx) != 0) return -1;
     int i;
     for (i = 0; i < npackets; i++) {
+        printf("Sending packet\n");
         packet.dump(&packets[i]);
         struct nb_s *nb = malloc(sizeof(*nb));
         if (!nb) return -1;

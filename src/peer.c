@@ -1,5 +1,7 @@
 #include <common.h>
 
+static struct peer_s p;
+
 static void write_cb(EV_P_ ev_io *w, int revents)
 {
     struct peer_s *p = w->data;
@@ -18,15 +20,9 @@ static void read_cb(EV_P_ ev_io *w, int revents)
                         &p->received) != 0)
         return;
     if (!valid) return;
-    packet.dump(&p->received);
-    if (world.parse(p) != 0) return;
 
-    // Do not ack the ack command
-    if (p->received.header.command != COMMAND_ACK_PEER &&
-        p->received.header.command != COMMAND_ACK_TRACKER)
-        if (payload.send.peer(p, COMMAND_ACK_PEER,
-                              ADDR_IP(p->net.remote.addr),
-                              ADDR_PORT(p->net.remote.addr)) != 0) return;
+    packet.dump(&p->received);
+    return world.handle((struct instance_s *)p);
 }
 
 void rlhandler(char *line)
@@ -36,7 +32,7 @@ void rlhandler(char *line)
         if (*line != 0) {
             add_history(line);
         }
-        printf("\n%s\n", line);
+        cli(&p, line);
         free(line);
     }
 }
@@ -49,6 +45,7 @@ static void stdin_cb(EV_P_ ev_io *w, int revents)
 static int init(struct peer_s *p)
 {
     memset(p, 0, sizeof(*p));
+    p->type = INSTANCE_PEER;
     if ((p->net.sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         return -1;
 
@@ -79,7 +76,6 @@ static int init(struct peer_s *p)
 
 int main()
 {
-    struct peer_s p;
     if (init(&p) != 0) return -1;
     if (payload.send.peer(&p, COMMAND_PEER_ANNOUNCE_PEER,
                           p.tracker.host,
