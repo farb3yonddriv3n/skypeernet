@@ -1,10 +1,12 @@
 #include <common.h>
 
-static int message(struct peer_s *p, char **argv, int argc)
+static int send_message(struct peer_s *p, char **argv, int argc)
 {
     long int    host    = strtol(argv[1], NULL, 16);
     long int    port    = strtol(argv[2], NULL, 10);
     const char *message = argv[3];
+    p->buffer.type = BUFFER_MESSAGE;
+    p->buffer.u.message.str = message;
     return payload.send.peer(p, COMMAND_MESSAGE, host, port);
 }
 
@@ -27,6 +29,7 @@ static int tokenize(char *line, char ***argv, int *argc)
     for ( ; s <= end; s++) {
         if (*s == ' ' || *s == '\0') {
             *argv = realloc(*argv, ++(*argc) * sizeof(void *));
+            if (!argv) return -1;
             (*argv)[*argc - 1] = arg;
             *s = '\0';
             arg = s + 1;
@@ -39,9 +42,10 @@ static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
                       int         (*cb)(struct peer_s *p, char **argv, int argc);
-                    } cmds[2] = {
+                    } cmds[] = {
     { { "p", "peers", "l", "list" }, 4, 0, peers_list },
-    { { "m", "msg" },                2, 3, message },
+    { { "m", "msg" },                2, 3, send_message },
+    { { "sf", "sendfile" },          2, 3, send_file },
 };
 
 int cli(struct peer_s *p, char *line)
@@ -49,9 +53,7 @@ int cli(struct peer_s *p, char *line)
     char **argv = NULL;
     int    argc = 0;
     if (tokenize(line, &argv, &argc) != 0) return -1;
-
     if (argc < 1) return 0;
-
     int i, j;
     for (i = 0; i < argc; i++) {
         for (j = 0; j < cmds[i].nalias; j++) {
@@ -60,15 +62,5 @@ int cli(struct peer_s *p, char *line)
                 return cmds[i].cb(p, argv, argc);
         }
     }
-
     return -1;
-    /*
-    int msg(struct list_s *l, void *uwp, void *ud) {
-        struct world_peer_s *wp = uwp;
-        if (payload.send.peer(p, COMMAND_MESSAGE,
-                              wp->host, wp->port) != 0) return -1;
-        return 0;
-    }
-    return list.map(&p->peers, msg, NULL);
-    */
 }
