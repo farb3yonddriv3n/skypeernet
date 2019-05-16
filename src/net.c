@@ -1,5 +1,7 @@
 #include <common.h>
 
+#define MAX_RETRY 100
+
 struct cbdata_s {
     struct net_ev_s *ev;
     int              idx;
@@ -17,7 +19,7 @@ int receive(int sd, char *data, int len,
 
 static int nb_clean(void *nb)
 {
-    free(nb);
+    //free(nb);
     return 0;
 }
 
@@ -57,7 +59,8 @@ static int dispatch_item(struct list_s *l, struct net_ev_s *ev,
                            0,
                            (struct sockaddr *)&nb->remote.addr,
                            nb->remote.len);
-    printf("Sending packet %d of %d bytes to %x:%d retry: %d\n", nb->idx, bytes,
+    printf("Sending packet %d of %ld bytes to %x:%d retry: %d\n",
+                                                     nb->idx, bytes,
                                                      ADDR_IP(nb->remote.addr),
                                                      ADDR_PORT(nb->remote.addr),
                                                      nb->retry);
@@ -112,7 +115,8 @@ static int timeout_cb(struct list_s *l, void *unb,
     struct cbdata_s *dsp = dcb;
     if (dsp->idx == nb->idx) {
         nb->status = NET_INIT;
-        nb->retry++;
+        if (++nb->retry == MAX_RETRY)
+            list.del(l, nb);
         return 1;
     }
     return 0;

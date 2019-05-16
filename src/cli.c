@@ -5,9 +5,9 @@ static int send_message(struct peer_s *p, char **argv, int argc)
     long int    host    = strtol(argv[1], NULL, 16);
     long int    port    = strtol(argv[2], NULL, 10);
     const char *message = argv[3];
-    p->buffer.type = BUFFER_MESSAGE;
-    p->buffer.u.message.str = message;
-    return payload.send.peer(p, COMMAND_MESSAGE, host, port);
+    p->send_buffer.type = BUFFER_MESSAGE;
+    p->send_buffer.u.message.str = message;
+    return payload.send((struct instance_s *)p, COMMAND_MESSAGE, host, port);
 }
 
 static int peers_list(struct peer_s *p, char **argv, int argc)
@@ -45,7 +45,6 @@ static const struct { const char *alias[8];
                     } cmds[] = {
     { { "p", "peers", "l", "list" }, 4, 0, peers_list },
     { { "m", "msg" },                2, 3, send_message },
-    { { "sf", "sendfile" },          2, 3, send_file },
 };
 
 int cli(struct peer_s *p, char *line)

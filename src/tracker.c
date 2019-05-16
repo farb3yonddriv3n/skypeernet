@@ -10,16 +10,17 @@ static void read_cb(EV_P_ ev_io *w, int revents)
 {
     struct tracker_s *t = w->data;
     if (!t) return;
-
     net.receive(t->net.sd, t->recv.data, sizeof(t->recv.data),
                 &t->net.remote.addr, &t->net.remote.len);
     if (ADDR_IP(t->net.remote.addr) == 0 &&
         ADDR_PORT(t->net.remote.addr) == 0) return;
     bool valid;
     if (packet.validate(t->recv.data, sizeof(t->recv.data), &valid,
+                        ADDR_IP(t->net.remote.addr),
+                        ADDR_PORT(t->net.remote.addr),
                         &t->received) != 0) return;
     if (!valid) return;
-    return world.handle((struct instance_s *)t);
+    world.handle((struct instance_s *)t);
 }
 
 static int init(struct tracker_s *t)
@@ -32,8 +33,7 @@ static int init(struct tracker_s *t)
     t->net.self.addr.sin_port = htons(TRACKER_PORT);
     t->net.self.addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(t->net.sd, (struct sockaddr *)&t->net.self.addr,
-             sizeof(t->net.self.addr)) != 0)
-        return -1;
+             sizeof(t->net.self.addr)) != 0) return -1;
     t->ev.loop = ev_default_loop(0);
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);

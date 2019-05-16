@@ -26,7 +26,7 @@ static int init_internal(struct list_internal_s **li)
 
 static int add(struct list_s *l, void *userdata, int (*clean)(void *ptr))
 {
-    if (!l || !userdata || !clean) return -1;
+    if (!l || !userdata) return -1;
     struct list_internal_s *li;
     if (init_internal(&li) != 0) return -1;
     li->data.ptr   = userdata;
@@ -51,7 +51,7 @@ static int del(struct list_s *l, void *userdata)
             else l->head = li->next;
             if (li->next) li->next->prev = li->prev;
             else l->tail = li->prev;
-            if (li->data.clean(li->data.ptr) != 0) return -1;
+            if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
             free(li);
             l->size--;
             return 0;

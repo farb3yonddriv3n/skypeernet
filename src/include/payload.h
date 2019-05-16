@@ -7,12 +7,8 @@ struct module_handler_s {
 };
 
 struct module_payload_s {
-    struct {
-        int (*peer)(struct peer_s *p, enum command_e cmd,
-                    int host, unsigned short port);
-        int (*tracker)(struct tracker_s *p, enum command_e cmd,
-                       int host, unsigned short port);
-    } send;
+    int (*send)(void *parent, enum command_e cmd,
+                int host, unsigned short port);
 };
 
 extern const struct module_payload_s payload;
@@ -24,8 +20,7 @@ int announce_size(int *sz, void *userdata);
 int message_write(struct data_s *d, void *userdata);
 int message_size(int *sz, void *userdata);
 
-int ack_write_peer(struct data_s *d, void *userdata);
-int ack_write_tracker(struct data_s *d, void *userdata);
+int ack_write(struct data_s *d, void *userdata);
 int ack_size(int *sz, void *userdata);
 
 #endif

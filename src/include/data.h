@@ -9,6 +9,7 @@ struct data_s {
     sn             payload;
 };
 
+struct instance_s;
 struct tracker_s;
 
 struct module_data_s {
@@ -16,9 +17,8 @@ struct module_data_s {
                 int (*callback)(struct data_s*, void*),
                 int (*callback_size)(int*, void*),
                 void *userdata);
-    int (*send)(struct data_s *d, int sd, struct sockaddr_in *addr,
-                int addr_len, int host, unsigned short port,
-                struct list_s *nbl, struct net_ev_s *ne);
+    int (*send)(struct data_s *d, struct instance_s *ins,
+                int host, unsigned short port);
     int (*get)(struct packet_s *p, char *buffer, int nbuffer);
     int (*size)(struct data_s *d, size_t *sz);
     struct {

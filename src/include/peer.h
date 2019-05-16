@@ -9,6 +9,8 @@ struct peer_s {
     struct net_recv_s  recv;
     struct packet_s    received;
     struct list_s      peers;
+    struct send_buffer_s send_buffer;
+    struct recv_buffer_s recv_buffer;
     struct {
         int            host;
         unsigned short port;

@@ -2,21 +2,15 @@
 
 static int ack_reply(struct instance_s *ins)
 {
-    if (ins->type == INSTANCE_PEER)
-        return payload.send.peer((struct peer_s *)ins, COMMAND_ACK_PEER,
-                                 ADDR_IP(ins->net.remote.addr),
-                                 ADDR_PORT(ins->net.remote.addr));
-    else if (ins->type == INSTANCE_TRACKER)
-        return payload.send.tracker((struct tracker_s *)ins, COMMAND_ACK_TRACKER,
-                                    ADDR_IP(ins->net.remote.addr),
-                                    ADDR_PORT(ins->net.remote.addr));
-    else return -1;
+    return payload.send((struct peer_s *)ins, COMMAND_ACK,
+                        ADDR_IP(ins->net.remote.addr),
+                        ADDR_PORT(ins->net.remote.addr));
 }
 
 static int ack(struct instance_s *ins)
 {
     int idx;
-    sn_initr(bf, ins->received.buffer.payload, ins->received.header.length);
+    sn_initr(bf, ins->recv_buffer.available.s, ins->recv_buffer.available.n);
     if (sn_read((void *)&idx, sizeof(idx), &bf) != 0) return -1;
     return net.ack(&ins->ev, &ins->send, idx);
 }
@@ -58,9 +52,8 @@ static int peer_add(struct instance_s *ins, struct world_peer_s *wp)
             struct tracker_s *t = (struct tracker_s *)ins;
             ADDR_IP(t->net.remote.addr)   = dst;
             ADDR_PORT(t->net.remote.addr) = dstport;
-            if (payload.send.tracker(t, COMMAND_TRACKER_ANNOUNCE_PEER,
-                                     src,
-                                     srcport) != 0) return -1;
+            if (payload.send(t, COMMAND_TRACKER_ANNOUNCE_PEER,
+                             src, srcport) != 0) return -1;
             return 0;
         }
         ifr(item(wp->host, wp->port, ex->host, ex->port));
@@ -79,7 +72,7 @@ static int announce_peer(struct instance_s *ins)
         wp->host = ADDR_IP(ins->net.remote.addr);
         wp->port = ADDR_PORT(ins->net.remote.addr);
     } else {
-        sn_initr(bf, ins->received.buffer.payload, ins->received.header.length);
+        sn_initr(bf, ins->recv_buffer.available.s, ins->recv_buffer.available.n);
         if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
         if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
     }
@@ -88,10 +81,99 @@ static int announce_peer(struct instance_s *ins)
 
 static int message(struct instance_s *ins)
 {
-    printf("Message: [%.*s] from %x:%d\n", ins->received.header.length,
-                                           ins->received.buffer.payload,
+    printf("Message: [%.*s] from %x:%d\n", ins->recv_buffer.available.n,
+                                           ins->recv_buffer.available.s,
                                            ADDR_IP(ins->net.remote.addr),
                                            ADDR_PORT(ins->net.remote.addr));
+    return 0;
+}
+
+#define RECV_GROUP_NOTFOUND 1
+#define RECV_DUPLICATE      2
+#define RECV_AVAILABLE      4
+
+static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
+                       bool *completed)
+{
+    if (!rb || !received || !completed) return -1;
+    *completed = false;
+    received->internal.flags |= RECV_GROUP_NOTFOUND;
+    int map(struct list_s *l, void *item, void *ud) {
+        struct cache_s  *cnt  = (struct cache_s *)item;
+        struct packet_s *psrc = (struct packet_s *)ud;
+        if (!cnt || !psrc) return -1;
+        if (cnt->group == psrc->header.group &&
+            cnt->host  == psrc->internal.host &&
+            cnt->port  == psrc->internal.port) {
+            psrc->internal.flags &= ~RECV_GROUP_NOTFOUND;
+            // Same packet received more than once
+            int i;
+            for (i = 0; i < cnt->received.size; i++)
+                if (cnt->received.idx[i] == psrc->header.index) {
+                    psrc->internal.flags |= RECV_DUPLICATE;
+                    return 1;
+                }
+            cnt->received.idx = realloc(cnt->received.idx,
+                                        ++(cnt->received.size) * sizeof(int));
+            if (!cnt->received.idx) return -1;
+            cnt->received.idx[cnt->received.size - 1] = psrc->header.index;
+            if ((cnt->received.size + 1) == cnt->total) {
+                if (list.del(l, cnt) != 0) return -1;
+                psrc->internal.flags |= RECV_AVAILABLE;
+            }
+            return 1;
+        }
+        return 0;
+    }
+    if (list.map(&rb->cache, map, received) != 0) return -1;
+
+    if (received->internal.flags & RECV_DUPLICATE) return 0;
+
+    struct packet_s *p = malloc(sizeof(*p));
+    if (!p) return -1;
+    memcpy(p, received, sizeof(*p));
+    if (list.add(&rb->packets, p, packet.clean) != 0) return -1;
+
+    if (received->internal.flags & RECV_AVAILABLE ||
+        p->header.total == 1) {
+        struct available_s { int group; int host; unsigned short port;
+                             sn *dst; };
+        int available(struct list_s *l, void *item, void *ud) {
+            struct packet_s    *p   = item;
+            struct available_s *avs = ud;
+            if (p->header.group  == avs->group &&
+                p->internal.host == avs->host &&
+                p->internal.port == avs->port) {
+                if (avs->dst->n < p->header.sequence + p->header.length) {
+                    avs->dst->n = p->header.sequence + p->header.length;
+                    avs->dst->s = realloc(avs->dst->s, avs->dst->n);
+                    if (!avs->dst->s) return -1;
+                }
+                memcpy(avs->dst->s + p->header.sequence,
+                       p->buffer.payload, p->header.length);
+                if (list.del(l, p) != 0) return -1;
+            }
+            return 0;
+        }
+        struct available_s avs = { .group = p->header.group,
+                                   .host  = p->internal.host,
+                                   .port  = p->internal.port,
+                                   .dst   = &rb->available };
+        if (list.map(&rb->packets, available, &avs) != 0) return -1;
+        *completed = true;
+        return 0;
+    }
+
+    if (received->internal.flags & RECV_GROUP_NOTFOUND) {
+        struct cache_s *cs = malloc(sizeof(*cs));
+        if (!cs) return -1;
+        memset(cs, 0, sizeof(*cs));
+        cs->group = p->header.group;
+        cs->total = p->header.total;
+        cs->host  = p->internal.host;
+        cs->port  = p->internal.port;
+        if (list.add(&rb->cache, cs, NULL) != 0) return -1;
+    }
     return 0;
 }
 
@@ -100,8 +182,7 @@ static const struct { enum command_e cmd;
                       int (*reply)(struct instance_s*);
                     } world_map[] = {
     { COMMAND_NONE,                  NULL,          NULL },
-    { COMMAND_ACK_TRACKER,           ack,           NULL },
-    { COMMAND_ACK_PEER,              ack,           NULL },
+    { COMMAND_ACK,                   ack,           NULL },
     { COMMAND_TRACKER_ANNOUNCE_PEER, announce_peer, ack_reply },
     { COMMAND_PEER_ANNOUNCE_PEER,    announce_peer, ack_reply },
     { COMMAND_MESSAGE,               message,       ack_reply },
@@ -122,14 +203,23 @@ static int command_find(int *idx, enum command_e cmd)
 static int handle(struct instance_s *ins)
 {
     if (!ins) return -1;
+
     int idx;
     if (command_find(&idx, ins->received.header.command) != 0) return -1;
 
-    packet.dump(&ins->received);
+    bool completed;
+    if (packet_recv(&ins->recv_buffer,
+                    &ins->received, &completed) != 0) return -1;
+    if (world_map[idx].reply)
+        if (world_map[idx].reply(ins) != 0) return -1;
+    if (!completed) return 0;
+
     if (world_map[idx].exec)
         if (world_map[idx].exec(ins) != 0) return -1;
-    if (world_map[idx].reply)
-        return world_map[idx].reply(ins);
+
+    free(ins->recv_buffer.available.s);
+    ins->recv_buffer.available.s = NULL;
+    ins->recv_buffer.available.n = 0;
     return 0;
 }
 
