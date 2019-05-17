@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <resolv.h>
 #include <unistd.h>
+#include <syslog.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -40,8 +41,10 @@
 #include <data.h>
 #include <tracker.h>
 #include <peer.h>
+#include <task.h>
 #include <world.h>
 #include <payload.h>
 #include <cli.h>
+#include <os.h>
 
 #endif

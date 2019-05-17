@@ -10,6 +10,8 @@ static const struct { enum command_e cmd;
     { COMMAND_TRACKER_ANNOUNCE_PEER, announce_write_tracker, announce_size },
     { COMMAND_PEER_ANNOUNCE_PEER,    announce_write_peer,    announce_size },
     { COMMAND_MESSAGE,               message_write,          message_size },
+    { COMMAND_FILE,                  file_write,             file_size },
+    { COMMAND_FILE_SEND,             file_send_write,        file_send_size },
 };
 
 static int exec(struct instance_s *parent, enum command_e cmd,

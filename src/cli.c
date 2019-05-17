@@ -10,6 +10,39 @@ static int send_message(struct peer_s *p, char **argv, int argc)
     return payload.send((struct instance_s *)p, COMMAND_MESSAGE, host, port);
 }
 
+static int file(struct peer_s *p, char **argv, int argc)
+{
+    long int    host = strtol(argv[1], NULL, 16);
+    long int    port = strtol(argv[2], NULL, 10);
+    const char *file = argv[3];
+    char       *buffer;
+    sn_initz(fn, (char *)file);
+    int len = eioie_fread(&buffer, fn);
+    if (len <= 0) return -1;
+    p->send_buffer.type = BUFFER_FILE;
+    sn_setr(p->send_buffer.u.file.bin, buffer, len);
+    return payload.send((struct instance_s *)p, COMMAND_FILE, host, port);
+}
+
+static int send_file(struct peer_s *p, char **argv, int argc)
+{
+    long int    host = strtol(argv[1], NULL, 16);
+    long int    port = strtol(argv[2], NULL, 10);
+    const char *file = argv[3];
+    return task.init(p, file, strlen(file), host, port);
+    /*
+    char       *buffer;
+
+    sn_initz(fn, (char *)file);
+    int len = eioie_fread(&buffer, fn);
+    if (len <= 0) return -1;
+    p->send_buffer.type = BUFFER_FILE;
+    sn_setr(p->send_buffer.u.file.bin, buffer, len);
+    return payload.send((struct instance_s *)p, COMMAND_FILE, host, port);
+    */
+}
+
+
 static int peers_list(struct peer_s *p, char **argv, int argc)
 {
     int cb(struct list_s *l, void *uwp, void *ud) {
@@ -43,8 +76,10 @@ static const struct { const char *alias[8];
                       int         argc;
                       int         (*cb)(struct peer_s *p, char **argv, int argc);
                     } cmds[] = {
-    { { "p", "peers", "l", "list" }, 4, 0, peers_list },
-    { { "m", "msg" },                2, 3, send_message },
+    { { "p",  "peers", "l", "list" }, 4, 0, peers_list },
+    { { "m",  "msg" },                2, 3, send_message },
+    { { "f",  "file" },               2, 3, file },
+    { { "fs", "filesend" },           2, 3, send_file },
 };
 
 int cli(struct peer_s *p, char *line)

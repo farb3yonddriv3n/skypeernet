@@ -13,13 +13,17 @@ int receive(int sd, char *data, int len,
     // Invalidate only packet header
     memset(data, 0, sizeof(struct header_s));
     socklen_t bytes = recvfrom(sd, data, len, 0, (struct sockaddr *)addr, naddr);
+    syslog(LOG_DEBUG, "Received %d bytes from %x:%d",
+                      bytes, ADDR_IP((*addr)), ADDR_PORT((*addr)));
     if (bytes == -1) return -1;
     return 0;
 }
 
-static int nb_clean(void *nb)
+static int nb_clean(void *unb)
 {
     //free(nb);
+    struct nb_s *nb = (struct nb_s *)unb;
+    if (task.update(nb->peer) != 0) return -1;
     return 0;
 }
 
@@ -59,13 +63,16 @@ static int dispatch_item(struct list_s *l, struct net_ev_s *ev,
                            0,
                            (struct sockaddr *)&nb->remote.addr,
                            nb->remote.len);
-    printf("Sending packet %d of %ld bytes to %x:%d retry: %d\n",
-                                                     nb->idx, bytes,
-                                                     ADDR_IP(nb->remote.addr),
-                                                     ADDR_PORT(nb->remote.addr),
-                                                     nb->retry);
+    syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d retry: %d",
+                      nb->idx, nb->grp, bytes,
+                      ADDR_IP(nb->remote.addr),
+                      ADDR_PORT(nb->remote.addr),
+                      nb->retry);
     if (nb->status == NET_ONESHOT) return list.del(l, nb);
-    if (bytes <= 0) printf("Dispatch error: %s\n", strerror(errno));
+    if (bytes <= 0) {
+        syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
+        abort();
+    }
     nb->status = NET_ACK_WAITING;
     nb->write  = &ev->write;
     ev_timer_again(ev->loop, &nb->timer);

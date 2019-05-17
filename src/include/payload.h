@@ -23,4 +23,10 @@ int message_size(int *sz, void *userdata);
 int ack_write(struct data_s *d, void *userdata);
 int ack_size(int *sz, void *userdata);
 
+int file_write(struct data_s *d, void *userdata);
+int file_size(int *sz, void *userdata);
+
+int file_send_write(struct data_s *d, void *userdata);
+int file_send_size(int *sz, void *userdata);
+
 #endif

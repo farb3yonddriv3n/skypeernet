@@ -13,6 +13,7 @@ struct module_list_s {
     int (*del)(struct list_s *l, void *userdata);
     int (*map)(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
                void *userdata);
+    int (*size)(struct list_s *l, int *sz);
     int (*clean)(struct list_s *l);
 };
 

@@ -30,7 +30,7 @@ int eioie_fread(char **dst, sn fname)
         return -1;
     }
 
-    fseek(pfile , 0 , SEEK_END);
+    fseek(pfile, 0, SEEK_END);
     lsize = ftell(pfile);
     rewind(pfile);
 

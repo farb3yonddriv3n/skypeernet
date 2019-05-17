@@ -13,21 +13,13 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     struct peer_s *p = w->data;
     if (net.receive(p->net.sd, p->recv.data, sizeof(p->recv.data),
                     &p->net.remote.addr, &p->net.remote.len) != 0) return;
-    /*
-    socklen_t bytes = recvfrom(p->net.sd, p->recv.data, sizeof(p->recv.data), 0,
-                               (struct sockaddr *)&p->net.remote.addr,
-                               &p->net.remote.len);
-    if (bytes == -1) return;
-    */
     bool valid;
     if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid,
                         ADDR_IP(p->net.remote.addr),
                         ADDR_PORT(p->net.remote.addr),
                         &p->received) != 0) return;
     if (!valid) return;
-
-    packet.dump(&p->received);
-    world.handle((struct instance_s *)p);
+    if (world.handle((struct instance_s *)p) != 0) abort();
 }
 
 void rlhandler(char *line)
@@ -37,7 +29,8 @@ void rlhandler(char *line)
         if (*line != 0) {
             add_history(line);
         }
-        cli(&p, line);
+        if (cli(&p, line) != 0)
+            printf("Command %s failed\n", line);
         free(line);
     }
 }
@@ -64,7 +57,8 @@ static int init(struct peer_s *p)
     if (inet_aton(TRACKER_HOST, &p->net.remote.addr.sin_addr) == 0)
         return -1;
 
-    printf("Connected to %x:%d\n", ADDR_IP(p->net.remote.addr), ADDR_PORT(p->net.remote.addr));
+    syslog(LOG_DEBUG, "Tracker %x:%d",
+           ADDR_IP(p->net.remote.addr), ADDR_PORT(p->net.remote.addr));
     p->tracker.host = ADDR_IP(p->net.remote.addr);
     p->tracker.port = ADDR_PORT(p->net.remote.addr);
 
@@ -82,6 +76,7 @@ static int init(struct peer_s *p)
 
 int main()
 {
+    openlog("distfs:peer", LOG_PID|LOG_CONS, LOG_USER);
     if (init(&p) != 0) return -1;
     if (payload.send(&p, COMMAND_PEER_ANNOUNCE_PEER,
                      p.tracker.host,
@@ -90,5 +85,6 @@ int main()
     ev_io_start(p.ev.loop, &p.ev.read);
     ev_loop(p.ev.loop, 0);
     close(p.net.sd);
+    closelog();
     return 0;
 }

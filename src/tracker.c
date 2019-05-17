@@ -44,10 +44,12 @@ static int init(struct tracker_s *t)
 
 int main()
 {
+    openlog("distfs:tracker", LOG_PID|LOG_CONS, LOG_DAEMON);
     struct tracker_s t;
     if (init(&t) != 0) return -1;
     ev_io_start(t.ev.loop, &t.ev.read);
     ev_loop(t.ev.loop, 0);
     close(t.net.sd);
+    closelog();
     return 0;
 }

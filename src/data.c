@@ -99,7 +99,9 @@ static int data_send(struct data_s *d, struct instance_s *ins,
         packet.dump(&packets[i]);
         struct nb_s *nb = malloc(sizeof(*nb));
         if (!nb) return -1;
+        nb->peer = (struct peer_s *)ins;
         nb->idx = packets[i].header.index;
+        nb->grp = packets[i].header.group;
         nb->sd  = ins->net.sd;
         if (packet_set(&nb->buffer, &packets[i]) != 0) return -1;
         memcpy(&nb->remote.addr, &ins->net.remote.addr, sizeof(ins->net.remote.addr));

@@ -51,9 +51,9 @@ static int del(struct list_s *l, void *userdata)
             else l->head = li->next;
             if (li->next) li->next->prev = li->prev;
             else l->tail = li->prev;
+            l->size--;
             if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
             free(li);
-            l->size--;
             return 0;
         }
     }
@@ -89,10 +89,18 @@ static int clean(struct list_s *l)
     return 0;
 }
 
+static int size(struct list_s *l, int *sz)
+{
+    if (!l) return -1;
+    *sz = l->size;
+    return 0;
+}
+
 const struct module_list_s list = {
     .init  = init,
     .add   = add,
     .del   = del,
     .map   = map,
+    .size  = size,
     .clean = clean,
 };

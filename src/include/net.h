@@ -11,7 +11,9 @@ enum net_status_e {
 };
 
 struct nb_s {
+    struct peer_s *peer;
     int idx;
+    int grp;
     int sd;
     snb buffer;
     struct {

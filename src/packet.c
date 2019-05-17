@@ -113,10 +113,6 @@ static void dump(struct packet_s *p)
     printf("Total: %d\n",     p->header.total);
     printf("Length: %d\n",    p->header.length);
     printf("Command: %d\n",   p->header.command);
-    int i;
-    for (i = 0; i < p->header.length; i++) {
-        printf("%d:%x ", i, p->buffer.payload[i]);
-    }
     printf("Hash: %.*s\n", (int)sizeof(p->buffer.hash), p->buffer.hash);
 }
 

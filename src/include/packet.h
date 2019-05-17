@@ -3,6 +3,7 @@
 
 #define UDP_PACKET         534
 #define UDP_PACKET_PAYLOAD (UDP_PACKET - sizeof(struct header_s) - SHA256HEX)
+//#define UDP_PACKET_PAYLOAD 1
 
 enum command_e {
     COMMAND_NONE = 0,
@@ -10,6 +11,8 @@ enum command_e {
     COMMAND_TRACKER_ANNOUNCE_PEER,
     COMMAND_PEER_ANNOUNCE_PEER,
     COMMAND_MESSAGE,
+    COMMAND_FILE,
+    COMMAND_FILE_SEND,
 };
 
 struct header_s {
