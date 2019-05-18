@@ -68,6 +68,8 @@ static int init(struct peer_s *p)
     ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
+    ev_timer_init(&p->ev.send,    net.timeout, .0, 0.01);
+    p->ev.send.data = (void *)p;
     p->ev.stdinwatch.data = (void *)p;
     p->ev.read.data  = (void *)p;
     p->ev.write.data = (void *)p;

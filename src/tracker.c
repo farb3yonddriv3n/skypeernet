@@ -37,8 +37,11 @@ static int init(struct tracker_s *t)
     t->ev.loop = ev_default_loop(0);
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
+    ev_timer_init(&t->ev.send, net.timeout, .0, 0.01);
+    t->ev.send.data  = t;
     t->ev.read.data  = t;
     t->ev.write.data = t;
+    ev_timer_again(t->ev.loop, &t->ev.send);
     return 0;
 }
 

@@ -91,11 +91,11 @@ static int message(struct instance_s *ins)
 static int file(struct instance_s *ins)
 {
     ins->recv_buffer.file_size.received += ins->recv_buffer.available.n;
-    syslog(LOG_DEBUG, "File received from %x:%d, %ld/%ld\n",
-                      ADDR_IP(ins->net.remote.addr),
-                      ADDR_PORT(ins->net.remote.addr),
-                      ins->recv_buffer.file_size.received,
-                      ins->recv_buffer.file_size.total);
+    syslog(LOG_INFO, "File received from %x:%d, %ld/%ld",
+                     ADDR_IP(ins->net.remote.addr),
+                     ADDR_PORT(ins->net.remote.addr),
+                     ins->recv_buffer.file_size.received,
+                     ins->recv_buffer.file_size.total);
     char fname[128];
     snprintf(fname, sizeof(fname), "tmp/%d_%d.part", ins->received.header.group,
                                                      ins->received.header.index);
@@ -110,6 +110,10 @@ static int file_send(struct instance_s *ins)
     if (sn_read((void *)&ins->recv_buffer.file_size.total,
                  sizeof(ins->recv_buffer.file_size.total), &bf) != 0) return -1;
     ins->recv_buffer.file_size.received = 0;
+    syslog(LOG_INFO, "About to receive file of %ld bytes from %x:%d",
+                     ins->recv_buffer.file_size.total,
+                     ADDR_IP(ins->net.remote.addr),
+                     ADDR_PORT(ins->net.remote.addr));
     return 0;
 }
 

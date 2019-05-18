@@ -20,10 +20,9 @@ struct nb_s {
         struct sockaddr_in addr;
         socklen_t          len;
     } remote;
-    struct ev_timer   timer;
     struct ev_io     *write;
     enum net_status_e status;
-    int               retry;
+    int               attempt;
 };
 
 struct net_send_s {
@@ -61,6 +60,7 @@ struct net_ev_s {
     struct ev_io    read;
     struct ev_io    write;
     struct ev_io    stdinwatch;
+    struct ev_timer send;
 };
 
 struct module_net_s {

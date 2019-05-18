@@ -2,11 +2,6 @@
 
 #define MAX_RETRY 100
 
-struct cbdata_s {
-    struct net_ev_s *ev;
-    int              idx;
-};
-
 int receive(int sd, char *data, int len,
              struct sockaddr_in *addr, socklen_t *naddr)
 {
@@ -27,116 +22,67 @@ static int nb_clean(void *unb)
     return 0;
 }
 
-static int ack_item(struct list_s *l, struct net_ev_s *ev,
-                    struct nb_s *nb, int idx)
-{
-    ev_timer_stop(ev->loop, &nb->timer);
-    return list.del(l, nb);
-}
-
-static int ack_cb(struct list_s *l, void *unb,
-                  void *dcb)
-{
-    struct nb_s      *nb = (struct nb_s *)unb;
-    struct cbdata_s *dsp = dcb;
-    if (dsp->idx == nb->idx) {
-        if (ack_item(l, dsp->ev, nb, dsp->idx) != 0) return -1;
-        return 1;
-    }
-    return 0;
-}
-
 static int ack(struct net_ev_s *ev, struct net_send_s *ns, int idx)
 {
+    int cb(struct list_s *l, void *unb, void *dcb)
+    {
+        struct nb_s *nb  = (struct nb_s *)unb;
+        int          idx = *(int *)dcb;
+        if (idx == nb->idx) {
+            if (list.del(l, nb) != 0) return -1;
+            return 1;
+        }
+        return 0;
+    }
     if (!ev || !ns) return -1;
-    struct cbdata_s dsp = { .ev = ev, .idx = idx };
-    if (list.map(&ns->nbl, ack_cb, &dsp) != 0) return -1;
-    return 0;
-}
-
-static int dispatch_item(struct list_s *l, struct net_ev_s *ev,
-                         struct nb_s *nb, int idx)
-{
-    ssize_t bytes = sendto(nb->sd,
-                           nb->buffer.s,
-                           nb->buffer.offset,
-                           0,
-                           (struct sockaddr *)&nb->remote.addr,
-                           nb->remote.len);
-    syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d retry: %d",
-                      nb->idx, nb->grp, bytes,
-                      ADDR_IP(nb->remote.addr),
-                      ADDR_PORT(nb->remote.addr),
-                      nb->retry);
-    if (nb->status == NET_ONESHOT) return list.del(l, nb);
-    if (bytes <= 0) {
-        syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
-        abort();
-    }
-    nb->status = NET_ACK_WAITING;
-    nb->write  = &ev->write;
-    ev_timer_again(ev->loop, &nb->timer);
-    return 0;
-}
-
-static int dispatch_idx_cb(struct list_s *l, void *unb,
-                           void *dcb)
-{
-    struct nb_s      *nb = (struct nb_s *)unb;
-    struct cbdata_s *dsp = dcb;
-    if (dsp->idx == nb->idx) {
-        if (dispatch_item(l, dsp->ev, nb, dsp->idx) != 0) return -1;
-        return 1;
-    }
-    return 0;
-}
-
-static int dispatch_idx(struct list_s *l, struct net_ev_s *ev,
-                        int idx)
-{
-    struct cbdata_s dsp = { .ev = ev, .idx = idx };
-    if (list.map(l, dispatch_idx_cb, &dsp) != 0) return -1;
-    return 0;
-}
-
-static int dispatch_cb(struct list_s *l, void *unb, void *uev)
-{
-    struct nb_s     *nb = (struct nb_s *)unb;
-    struct net_ev_s *ev = (struct net_ev_s *)uev;
-    if (nb->status != NET_INIT && nb->status != NET_ONESHOT) return 0;
-    if (dispatch_idx(l, ev, nb->idx) != 0) return -1;
+    if (list.map(&ns->nbl, cb, &idx) != 0) return -1;
     return 0;
 }
 
 static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
 {
-    ev_io_stop(ev->loop, &ev->write);
-    if (list.map(&ns->nbl, dispatch_cb, ev) != 0) return -1;
-    return 0;
-}
+    int cb(struct list_s *l, void *unb, void *uev)
+    {
+        int item(struct list_s *l, struct net_ev_s *ev,
+                 struct nb_s *nb, int idx)
+        {
+            ssize_t bytes = sendto(nb->sd,
+                                   nb->buffer.s,
+                                   nb->buffer.offset,
+                                   0,
+                                   (struct sockaddr *)&nb->remote.addr,
+                                   nb->remote.len);
+            syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d",
+                              nb->idx, nb->grp, bytes,
+                              ADDR_IP(nb->remote.addr),
+                              ADDR_PORT(nb->remote.addr),
+                              nb->attempt);
+            if (nb->status == NET_ONESHOT) return list.del(l, nb);
+            if (bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
+            nb->status = NET_ACK_WAITING;
+            nb->write  = &ev->write;
+            return 0;
+        }
 
-static int timeout_cb(struct list_s *l, void *unb,
-                      void *dcb)
-{
-    struct nb_s      *nb = (struct nb_s *)unb;
-    struct cbdata_s *dsp = dcb;
-    if (dsp->idx == nb->idx) {
-        nb->status = NET_INIT;
-        if (++nb->retry == MAX_RETRY)
-            list.del(l, nb);
-        return 1;
+        struct nb_s     *nb = (struct nb_s *)unb;
+        struct net_ev_s *ev = (struct net_ev_s *)uev;
+        if (item(l, ev, nb, nb->idx) != 0) return -1;
+        nb->attempt++;
+        return 0;
     }
+    ev_io_stop(ev->loop, &ev->write);
+    ev_timer_stop(ev->loop, &ev->send);
+    if (list.map(&ns->nbl, cb, ev) != 0) return -1;
+    ev_timer_again(ev->loop, &ev->send);
     return 0;
 }
 
 void timeout(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
-    struct net_send_timer_s *nst = (struct net_send_timer_s *)timer->data;
-    if (!nst) return;
-    struct cbdata_s dsp = { .ev = nst->nev, .idx = nst->nb->idx };
-    if (list.map(nst->nbl, timeout_cb, &dsp) != 0) return;
-    ev_timer_stop(loop, &nst->nb->timer);
-    ev_io_start(loop, nst->nb->write);
+    struct peer_s *p = (struct peer_s *)timer->data;
+    int sz;
+    if (list.size(&p->send.nbl, &sz) != 0) return;
+    if (sz > 0) ev_io_start(loop, &p->ev.write);
 }
 
 const struct module_net_s net = {

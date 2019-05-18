@@ -96,7 +96,6 @@ static int data_send(struct data_s *d, struct instance_s *ins,
                               &npackets, &ins->send_buffer) != 0) return -1;
     int i;
     for (i = 0; i < npackets; i++) {
-        packet.dump(&packets[i]);
         struct nb_s *nb = malloc(sizeof(*nb));
         if (!nb) return -1;
         nb->peer = (struct peer_s *)ins;
@@ -108,17 +107,12 @@ static int data_send(struct data_s *d, struct instance_s *ins,
         nb->remote.len = ins->net.remote.len;
         ADDR_IP(nb->remote.addr)   = host;
         ADDR_PORT(nb->remote.addr) = port;
-        ev_timer_init(&nb->timer, net.timeout, .0, 3.0);
-        struct net_send_timer_s *nst = malloc(sizeof(*nst));
-        nst->nb  = nb;
-        nst->nbl = &ins->send.nbl;
-        nst->nev = &ins->ev;
-        nb->timer.data = nst;
         nb->status = (packets[i].header.command == COMMAND_ACK)
                      ? NET_ONESHOT : NET_INIT;
-        nb->retry  = 0;
+        nb->attempt = 0;
         list.add(&ins->send.nbl, nb, net.nb.clean);
     }
+    ev_io_start(ins->ev.loop, &ins->ev.write);
     return 0;
 }
 

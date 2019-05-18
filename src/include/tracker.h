@@ -1,8 +1,8 @@
 #ifndef TRACKER_H_
 #define TRACKER_H_
 
-#define TRACKER_PORT        5775
-#define TRACKER_HOST        "192.168.88.14"
+#define TRACKER_PORT 5775
+#define TRACKER_HOST "192.168.88.14"
 
 enum instance_e {
     INSTANCE_TRACKER,
