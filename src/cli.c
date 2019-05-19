@@ -7,7 +7,7 @@ static int send_message(struct peer_s *p, char **argv, int argc)
     const char *message = argv[3];
     p->send_buffer.type = BUFFER_MESSAGE;
     p->send_buffer.u.message.str = message;
-    return payload.send((struct instance_s *)p, COMMAND_MESSAGE, host, port);
+    return payload.send((struct peer_s *)p, COMMAND_MESSAGE, host, port);
 }
 
 static int file(struct peer_s *p, char **argv, int argc)
@@ -21,7 +21,7 @@ static int file(struct peer_s *p, char **argv, int argc)
     if (len <= 0) return -1;
     p->send_buffer.type = BUFFER_FILE;
     sn_setr(p->send_buffer.u.file.bin, buffer, len);
-    return payload.send((struct instance_s *)p, COMMAND_FILE, host, port);
+    return payload.send((struct peer_s *)p, COMMAND_FILE, host, port);
 }
 
 static int send_file(struct peer_s *p, char **argv, int argc)
@@ -78,12 +78,17 @@ int cli(struct peer_s *p, char *line)
     if (tokenize(line, &argv, &argc) != 0) return -1;
     if (argc < 1) return 0;
     int i, j;
-    for (i = 0; i < argc; i++) {
+    bool found = false;
+    for (i = 0; i < argc && found == false; i++) {
         for (j = 0; j < cmds[i].nalias; j++) {
             if (strcmp(cmds[i].alias[j], argv[0]) == 0 &&
-                cmds[i].argc == (argc - 1))
-                return cmds[i].cb(p, argv, argc);
+                cmds[i].argc == (argc - 1)) {
+                if (cmds[i].cb(p, argv, argc) != 0) return -1;
+                found = true;
+                break;
+            }
         }
     }
-    return -1;
+    if (argv) free(argv);
+    return 0;
 }

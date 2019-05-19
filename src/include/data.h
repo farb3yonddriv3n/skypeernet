@@ -9,15 +9,12 @@ struct data_s {
     sn             payload;
 };
 
-struct instance_s;
-struct tracker_s;
-
 struct module_data_s {
     int (*init)(struct data_s *d, enum command_e cmd,
                 int (*callback)(struct data_s*, void*),
                 int (*callback_size)(int*, void*),
                 void *userdata);
-    int (*send)(struct data_s *d, struct instance_s *ins,
+    int (*send)(struct data_s *d, struct peer_s *ins,
                 int host, unsigned short port);
     int (*get)(struct packet_s *p, char *buffer, int nbuffer);
     int (*size)(struct data_s *d, size_t *sz);

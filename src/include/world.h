@@ -8,7 +8,7 @@ struct world_peer_s {
 };
 
 struct module_world_s {
-    int (*handle)(struct instance_s *ins);
+    int (*handle)(struct peer_s *ins);
 };
 
 extern const struct module_world_s world;

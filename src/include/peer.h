@@ -1,6 +1,58 @@
 #ifndef PEER_H_
 #define PEER_H_
 
+#define TRACKER_PORT 5775
+#define TRACKER_HOST "192.168.88.14"
+
+enum instance_e {
+    INSTANCE_TRACKER,
+    INSTANCE_PEER,
+};
+
+enum buffer_e {
+    BUFFER_MESSAGE,
+    BUFFER_FILE,
+    BUFFER_FILE_SEND,
+};
+
+struct send_buffer_s {
+    unsigned int pidx;
+    unsigned int gidx;
+    enum buffer_e type;
+    union {
+        struct {
+            const char *str;
+        } message;
+        struct {
+            sn bin;
+        } file;
+        struct {
+            size_t size;
+        } file_send;
+    } u;
+};
+
+struct cache_s {
+    int            group;
+    int            total;
+    int            host;
+    unsigned short port;
+    struct {
+        int *idx;
+        int  size;
+    } received;
+};
+
+struct recv_buffer_s {
+    struct list_s packets;
+    struct list_s cache;
+    sn available;
+    struct {
+        size_t received;
+        size_t total;
+    } file_size;
+};
+
 struct peer_s {
     enum instance_e    type;
     struct net_s       net;
@@ -17,5 +69,15 @@ struct peer_s {
         unsigned short port;
     } tracker;
 };
+
+struct module_peer_s {
+    struct {
+        int (*mpeer)(struct peer_s *p);
+        int (*mtracker)(struct peer_s *p);
+    } init;
+    int (*clean)(struct peer_s *p);
+};
+
+extern const struct module_peer_s peer;
 
 #endif

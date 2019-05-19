@@ -14,7 +14,7 @@ static const struct { enum command_e cmd;
     { COMMAND_FILE_SEND,             file_send_write,        file_send_size },
 };
 
-static int exec(struct instance_s *parent, enum command_e cmd,
+static int exec(struct peer_s *parent, enum command_e cmd,
                 int host, unsigned short port,
                 int (*cb_write)(struct data_s*, void*),
                 int (*cb_size)(int*, void*))
@@ -39,19 +39,6 @@ static int payload_send(void *parent, enum command_e cmd,
     return -1;
 }
 
-/*
-static int send_peer(struct peer_s *p, enum command_e cmd,
-                     int host, unsigned short port)
-{
-    return payload_send(p, cmd, host, port, &p->net, &p->send, &p->ev);
-}
-
-static int send_tracker(struct tracker_s *t, enum command_e cmd,
-                        int host, unsigned short port)
-{
-    return payload_send(t, cmd, host, port, &t->net, &t->send, &t->ev);
-}
-*/
 const struct module_payload_s payload = {
     .send = payload_send,
 };

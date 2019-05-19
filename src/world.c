@@ -1,13 +1,13 @@
 #include <common.h>
 
-static int ack_reply(struct instance_s *ins)
+static int ack_reply(struct peer_s *ins)
 {
     return payload.send((struct peer_s *)ins, COMMAND_ACK,
                         ADDR_IP(ins->net.remote.addr),
                         ADDR_PORT(ins->net.remote.addr));
 }
 
-static int ack(struct instance_s *ins)
+static int ack(struct peer_s *ins)
 {
     int idx;
     sn_initr(bf, ins->recv_buffer.available.s, ins->recv_buffer.available.n);
@@ -17,11 +17,11 @@ static int ack(struct instance_s *ins)
 
 static int wp_clean(void *wp)
 {
-    free(wp);
+    if (wp) free(wp);
     return 0;
 }
 
-static int peer_add(struct instance_s *ins, struct world_peer_s *wp)
+static int peer_add(struct peer_s *ins, struct world_peer_s *wp)
 {
     if (!ins || !wp) return -1;
     wp->found = false;
@@ -36,7 +36,7 @@ static int peer_add(struct instance_s *ins, struct world_peer_s *wp)
         return 0;
     }
     ifr(list.map(&ins->peers, find, wp));
-    if (wp->found == true) return 0;
+    if (wp->found == true) return wp_clean(wp);
     ifr(list.add(&ins->peers, wp, wp_clean));
     if (ins->type == INSTANCE_PEER) return 0;
 
@@ -49,7 +49,7 @@ static int peer_add(struct instance_s *ins, struct world_peer_s *wp)
         }
         int item(int dst, unsigned short dstport,
                  int src, unsigned short srcport) {
-            struct tracker_s *t = (struct tracker_s *)ins;
+            struct peer_s *t = (struct peer_s *)ins;
             ADDR_IP(t->net.remote.addr)   = dst;
             ADDR_PORT(t->net.remote.addr) = dstport;
             if (payload.send(t, COMMAND_TRACKER_ANNOUNCE_PEER,
@@ -64,7 +64,7 @@ static int peer_add(struct instance_s *ins, struct world_peer_s *wp)
     return 0;
 }
 
-static int announce_peer(struct instance_s *ins)
+static int announce_peer(struct peer_s *ins)
 {
     struct world_peer_s *wp = malloc(sizeof(*wp));
     if (!wp) return -1;
@@ -79,7 +79,7 @@ static int announce_peer(struct instance_s *ins)
     return peer_add(ins, wp);
 }
 
-static int message(struct instance_s *ins)
+static int message(struct peer_s *ins)
 {
     printf("Message: [%.*s] from %x:%d\n", ins->recv_buffer.available.n,
                                            ins->recv_buffer.available.s,
@@ -88,7 +88,7 @@ static int message(struct instance_s *ins)
     return 0;
 }
 
-static int file(struct instance_s *ins)
+static int file(struct peer_s *ins)
 {
     ins->recv_buffer.file_size.received += ins->recv_buffer.available.n;
     syslog(LOG_INFO, "File received from %x:%d, %ld/%ld",
@@ -104,7 +104,7 @@ static int file(struct instance_s *ins)
     return 0;
 }
 
-static int file_send(struct instance_s *ins)
+static int file_send(struct peer_s *ins)
 {
     sn_initr(bf, ins->recv_buffer.available.s, ins->recv_buffer.available.n);
     if (sn_read((void *)&ins->recv_buffer.file_size.total,
@@ -120,6 +120,16 @@ static int file_send(struct instance_s *ins)
 #define RECV_GROUP_NOTFOUND 1
 #define RECV_DUPLICATE      2
 #define RECV_AVAILABLE      4
+
+static int cache_clean(void *uc)
+{
+    struct cache_s *c = (struct cache_s *)uc;
+    if (c) {
+        if (c->received.idx) free(c->received.idx);
+        free(c);
+    }
+    return 0;
+}
 
 static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
                        bool *completed)
@@ -201,14 +211,14 @@ static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
         cs->total = p->header.total;
         cs->host  = p->internal.host;
         cs->port  = p->internal.port;
-        if (list.add(&rb->cache, cs, NULL) != 0) return -1;
+        if (list.add(&rb->cache, cs, cache_clean) != 0) return -1;
     }
     return 0;
 }
 
 static const struct { enum command_e cmd;
-                      int (*exec)(struct instance_s*);
-                      int (*reply)(struct instance_s*);
+                      int (*exec)(struct peer_s*);
+                      int (*reply)(struct peer_s*);
                     } world_map[] = {
     { COMMAND_NONE,                  NULL,          NULL },
     { COMMAND_ACK,                   ack,           NULL },
@@ -231,7 +241,7 @@ static int command_find(int *idx, enum command_e cmd)
     return -1;
 }
 
-static int handle(struct instance_s *ins)
+static int handle(struct peer_s *ins)
 {
     if (!ins) return -1;
 

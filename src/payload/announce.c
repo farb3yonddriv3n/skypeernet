@@ -11,7 +11,7 @@ int announce_write_peer(struct data_s *d, void *userdata)
 
 int announce_write_tracker(struct data_s *d, void *userdata)
 {
-    struct tracker_s *t = (struct tracker_s *)userdata;
+    struct peer_s *t = (struct peer_s *)userdata;
     if (!t || !d) return -1;
     if (data.write.integer(d, ADDR_IP(t->net.remote.addr)) != 0) return -1;
     if (data.write.shortint(d, ADDR_PORT(t->net.remote.addr))       != 0) return -1;

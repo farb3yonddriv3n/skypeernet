@@ -21,6 +21,7 @@ static int resume(struct peer_s *p)
             if (list.del(l, t) != 0) return -1;
         if (payload.send(p, COMMAND_FILE,
                          host, port) != 0) return -1;
+        if (buffer) free(buffer);
         return 1;
     }
     if (!p) return -1;

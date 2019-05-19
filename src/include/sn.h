@@ -68,9 +68,8 @@
  * See sn_bytes_append(), sn_bytes_delete()
  */
 #define sn_bytes_new(m_var, m_size)\
-    sn m_var = { .s = malloc(m_size), .n = m_size, .offset = 0 };\
-    if (!m_var.s) return -1;
-
+    sn m_var;\
+    sn_bytes_init_new(m_var, m_size);
 /*
  * Allocate m_size bytes from heap
  *
@@ -78,9 +77,9 @@
  */
 #define sn_bytes_init_new(m_var, m_size)\
     m_var.s = malloc(m_size);\
+    if (!m_var.s) return -1;\
     m_var.n = m_size;\
-    m_var.offset = 0;\
-    if (!m_var.s) return -1;
+    m_var.offset = 0;
 
 /*
  * Append m_src string to m_var string
@@ -100,7 +99,10 @@
  *
  * See sn_bytes_new(), sn_bytes_append()
  */
-#define sn_bytes_delete(m_var) free(m_var.s)
+#define sn_bytes_delete(m_var)\
+    if (m_var.s) free(m_var.s);\
+    m_var.s = NULL;\
+    m_var.n = m_var.offset = 0;
 
 /*
  * Copy string m_src to buffer of chars m_var with size m_size
@@ -191,7 +193,7 @@
     if (dst.n > 0) {\
         if (dst.s) free(dst.s);\
         dst.s = NULL;\
-        dst.n = 0;\
+        dst.n = dst.offset = 0;\
     }
 
 /**

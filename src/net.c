@@ -16,9 +16,10 @@ int receive(int sd, char *data, int len,
 
 static int nb_clean(void *unb)
 {
-    //free(nb);
+    if (!unb) return -1;
     struct nb_s *nb = (struct nb_s *)unb;
     if (task.update(nb->peer) != 0) return -1;
+    free(nb);
     return 0;
 }
 
@@ -66,8 +67,8 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
 
         struct nb_s     *nb = (struct nb_s *)unb;
         struct net_ev_s *ev = (struct net_ev_s *)uev;
+        if (nb->attempt++ > 50) return list.del(l, nb);
         if (item(l, ev, nb, nb->idx) != 0) return -1;
-        nb->attempt++;
         return 0;
     }
     ev_io_stop(ev->loop, &ev->write);

@@ -86,7 +86,7 @@ static int packet_get(struct packet_s *p, char *buffer, int nbuffer)
     return 0;
 }
 
-static int data_send(struct data_s *d, struct instance_s *ins,
+static int data_send(struct data_s *d, struct peer_s *ins,
                      int host, unsigned short port)
 {
     if (!d || !ins) return -1;
@@ -94,6 +94,7 @@ static int data_send(struct data_s *d, struct instance_s *ins,
     int npackets;
     if (packet.serialize.init(d->command, d->payload.s, d->payload.n, &packets,
                               &npackets, &ins->send_buffer) != 0) return -1;
+    sn_bytes_delete(d->payload);
     int i;
     for (i = 0; i < npackets; i++) {
         struct nb_s *nb = malloc(sizeof(*nb));
@@ -112,6 +113,7 @@ static int data_send(struct data_s *d, struct instance_s *ins,
         nb->attempt = 0;
         list.add(&ins->send.nbl, nb, net.nb.clean);
     }
+    if (packets) free(packets);
     ev_io_start(ins->ev.loop, &ins->ev.write);
     return 0;
 }

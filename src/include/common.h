@@ -15,6 +15,7 @@
 #include <resolv.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -39,7 +40,6 @@
 #include <packet.h>
 #include <net.h>
 #include <data.h>
-#include <tracker.h>
 #include <peer.h>
 #include <task.h>
 #include <world.h>
