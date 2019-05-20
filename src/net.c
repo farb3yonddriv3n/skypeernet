@@ -40,6 +40,20 @@ static int ack(struct net_ev_s *ev, struct net_send_s *ns, int idx)
     return 0;
 }
 
+static int maxattempts(struct list_s *l, struct nb_s *nb, bool *giveup)
+{
+    if (!l || !nb || !giveup) return -1;
+    *giveup = false;
+    if (nb->attempt++ > MAX_RETRY) {
+        ifr(world.peer.del(nb->peer,
+                           ADDR_IP(nb->remote.addr),
+                           ADDR_PORT(nb->remote.addr)));
+        *giveup = true;
+        return list.del(l, nb);
+    }
+    return 0;
+}
+
 static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
 {
     int cb(struct list_s *l, void *unb, void *uev)
@@ -67,7 +81,9 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
 
         struct nb_s     *nb = (struct nb_s *)unb;
         struct net_ev_s *ev = (struct net_ev_s *)uev;
-        if (nb->attempt++ > 50) return list.del(l, nb);
+        bool giveup;
+        ifr(maxattempts(l, nb, &giveup));
+        if (giveup) return 0;
         if (item(l, ev, nb, nb->idx) != 0) return -1;
         return 0;
     }

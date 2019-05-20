@@ -93,7 +93,7 @@ static int validate(char *buffer, size_t nbuffer, bool *valid,
     if (memcmp(md, p->buffer.hash, SHA256HEX) != 0) return 0;
     p->internal.host  = host;
     p->internal.port  = port;
-    p->internal.flags = 0;
+    //p->internal.flags = 0;
     *valid = true;
     return 0;
 }

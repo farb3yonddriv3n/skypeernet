@@ -1,6 +1,6 @@
 #include <common.h>
 
-#define MAX_TASK_BUFFER (1024 * 512) // 512kB
+#define MAX_TASK_BUFFER (512 * 1024) // 512kB
 
 static int resume(struct peer_s *p)
 {

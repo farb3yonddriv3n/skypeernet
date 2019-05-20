@@ -2,7 +2,7 @@
 #define PEER_H_
 
 #define TRACKER_PORT 5775
-#define TRACKER_HOST "192.168.88.14"
+#define TRACKER_HOST "192.168.88.12"
 
 enum instance_e {
     INSTANCE_TRACKER,
@@ -34,23 +34,26 @@ struct send_buffer_s {
 
 struct cache_s {
     int            group;
-    int            total;
     int            host;
     unsigned short port;
     struct {
-        int *idx;
-        int  size;
-    } received;
-};
-
-struct recv_buffer_s {
-    struct list_s packets;
-    struct list_s cache;
-    sn available;
+        int           total;
+        struct list_s all;
+        struct {
+            int *idx;
+            int  size;
+        } received;
+    } packets;
     struct {
         size_t received;
         size_t total;
     } file_size;
+    sn data;
+};
+
+struct recv_buffer_s {
+    struct list_s   cache;
+    struct cache_s *available;
 };
 
 struct peer_s {

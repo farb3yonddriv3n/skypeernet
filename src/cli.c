@@ -36,7 +36,7 @@ static int peers_list(struct peer_s *p, char **argv, int argc)
 {
     int cb(struct list_s *l, void *uwp, void *ud) {
         struct world_peer_s *wp = (struct world_peer_s *)uwp;
-        printf("Host:Port %x:%d\n", wp->host, wp->port);
+        printf("Peer:Port %x:%d\n", wp->host, wp->port);
         return 0;
     }
     printf("List:\n");

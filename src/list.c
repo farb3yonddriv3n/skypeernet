@@ -63,7 +63,7 @@ static int del(struct list_s *l, void *userdata)
 static int map(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
                void *userdata)
 {
-    if (!l) return -1;
+    if (!l || !cb) return -1;
     struct list_internal_s *li, *op;
     for (li = l->head; li != NULL; ) {
         op = li;
@@ -91,7 +91,7 @@ static int clean(struct list_s *l)
 
 static int size(struct list_s *l, int *sz)
 {
-    if (!l) return -1;
+    if (!l || !sz) return -1;
     *sz = l->size;
     return 0;
 }

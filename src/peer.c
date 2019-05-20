@@ -99,12 +99,15 @@ static int init_tracker(struct peer_s *t)
     if (bind(t->net.sd, (struct sockaddr *)&t->net.self.addr,
              sizeof(t->net.self.addr)) != 0) return -1;
     t->ev.loop = ev_default_loop(0);
+    ev_io_init(&t->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
     ev_timer_init(&t->ev.send, net.timeout, .0, 0.1);
+    t->ev.stdinwatch.data = t;
     t->ev.send.data  = t;
     t->ev.read.data  = t;
     t->ev.write.data = t;
+    rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
     ev_timer_again(t->ev.loop, &t->ev.send);
     return 0;
 }
@@ -115,10 +118,12 @@ static int clean(struct peer_s *p)
     ev_io_stop(p->ev.loop, &p->ev.write);
     ev_io_stop(p->ev.loop, &p->ev.stdinwatch);
     ev_timer_stop(p->ev.loop, &p->ev.send);
+    /*
     list.clean(&p->peers);
     list.clean(&p->recv_buffer.packets);
     list.clean(&p->recv_buffer.cache);
     list.clean(&p->task);
+    */
     return 0;
 }
 

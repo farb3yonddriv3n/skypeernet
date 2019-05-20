@@ -3,6 +3,7 @@
 
 #define UDP_PACKET         534
 #define UDP_PACKET_PAYLOAD (UDP_PACKET - sizeof(struct header_s) - SHA256HEX)
+//#define UDP_PACKET_PAYLOAD 1
 
 enum command_e {
     COMMAND_NONE = 0,
@@ -27,7 +28,6 @@ struct header_s {
 struct packet_internal_s {
     int            host;
     unsigned short port;
-    unsigned int   flags;
 };
 
 struct packet_s {
