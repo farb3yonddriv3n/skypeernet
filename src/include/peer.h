@@ -51,9 +51,17 @@ struct cache_s {
     sn data;
 };
 
+struct seal_s {
+    int           *group;
+    int            size;
+    int            host;
+    unsigned short port;
+};
+
 struct recv_buffer_s {
     struct list_s   cache;
     struct cache_s *available;
+    struct list_s   sealed;
 };
 
 struct peer_s {

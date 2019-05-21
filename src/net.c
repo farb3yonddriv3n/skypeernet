@@ -1,15 +1,13 @@
 #include <common.h>
 
-#define MAX_RETRY 100
-
 int receive(int sd, char *data, int len,
              struct sockaddr_in *addr, socklen_t *naddr)
 {
     // Invalidate only packet header
     memset(data, 0, sizeof(struct header_s));
     socklen_t bytes = recvfrom(sd, data, len, 0, (struct sockaddr *)addr, naddr);
-    syslog(LOG_DEBUG, "Received %d bytes from %x:%d",
-                      bytes, ADDR_IP((*addr)), ADDR_PORT((*addr)));
+    //syslog(LOG_DEBUG, "Received %d bytes from %x:%d",
+    //                  bytes, ADDR_IP((*addr)), ADDR_PORT((*addr)));
     if (bytes == -1) return -1;
     return 0;
 }
@@ -67,11 +65,13 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
                                    0,
                                    (struct sockaddr *)&nb->remote.addr,
                                    nb->remote.len);
+            /*
             syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d",
                               nb->idx, nb->grp, bytes,
                               ADDR_IP(nb->remote.addr),
                               ADDR_PORT(nb->remote.addr),
                               nb->attempt);
+                              */
             if (nb->status == NET_ONESHOT) return list.del(l, nb);
             if (bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
             nb->status = NET_ACK_WAITING;

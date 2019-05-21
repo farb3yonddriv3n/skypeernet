@@ -135,20 +135,95 @@ static int file_send(struct peer_s *ins)
 
 static int cache_clean(void *uc)
 {
-    /*
     struct cache_s *c = (struct cache_s *)uc;
     if (c) {
-        if (c->received.idx) free(c->received.idx);
+        if (c->packets.received.idx) free(c->packets.received.idx);
+        ifr(list.clean(&c->packets.all));
+        sn_free(c->data);
         free(c);
     }
-    */
     return 0;
 }
 
-static int packet_recv_cache(struct cache_s *c, struct packet_s *received,
-                             struct cache_s **available)
+static int seal_clean(void *us)
+{
+    struct seal_s *s = (struct seal_s *)us;
+    if (!s) return -1;
+    if (s->group) free(s->group);
+    free(s);
+    return 0;
+}
+
+struct seal_find_s {
+    int            host;
+    unsigned short port;
+    struct seal_s *found;
+};
+
+static int seal_find(struct list_s *lst, void *us, void *ud) {
+    struct seal_s      *s  = (struct seal_s *)us;
+    struct seal_find_s *sf = (struct seal_find_s *)ud;
+    if (s->host == sf->host &&
+        s->port == sf->port) {
+        sf->found = s;
+        return 1;
+    }
+    return 0;
+}
+
+static int seal_add(struct list_s *l, struct packet_s *p)
+{
+    if (!l || !p) return -1;
+    struct seal_find_s sf = { .host  = p->internal.host,
+                              .port  = p->internal.port,
+                              .found = NULL };
+    ifr(list.map(l, seal_find, &sf));
+    if (sf.found) {
+        sf.found->group = realloc(sf.found->group,
+                                  ++(sf.found->size) * sizeof(int));
+        if (!sf.found->group) return -1;
+        sf.found->group[sf.found->size - 1] = p->header.group;
+    } else {
+        struct seal_s *s = malloc(sizeof(*s));
+        if (!s) return -1;
+        s->size  = 1;
+        s->group = malloc(s->size * sizeof(int));
+        if (!s->group) return -1;
+        s->group[s->size - 1] = p->header.group;
+        s->host               = p->internal.host;
+        s->port               = p->internal.port;
+        ifr(list.add(l, s, seal_clean));
+    }
+    return 0;
+}
+
+static int seal_check(struct list_s *l, struct packet_s *p,
+                      bool *sealed)
+{
+    if (!l || !p || !sealed) return -1;
+    *sealed = false;
+    struct seal_find_s sf = { .host  = p->internal.host,
+                              .port  = p->internal.port,
+                              .found = NULL };
+    ifr(list.map(l, seal_find, &sf));
+    if (!sf.found) return 0;
+    int i;
+    for (i = 0; i < sf.found->size; i++) {
+        if (sf.found->group[i] == p->header.group) {
+            *sealed = true;
+            break;
+        }
+    }
+    return 0;
+}
+
+static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
+                             struct packet_s *received, struct cache_s **available)
 {
     if (!c || !received || !available) return -1;
+    bool sealed;
+    ifr(seal_check(&rb->sealed, received, &sealed));
+    if (sealed) return 0;
     int i;
     for (i = 0; i < c->packets.received.size; i++)
         if (c->packets.received.idx[i] == received->header.index)
@@ -178,6 +253,7 @@ static int packet_recv_cache(struct cache_s *c, struct packet_s *received,
     if (list.map(&c->packets.all, avcb,
                  &c->data) != 0) return -1;
     *available = c;
+    ifr(seal_add(&rb->sealed, received));
     return 0;
 }
 
@@ -216,7 +292,7 @@ static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
         cf.cache->port  = received->internal.port;
         if (list.add(&rb->cache, cf.cache, cache_clean) != 0) return -1;
     }
-    return packet_recv_cache(cf.cache, received, available);
+    return packet_recv_cache(rb, cf.cache, received, available);
 }
 
 static const struct { enum command_e cmd;

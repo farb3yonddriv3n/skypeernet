@@ -77,7 +77,7 @@ static int init_peer(struct peer_s *p)
     ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
-    ev_timer_init(&p->ev.send,    net.timeout, .0, 0.1);
+    ev_timer_init(&p->ev.send,    net.timeout, .0, PEER_SEND_TIMEOUT);
     p->ev.send.data = (void *)p;
     p->ev.stdinwatch.data = (void *)p;
     p->ev.read.data  = (void *)p;
@@ -102,7 +102,7 @@ static int init_tracker(struct peer_s *t)
     ev_io_init(&t->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
-    ev_timer_init(&t->ev.send, net.timeout, .0, 0.1);
+    ev_timer_init(&t->ev.send, net.timeout, .0, TRACKER_SEND_TIMEOUT);
     t->ev.stdinwatch.data = t;
     t->ev.send.data  = t;
     t->ev.read.data  = t;
@@ -118,12 +118,10 @@ static int clean(struct peer_s *p)
     ev_io_stop(p->ev.loop, &p->ev.write);
     ev_io_stop(p->ev.loop, &p->ev.stdinwatch);
     ev_timer_stop(p->ev.loop, &p->ev.send);
-    /*
     list.clean(&p->peers);
-    list.clean(&p->recv_buffer.packets);
     list.clean(&p->recv_buffer.cache);
+    list.clean(&p->recv_buffer.sealed);
     list.clean(&p->task);
-    */
     return 0;
 }
 
