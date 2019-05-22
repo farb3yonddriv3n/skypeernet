@@ -40,6 +40,15 @@ void t7_list()
     for (i = 0; i < COUNTOF(t7); i++) {
         if (i == 2 || i == 3) A(list.del(&l, t7[i]), 0);
     }
+
+    void **vt;
+    int size;
+    A(list.toarray(&l, &vt, &size), 0);
+    printf("size: %d\n", size);
+    for (i = 0; i < size; i++) {
+        printf("%d\n", ((struct t7_s *)(((char **)vt)[i]))->x);
+    }
+    free(vt);
     A(list.map(&l, cb, NULL), 0);
     A(list.clean(&l), 0);
 }

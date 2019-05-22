@@ -4,7 +4,7 @@ int ack_write(struct data_s *d, void *userdata)
 {
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
-    if (data.write.integer(d, p->received.header.index) != 0) return -1;
+    if (data.write.integer(d, p->received.header.pidx) != 0) return -1;
     return 0;
 }
 

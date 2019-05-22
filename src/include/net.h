@@ -41,7 +41,7 @@ struct net_send_timer_s {
 };
 
 struct net_recv_s {
-    char data[UDP_PACKET];
+    char data[UDP_PACKET_SIZE];
 };
 
 struct net_addr_s {

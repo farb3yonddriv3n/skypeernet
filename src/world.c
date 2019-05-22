@@ -4,7 +4,7 @@ static int ack_reply(struct peer_s *ins)
 {
     return payload.send((struct peer_s *)ins, COMMAND_ACK,
                         ADDR_IP(ins->net.remote.addr),
-                        ADDR_PORT(ins->net.remote.addr));
+                        ADDR_PORT(ins->net.remote.addr), 0, 0);
 }
 
 static int ack(struct peer_s *ins)
@@ -64,7 +64,7 @@ static int peer_add(struct peer_s *ins, struct world_peer_s *wp)
             ADDR_IP(t->net.remote.addr)   = dst;
             ADDR_PORT(t->net.remote.addr) = dstport;
             if (payload.send(t, COMMAND_TRACKER_ANNOUNCE_PEER,
-                             src, srcport) != 0) return -1;
+                             src, srcport, 0, 0) != 0) return -1;
             return 0;
         }
         ifr(item(wp->host, wp->port, ex->host, ex->port));
@@ -109,13 +109,17 @@ static int file(struct peer_s *ins)
                      ins->recv_buffer.available->file_size.received,
                      ins->recv_buffer.available->file_size.total);
     char fname[128];
-    snprintf(fname, sizeof(fname), "tmp/%d_%d_%d_%d.part",
+    snprintf(fname, sizeof(fname), "tmp/%d_%d_%010d_%010d_%010d_%010d.part",
                                    ADDR_IP(ins->net.remote.addr),
                                    ADDR_PORT(ins->net.remote.addr),
-                                   ins->received.header.group,
-                                   ins->received.header.index);
+                                   ins->received.header.tidx,
+                                   ins->received.header.gidx,
+                                   ins->received.header.pidx,
+                                   ins->received.header.parts);
     if (os.filewrite(fname, "wb", ins->recv_buffer.available->data.s,
                                   ins->recv_buffer.available->data.n) != 0) return -1;
+    char received[256];
+    ifr(os.filejoin(fname, received));
     return 0;
 }
 
@@ -182,14 +186,14 @@ static int seal_add(struct list_s *l, struct packet_s *p)
         sf.found->group = realloc(sf.found->group,
                                   ++(sf.found->size) * sizeof(int));
         if (!sf.found->group) return -1;
-        sf.found->group[sf.found->size - 1] = p->header.group;
+        sf.found->group[sf.found->size - 1] = p->header.gidx;
     } else {
         struct seal_s *s = malloc(sizeof(*s));
         if (!s) return -1;
         s->size  = 1;
         s->group = malloc(s->size * sizeof(int));
         if (!s->group) return -1;
-        s->group[s->size - 1] = p->header.group;
+        s->group[s->size - 1] = p->header.gidx;
         s->host               = p->internal.host;
         s->port               = p->internal.port;
         ifr(list.add(l, s, seal_clean));
@@ -209,7 +213,7 @@ static int seal_check(struct list_s *l, struct packet_s *p,
     if (!sf.found) return 0;
     int i;
     for (i = 0; i < sf.found->size; i++) {
-        if (sf.found->group[i] == p->header.group) {
+        if (sf.found->group[i] == p->header.gidx) {
             *sealed = true;
             break;
         }
@@ -221,12 +225,12 @@ static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
                              struct packet_s *received, struct cache_s **available)
 {
     if (!c || !received || !available) return -1;
-    bool sealed;
-    ifr(seal_check(&rb->sealed, received, &sealed));
-    if (sealed) return 0;
+    //bool sealed;
+    //ifr(seal_check(&rb->sealed, received, &sealed));
+    //if (sealed) return 0;
     int i;
     for (i = 0; i < c->packets.received.size; i++)
-        if (c->packets.received.idx[i] == received->header.index)
+        if (c->packets.received.idx[i] == received->header.pidx)
             return 0;
     struct packet_s *p = malloc(sizeof(*p));
     if (!p) return -1;
@@ -235,17 +239,17 @@ static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
     c->packets.received.idx = realloc(c->packets.received.idx,
                                       ++(c->packets.received.size) * sizeof(int));
     if (!c->packets.received.idx) return -1;
-    c->packets.received.idx[c->packets.received.size - 1] = received->header.index;
+    c->packets.received.idx[c->packets.received.size - 1] = received->header.pidx;
     if (c->packets.received.size != c->packets.total) return 0;
     int avcb(struct list_s *l, void *item, void *ud) {
         struct packet_s *p   = item;
         sn              *avs = ud;
-        if (avs->n < p->header.sequence + p->header.length) {
-            avs->n = p->header.sequence + p->header.length;
+        if (avs->n < p->header.offset + p->header.length) {
+            avs->n = p->header.offset + p->header.length;
             avs->s = realloc(avs->s, avs->n);
             if (!avs->s) return -1;
         }
-        memcpy(avs->s + p->header.sequence,
+        memcpy(avs->s + p->header.offset,
                p->buffer.payload, p->header.length);
         if (list.del(l, p) != 0) return -1;
         return 0;
@@ -277,7 +281,7 @@ static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
         }
         return 0;
     }
-    struct cache_find_s cf = { .group = received->header.group,
+    struct cache_find_s cf = { .group = received->header.gidx,
                                .host  = received->internal.host,
                                .port  = received->internal.port,
                                .cache = NULL };
@@ -286,8 +290,8 @@ static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
         cf.cache = malloc(sizeof(*(cf.cache)));
         if (!cf.cache) return -1;
         memset(cf.cache, 0, sizeof(*(cf.cache)));
-        cf.cache->group = received->header.group;
-        cf.cache->packets.total = received->header.total;
+        cf.cache->group = received->header.gidx;
+        cf.cache->packets.total = received->header.chunks;
         cf.cache->host  = received->internal.host;
         cf.cache->port  = received->internal.port;
         if (list.add(&rb->cache, cf.cache, cache_clean) != 0) return -1;

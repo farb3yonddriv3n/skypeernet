@@ -121,7 +121,7 @@ static int clean(struct peer_s *p)
     list.clean(&p->peers);
     list.clean(&p->recv_buffer.cache);
     list.clean(&p->recv_buffer.sealed);
-    list.clean(&p->task);
+    list.clean(&p->tasks.list);
     return 0;
 }
 

@@ -96,11 +96,53 @@ static int size(struct list_s *l, int *sz)
     return 0;
 }
 
+static int toarray(struct list_s *l, void ***dst, int *ndst)
+{
+    struct toarray_s { void **dst; int i; };
+    int cb(struct list_s *l, void *uv, void *ud) {
+        if (!uv || !ud) return -1;
+        struct toarray_s *ta = (struct toarray_s *)ud;
+        char **d = (char **)ta->dst;
+        d[ta->i++] = (char *)uv;
+        return 0;
+    }
+    *dst = malloc(sizeof(void *) * l->size);
+    if (!dst) return -1;
+    struct toarray_s ta = { .dst = *dst, .i = 0 };
+    ifr(list.map(l, cb, &ta));
+    *ndst = l->size;
+    return 0;
+}
+
+static int sort_str(const void *a, const void *b)
+{
+    char **sa = (char **)a;
+    char **sb = (char **)b;
+    return strcmp(*sa, *sb);
+}
+
+static int toarray_sort(struct list_s *l, void ***dst, int *ndst,
+                        enum list_array_sort_e las)
+{
+    if (!l || !dst || !ndst) return -1;
+    ifr(toarray(l, dst, ndst));
+    switch (las) {
+        case LIST_ARRAY_SORT_STR:
+            qsort((char **)(*dst), *ndst, sizeof(char *), sort_str);
+            break;
+        default:
+            return -1;
+    }
+    return 0;
+}
+
 const struct module_list_s list = {
-    .init  = init,
-    .add   = add,
-    .del   = del,
-    .map   = map,
-    .size  = size,
-    .clean = clean,
+    .init         = init,
+    .add          = add,
+    .del          = del,
+    .map          = map,
+    .size         = size,
+    .toarray      = toarray,
+    .toarray_sort = toarray_sort,
+    .clean        = clean,
 };

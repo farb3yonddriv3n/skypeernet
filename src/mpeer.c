@@ -7,7 +7,7 @@ int main()
     if (peer.init.mpeer(&p) != 0) return -1;
     if (payload.send(&p, COMMAND_PEER_ANNOUNCE_PEER,
                      p.tracker.host,
-                     p.tracker.port) != 0) return -1;
+                     p.tracker.port, 0, 0) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ev_io_start(p.ev.loop, &p.ev.read);
     ev_loop(p.ev.loop, 0);

@@ -1,8 +1,8 @@
 #ifndef PACKET_H_
 #define PACKET_H_
 
-#define UDP_PACKET         534
-#define UDP_PACKET_PAYLOAD (UDP_PACKET - sizeof(struct header_s) - SHA256HEX)
+#define UDP_PACKET_SIZE    534
+#define UDP_PACKET_PAYLOAD (UDP_PACKET_SIZE - sizeof(struct header_s) - SHA256HEX)
 //#define UDP_PACKET_PAYLOAD 1
 
 enum command_e {
@@ -16,13 +16,15 @@ enum command_e {
 };
 
 struct header_s {
-    unsigned int   index;
-    unsigned int   group;
-    uint64_t       sequence;
-    unsigned int   total;
+    unsigned int   pidx;
+    unsigned int   gidx;
+    unsigned int   tidx;
+    uint64_t       offset;
+    unsigned int   chunks;
+    unsigned int   parts;
     unsigned int   length;
     enum command_e command;
-    ALIGN16(4);
+    ALIGN16(12);
 };
 
 struct packet_internal_s {
@@ -49,7 +51,8 @@ struct module_packet_s {
     struct {
         int (*init)(enum command_e, char *buffer, int nbuffer,
                     struct packet_s **packets, int *npackets,
-                    struct send_buffer_s *sb);
+                    struct send_buffer_s *sb,
+                    unsigned int tidx, unsigned int parts);
         int (*validate)(struct packet_s *packets, size_t nbuffer, bool *valid);
     } serialize;
     struct {

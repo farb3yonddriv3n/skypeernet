@@ -13,17 +13,19 @@ static int resume(struct peer_s *p)
                         MAX_TASK_BUFFER, &buffer, &size) != 0) return -1;
         p->send_buffer.type = BUFFER_FILE;
         sn_setr(p->send_buffer.u.file.bin, buffer, size);
-        int            host = t->host;
-        unsigned short port = t->port;
+        int            host  = t->host;
+        unsigned short port  = t->port;
+        unsigned int   tidx  = t->idx;
+        unsigned int   parts = t->parts;
         if ((++t->file.iter) * MAX_TASK_BUFFER >= t->file.size)
             if (list.del(l, t) != 0) return -1;
-        if (payload.send(p, COMMAND_FILE,
-                         host, port) != 0) return -1;
+        if (payload.send(p, COMMAND_FILE, host, port, tidx,
+                         parts) != 0) return -1;
         if (buffer) free(buffer);
         return 1;
     }
     if (!p) return -1;
-    if (list.map(&p->task, cb, p) != 0) return -1;
+    if (list.map(&p->tasks.list, cb, p) != 0) return -1;
     return 0;
 }
 
@@ -31,8 +33,8 @@ static int update(struct peer_s *p)
 {
     if (!p) return -1;
     int send_sz, task_sz;
-    if (list.size(&p->send.nbl, &send_sz) != 0) return -1;
-    if (list.size(&p->task,     &task_sz) != 0) return -1;
+    if (list.size(&p->send.nbl,  &send_sz) != 0) return -1;
+    if (list.size(&p->tasks.list, &task_sz) != 0) return -1;
     if (send_sz == 0 && task_sz != 0) resume(p);
     return 0;
 }
@@ -55,13 +57,18 @@ static int init(struct peer_s *p, const char *filename, int nfilename,
     memcpy(t->file.name, filename, nfilename);
     t->host = host;
     t->port = port;
-    if (list.add(&p->task, t, task.clean) != 0) return -1;
-
+    t->idx  = ++(p->tasks.idx);
+    ifr(os.filesize(t->file.name, &t->file.size));
+    ifr(os.fileparts(t->file.name, MAX_TASK_BUFFER, &t->parts));
+    ifr(list.add(&p->tasks.list, t, task.clean));
+    return task.update(p);
+    /*
     if (os.filesize(t->file.name, &t->file.size) != 0) return -1;
     p->send_buffer.type = BUFFER_FILE_SEND;
     p->send_buffer.u.file_send.size = t->file.size;
     return payload.send(p, COMMAND_FILE_SEND,
-                        host, port);
+                        host, port, t->idx);
+    */
 }
 
 struct module_task_s task = {

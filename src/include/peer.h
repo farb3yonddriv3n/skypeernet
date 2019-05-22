@@ -74,7 +74,10 @@ struct peer_s {
     struct list_s      peers;
     struct send_buffer_s send_buffer;
     struct recv_buffer_s recv_buffer;
-    struct list_s        task;
+    struct {
+        struct list_s list;
+        int           idx;
+    } tasks;
     struct {
         int            host;
         unsigned short port;

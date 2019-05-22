@@ -8,7 +8,8 @@ struct module_handler_s {
 
 struct module_payload_s {
     int (*send)(void *parent, enum command_e cmd,
-                int host, unsigned short port);
+                int host, unsigned short port,
+                unsigned int tidx, unsigned int parts);
 };
 
 extern const struct module_payload_s payload;
