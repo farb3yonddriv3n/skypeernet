@@ -42,6 +42,25 @@ static int peer_del(struct peer_s *p, int host, unsigned short port)
     return 0;
 }
 
+static int reachable_set(struct peer_s *p, int host, unsigned short port,
+                         bool reachable)
+{
+    struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
+    ifr(list.map(&p->peers, peer_find, &wp));
+    if (wp.found) wp.found->reachable = reachable;
+    return 0;
+}
+
+static int peer_unreachable(struct peer_s *p, int host, unsigned short port)
+{
+    return reachable_set(p, host, port, false);
+}
+
+static int peer_reachable(struct peer_s *p, int host, unsigned short port)
+{
+    return reachable_set(p, host, port, true);
+}
+
 static int peer_add(struct peer_s *ins, struct world_peer_s *wp)
 {
     if (!ins || !wp) return -1;
@@ -88,6 +107,7 @@ static int announce_peer(struct peer_s *ins)
         if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
         if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
     }
+    wp->reachable = true;
     return peer_add(ins, wp);
 }
 
@@ -108,21 +128,28 @@ static int file(struct peer_s *ins)
                      ADDR_PORT(ins->net.remote.addr),
                      ins->recv_buffer.available->file_size.received,
                      ins->recv_buffer.available->file_size.total);
-    char fname[128];
-    snprintf(fname, sizeof(fname), "tmp/%d_%d_%010d_%010d_%010d_%010d.part",
+    char fname[256];
+    snprintf(fname, sizeof(fname), "%d_%d_%010d_%010d_%010d_%010d.part",
                                    ADDR_IP(ins->net.remote.addr),
                                    ADDR_PORT(ins->net.remote.addr),
                                    ins->received.header.tidx,
                                    ins->received.header.gidx,
                                    ins->received.header.pidx,
                                    ins->received.header.parts);
-    if (os.filewrite(fname, "wb", ins->recv_buffer.available->data.s,
-                                  ins->recv_buffer.available->data.n) != 0) return -1;
+    char fnamepath[512];
+    snprintf(fnamepath, sizeof(fnamepath), "%s%s", PARTS_DIR, fname);
+    if (os.filewrite(fnamepath, "wb", ins->recv_buffer.available->data.s,
+                                      ins->recv_buffer.available->data.n) != 0) return -1;
     char received[256];
     ifr(os.filejoin(fname, received));
     return 0;
 }
 
+static int ping(struct peer_s *ins)
+{
+    return 0;
+}
+/*
 static int file_send(struct peer_s *ins)
 {
     sn_initr(bf, ins->recv_buffer.available->data.s,
@@ -136,7 +163,7 @@ static int file_send(struct peer_s *ins)
                      ADDR_PORT(ins->net.remote.addr));
     return 0;
 }
-
+*/
 static int cache_clean(void *uc)
 {
     struct cache_s *c = (struct cache_s *)uc;
@@ -303,13 +330,13 @@ static const struct { enum command_e cmd;
                       int (*exec)(struct peer_s*);
                       int (*reply)(struct peer_s*);
                     } world_map[] = {
-    { COMMAND_NONE,                  NULL,          NULL },
-    { COMMAND_ACK,                   ack,           NULL },
+    { COMMAND_NONE,                  NULL,          NULL      },
+    { COMMAND_ACK,                   ack,           NULL      },
     { COMMAND_TRACKER_ANNOUNCE_PEER, announce_peer, ack_reply },
     { COMMAND_PEER_ANNOUNCE_PEER,    announce_peer, ack_reply },
     { COMMAND_MESSAGE,               message,       ack_reply },
     { COMMAND_FILE,                  file,          ack_reply },
-    { COMMAND_FILE_SEND,             file_send,     ack_reply },
+    { COMMAND_PING,                  ping,          ack_reply },
 };
 
 static int command_find(int *idx, enum command_e cmd)
@@ -347,7 +374,26 @@ static int handle(struct peer_s *ins)
                     ins->recv_buffer.available);
 }
 
+static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents)
+{
+    struct peer_s *p = (struct peer_s *)timer->data;
+    if (!p) return;
+    ev_timer_stop(p->ev.loop, &p->ev.peers_reachable);
+    int cb(struct list_s *l, void *un, void *ud) {
+        struct peer_s       *p  = (struct peer_s *)ud;
+        struct world_peer_s *wp = (struct world_peer_s *)un;
+        return payload.send(p, COMMAND_PING,
+                            wp->host,
+                            wp->port, 0, 0);
+    }
+    assert(list.map(&p->peers, cb, p) == 0);
+    ev_timer_again(p->ev.loop, &p->ev.peers_reachable);
+}
+
 const struct module_world_s world = {
-    .handle   = handle,
-    .peer.del = peer_del,
+    .handle           = handle,
+    .peer.del         = peer_del,
+    .peer.reachable   = peer_reachable,
+    .peer.unreachable = peer_unreachable,
+    .peer.check       = peer_check,
 };

@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <math.h>
 
 #include <openssl/sha.h>
 #include <openssl/rsa.h>

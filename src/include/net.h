@@ -1,10 +1,11 @@
 #ifndef NET_H_
 #define NET_H_
 
-#define TRACKER_SEND_TIMEOUT  0.3
-#define PEER_SEND_TIMEOUT     0.3
-#define MAX_TASK_BUFFER       (50 * 1024)
-#define MAX_RETRY             100
+#define TRACKER_SEND_TIMEOUT    0.3
+#define PEER_SEND_TIMEOUT       0.3
+#define MAX_TASK_BUFFER         (50 * 1024)
+#define MAX_RETRY               10
+#define PEERS_REACHABLE_TIMEOUT 10
 
 #define ADDR_IP(m_dst) m_dst.sin_addr.s_addr
 #define ADDR_PORT(m_dst) m_dst.sin_port
@@ -17,8 +18,9 @@ enum net_status_e {
 
 struct nb_s {
     struct peer_s *peer;
-    int idx;
-    int grp;
+    int pidx;
+    int gidx;
+    enum command_e cmd;
     int sd;
     snb buffer;
     struct {
@@ -66,6 +68,7 @@ struct net_ev_s {
     struct ev_io    write;
     struct ev_io    stdinwatch;
     struct ev_timer send;
+    struct ev_timer peers_reachable;
 };
 
 struct module_net_s {
@@ -73,7 +76,7 @@ struct module_net_s {
                    struct sockaddr_in *addr, socklen_t *naddr);
     int (*ack)(struct net_ev_s *ev, struct net_send_s *ns, int idx);
     int (*dispatch)(struct net_ev_s *ev, struct net_send_s *ns);
-    void (*timeout)(struct ev_loop *loop, struct ev_timer *timer, int revents);
+    void (*send)(struct ev_loop *loop, struct ev_timer *timer, int revents);
 
     struct {
         int (*clean)(void *ptr);

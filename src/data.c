@@ -108,9 +108,10 @@ static int data_send(struct data_s *d, struct peer_s *ins,
         struct nb_s *nb = malloc(sizeof(*nb));
         if (!nb) return -1;
         nb->peer = (struct peer_s *)ins;
-        nb->idx = packets[i].header.pidx;
-        nb->grp = packets[i].header.gidx;
-        nb->sd  = ins->net.sd;
+        nb->pidx = packets[i].header.pidx;
+        nb->gidx = packets[i].header.gidx;
+        nb->cmd  = packets[i].header.command;
+        nb->sd   = ins->net.sd;
         if (packet_set(&nb->buffer, &packets[i]) != 0) return -1;
         memcpy(&nb->remote.addr, &ins->net.remote.addr, sizeof(ins->net.remote.addr));
         nb->remote.len = ins->net.remote.len;

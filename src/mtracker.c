@@ -7,6 +7,7 @@ int main()
     if (peer.init.mtracker(&t) != 0) return -1;
     ev_io_start(t.ev.loop, &t.ev.stdinwatch);
     ev_io_start(t.ev.loop, &t.ev.read);
+    ev_timer_again(t.ev.loop, &t.ev.peers_reachable);
     ev_loop(t.ev.loop, 0);
     close(t.net.sd);
     closelog();

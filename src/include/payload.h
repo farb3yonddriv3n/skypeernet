@@ -30,4 +30,7 @@ int file_size(int *sz, void *userdata);
 int file_send_write(struct data_s *d, void *userdata);
 int file_send_size(int *sz, void *userdata);
 
+int ping_write(struct data_s *d, void *userdata);
+int ping_size(int *sz, void *userdata);
+
 #endif

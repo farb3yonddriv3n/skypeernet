@@ -1,6 +1,9 @@
 #ifndef OS_H_
 #define OS_H_
 
+#define DL_DIR          "./dl/"
+#define PARTS_DIR DL_DIR"parts/"
+
 struct module_os_s {
     int (*filepart)(const char *filename, size_t offset, size_t maxread,
                     char **dst, size_t *ndst);

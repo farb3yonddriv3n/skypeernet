@@ -13,6 +13,7 @@ enum command_e {
     COMMAND_MESSAGE,
     COMMAND_FILE,
     COMMAND_FILE_SEND,
+    COMMAND_PING,
 };
 
 struct header_s {

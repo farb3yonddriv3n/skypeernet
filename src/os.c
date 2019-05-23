@@ -1,7 +1,6 @@
 #include <common.h>
 #include <dirent.h>
-
-#define TMP_DIR "./tmp/"
+#include <time.h>
 
 static int filepart(const char *filename, size_t offset, size_t maxread,
                     char **dst, size_t *ndst)
@@ -66,20 +65,40 @@ static int filewrite(const char *fname, const char *mode,
     return (result == ncontent) ? 0 : -1;
 }
 
+static int gettime(char *buffer, size_t nbuffer)
+{
+    long   ms;
+    time_t s;
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    s  = spec.tv_sec;
+    ms = round(spec.tv_nsec / 1.0e6);
+    if (ms > 999) {
+        s++;
+        ms = 0;
+    }
+    snprintf(buffer, nbuffer, "%"PRIdMAX"_%03ld", (intmax_t)s, ms);
+    return 0;
+}
+
 static int append(struct list_s *l)
 {
     void **files = NULL;
     int nfiles, i;
     ifr(list.toarray_sort(l, &files, &nfiles, LIST_ARRAY_SORT_STR));
+    char dstname[64];
+    ifr(gettime(dstname, sizeof(dstname)));
     for (i = 0; i < nfiles; i++) {
         char *fname = ((char **)files)[i];
         char *buffer;
         char fbuffer[1024];
-        snprintf(fbuffer, sizeof(fbuffer), "%s%s", TMP_DIR, fname);
+        snprintf(fbuffer, sizeof(fbuffer), "%s%s", PARTS_DIR, fname);
         sn_initz(fn, fbuffer);
         int n = eioie_fread(&buffer, fn);
         if (n <= 0) return -1;
-        if (eioie_fwrite("test.bin", "a", buffer, n) != 0) return -1;
+        char fnamepath[256];
+        snprintf(fnamepath, sizeof(fnamepath), "%s%s", DL_DIR, dstname);
+        if (eioie_fwrite(fnamepath, "a", buffer, n) != 0) return -1;
         free(buffer);
         if (remove(fbuffer) != 0) return -1;
     }
@@ -99,13 +118,13 @@ static int filejoin(const char *fname, char *received)
     struct list_s files;
     ifr(list.init(&files));
     int host, port, tidx, gidx, pidx, parts;
-    int found = sscanf(fname, "tmp/%d_%d_%d_%d_%d_%d.part",
+    int found = sscanf(fname, "%d_%d_%d_%d_%d_%d.part",
                                &host, &port, &tidx,
                                &gidx, &pidx, &parts);
     if (found != 6) return -1;
     DIR *dir;
     struct dirent *ent;
-    if ((dir = opendir(TMP_DIR)) == NULL) return -1;
+    if ((dir = opendir(PARTS_DIR)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         int shost, sport, stidx;
         found = sscanf(ent->d_name, "%d_%d_%d", &shost, &sport, &stidx);

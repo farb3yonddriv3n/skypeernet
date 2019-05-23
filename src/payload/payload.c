@@ -12,6 +12,7 @@ static const struct { enum command_e cmd;
     { COMMAND_MESSAGE,               message_write,          message_size },
     { COMMAND_FILE,                  file_write,             file_size },
     { COMMAND_FILE_SEND,             file_send_write,        file_send_size },
+    { COMMAND_PING,                  ping_write,             ping_size },
 };
 
 static int exec(struct peer_s *parent, enum command_e cmd,
