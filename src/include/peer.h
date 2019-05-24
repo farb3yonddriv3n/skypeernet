@@ -1,9 +1,6 @@
 #ifndef PEER_H_
 #define PEER_H_
 
-#define TRACKER_PORT 5775
-#define TRACKER_HOST "192.168.88.12"
-
 enum instance_e {
     INSTANCE_TRACKER,
     INSTANCE_PEER,
@@ -72,6 +69,7 @@ struct peer_s {
     struct net_recv_s  recv;
     struct packet_s    received;
     struct list_s      peers;
+    struct config_s    cfg;
     struct send_buffer_s send_buffer;
     struct recv_buffer_s recv_buffer;
     struct {

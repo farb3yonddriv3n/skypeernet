@@ -38,10 +38,14 @@ static int peers_list(struct peer_s *p, char **argv, int argc)
 {
     int cb(struct list_s *l, void *uwp, void *ud) {
         struct world_peer_s *wp = (struct world_peer_s *)uwp;
-        printf("Peer:Port %x:%d Reachable: %d\n", wp->host, wp->port, wp->reachable);
+        printf(" %8x | %5d | %4d | %11d\n",
+               wp->host,
+               wp->port,
+               wp->type,
+               wp->unreachable);
         return 0;
     }
-    printf("List:\n");
+    printf("     Peer |  Port | Type | Unreachable \n");
     return list.map(&p->peers, cb, NULL);
 }
 

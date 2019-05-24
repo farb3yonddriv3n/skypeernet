@@ -54,18 +54,8 @@ static int load_object(struct root_s **r, const json_object *obj)
 
 static int load_file(struct root_s **r, const char *filename)
 {
-    if (!r || !filename) return -1;
-    sn_initz(fn, (char *)filename);
-    char *content;
-    int n = eioie_fread(&content, fn);
-    if (n <= 1) return -1;
-
-    struct json_tokener *tok = json_tokener_new();
-    struct json_object *obj = json_tokener_parse_ex(tok, content, n);
-    json_tokener_free(tok);
-    if (content) free(content);
-    if (!obj) return -1;
-
+    json_object *obj;
+    if (os.loadjson(&obj, filename) != 0) return -1;
     return root.data.load.object(r, obj);
 }
 

@@ -13,6 +13,7 @@ struct module_os_s {
     int (*filewrite)(const char *fname, const char *mode,
                      char *content, int ncontent);
     int (*filejoin)(const char *fname, char *received);
+    int (*loadjson)(json_object **obj, const char *filename);
 };
 
 const struct module_os_s os;

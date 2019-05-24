@@ -1,17 +1,25 @@
 #ifndef WORLD_H_
 #define WORLD_H_
 
+#define MAX_PEER_UNREACHABLE 10
+
+enum world_peer_e {
+    WORLD_PEER_NONE,
+    WORLD_PEER_TRACKER,
+    WORLD_PEER_PEER,
+};
+
 struct world_peer_s {
+    enum world_peer_e    type;
     int                  host;
     unsigned short       port;
     struct world_peer_s *found;
-    bool                 reachable;
+    unsigned int         unreachable;
 };
 
 struct module_world_s {
     int (*handle)(struct peer_s *ins);
     struct {
-        int (*del)(struct peer_s *p, int host, unsigned short port);
         int (*reachable)(struct peer_s *p, int host, unsigned short port);
         int (*unreachable)(struct peer_s *p, int host, unsigned short port);
         void (*check)(struct ev_loop *loop, struct ev_timer *timer, int revents);

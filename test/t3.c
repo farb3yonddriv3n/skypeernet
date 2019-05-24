@@ -3,7 +3,7 @@
 
 void t3_block_append_transactions()
 {
-    struct config_s *cfg;
+    struct config_s cfg;
     A(config_init(&cfg), 0);
 
     struct transaction_s *t;
@@ -40,5 +40,5 @@ void t3_block_append_transactions()
 
     A(block.clean(b), 0);
 
-    config_free(cfg);
+    config_free(&cfg);
 }

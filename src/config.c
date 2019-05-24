@@ -1,19 +1,39 @@
 #include <common.h>
 
-int config_init(struct config_s **cfg)
+int config_init(struct config_s *cfg)
 {
-    *cfg = malloc(sizeof(**cfg));
-    if (!(*cfg)) return -1;
+    if (!cfg) return -1;
+    if (rsa_load(cfg) != 0) {
+        if (rsa_generate() != 0) return -1;
+        if (rsa_load(cfg) != 0) return -1;
+    }
 
-    if (rsa_load(*cfg) == 0)
-        return 0;
-
-    if (rsa_generate() != 0)
-        return -1;
-
-    if (rsa_load(*cfg) != 0)
-        return -1;
-
+    json_object *obj;
+    if (os.loadjson(&obj, "config/settings.cfg") != 0) return -1;
+    json_object *tmp;
+    json_object_object_get_ex(obj, "tracker_ip", &tmp);
+    snprintf(cfg->net.tracker.ip, sizeof(cfg->net.tracker.ip), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
+    json_object_object_get_ex(obj, "tracker_port", &tmp);
+    cfg->net.tracker.port = json_object_get_double(tmp);
+    json_object_object_get_ex(obj, "interval_tracker_resend", &tmp);
+    cfg->net.interval.tracker_resend = json_object_get_double(tmp);
+    json_object_object_get_ex(obj, "interval_peer_resend", &tmp);
+    cfg->net.interval.peer_resend = json_object_get_double(tmp);
+    json_object_object_get_ex(obj, "interval_peers_reachable", &tmp);
+    cfg->net.interval.peers_reachable = json_object_get_double(tmp);
+    json_object_object_get_ex(obj, "max_task_buffer", &tmp);
+    cfg->net.max.task_buffer = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "max_send_retry", &tmp);
+    cfg->net.max.send_retry = json_object_get_int(tmp);
+    json_object_put(obj);
+    printf("%f %f %f %d %d\n",
+           cfg->net.interval.tracker_resend,
+           cfg->net.interval.peer_resend,
+           cfg->net.interval.peers_reachable,
+           cfg->net.max.task_buffer,
+           cfg->net.max.send_retry);
     return 0;
 }
 
@@ -23,5 +43,4 @@ void config_free(struct config_s *cfg)
     RSA_free(cfg->rsakey.private);
     sn_free(cfg->key.public);
     sn_free(cfg->key.private);
-    free(cfg);
 }

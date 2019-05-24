@@ -1,12 +1,6 @@
 #ifndef NET_H_
 #define NET_H_
 
-#define TRACKER_SEND_TIMEOUT    0.3
-#define PEER_SEND_TIMEOUT       0.3
-#define MAX_TASK_BUFFER         (50 * 1024)
-#define MAX_RETRY               10
-#define PEERS_REACHABLE_TIMEOUT 10
-
 #define ADDR_IP(m_dst) m_dst.sin_addr.s_addr
 #define ADDR_PORT(m_dst) m_dst.sin_port
 

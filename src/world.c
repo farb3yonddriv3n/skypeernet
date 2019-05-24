@@ -34,6 +34,7 @@ int peer_find(struct list_s *l, void *existing, void *uwp) {
     return 0;
 }
 
+/*
 static int peer_del(struct peer_s *p, int host, unsigned short port)
 {
     struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
@@ -41,13 +42,17 @@ static int peer_del(struct peer_s *p, int host, unsigned short port)
     if (wp.found) return list.del(&p->peers, wp.found);
     return 0;
 }
-
+*/
 static int reachable_set(struct peer_s *p, int host, unsigned short port,
                          bool reachable)
 {
     struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
     ifr(list.map(&p->peers, peer_find, &wp));
-    if (wp.found) wp.found->reachable = reachable;
+    if (wp.found) {
+        if (!reachable && ++wp.found->unreachable == MAX_PEER_UNREACHABLE) {
+            ifr(list.del(&p->peers, wp.found));
+        } else if (reachable) wp.found->unreachable = 0;
+    }
     return 0;
 }
 
@@ -98,17 +103,28 @@ static int announce_peer(struct peer_s *ins)
 {
     struct world_peer_s *wp = malloc(sizeof(*wp));
     if (!wp) return -1;
+    memset(wp, 0, sizeof(*wp));
     if (ins->type == INSTANCE_TRACKER) {
+        wp->type = WORLD_PEER_PEER,
         wp->host = ADDR_IP(ins->net.remote.addr);
         wp->port = ADDR_PORT(ins->net.remote.addr);
+        return peer_add(ins, wp);
     } else {
+        wp->type = WORLD_PEER_PEER;
         sn_initr(bf, ins->recv_buffer.available->data.s,
                  ins->recv_buffer.available->data.n);
         if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
         if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
+        ifr(peer_add(ins, wp));
+
+        struct world_peer_s *tracker = malloc(sizeof(*wp));
+        if (!tracker) return -1;
+        memset(tracker, 0, sizeof(*tracker));
+        tracker->type = WORLD_PEER_TRACKER;
+        tracker->host = ADDR_IP(ins->net.remote.addr);
+        tracker->port = ADDR_PORT(ins->net.remote.addr);
+        return peer_add(ins, tracker);
     }
-    wp->reachable = true;
-    return peer_add(ins, wp);
 }
 
 static int message(struct peer_s *ins)
@@ -382,6 +398,7 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
     int cb(struct list_s *l, void *un, void *ud) {
         struct peer_s       *p  = (struct peer_s *)ud;
         struct world_peer_s *wp = (struct world_peer_s *)un;
+        syslog(LOG_DEBUG, "Checking peer's availability: %x:%d", wp->host, wp->port);
         return payload.send(p, COMMAND_PING,
                             wp->host,
                             wp->port, 0, 0);
@@ -392,7 +409,6 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
 
 const struct module_world_s world = {
     .handle           = handle,
-    .peer.del         = peer_del,
     .peer.reachable   = peer_reachable,
     .peer.unreachable = peer_unreachable,
     .peer.check       = peer_check,

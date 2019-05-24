@@ -59,7 +59,7 @@ static struct root_s *root_add(const int blocks, char **files,
 
 void t1_group_mine_block_append_transactions()
 {
-    struct config_s *cfg;
+    struct config_s cfg;
     A(config_init(&cfg), 0);
 
     struct group_s *g[2];
@@ -86,5 +86,5 @@ void t1_group_mine_block_append_transactions()
     group.clean(g[0]);
     group.clean(g[1]);
 
-    config_free(cfg);
+    config_free(&cfg);
 }

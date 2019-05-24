@@ -3,7 +3,7 @@
 
 void t5_root_compare()
 {
-    struct config_s *cfg;
+    struct config_s cfg;
     A(config_init(&cfg), 0);
     struct root_s *r[2];
 
@@ -25,5 +25,5 @@ void t5_root_compare()
 
     A(group.clean(g), 0);
 
-    config_free(cfg);
+    config_free(&cfg);
 }

@@ -46,7 +46,7 @@ static int maxattempts(struct list_s *l, struct nb_s *nb, bool *giveup)
 {
     if (!l || !nb || !giveup) return -1;
     *giveup = false;
-    if (nb->attempt++ > MAX_RETRY) {
+    if (nb->attempt++ > nb->peer->cfg.net.max.send_retry) {
         if (nb->cmd == COMMAND_PING)
             ifr(world.peer.unreachable(nb->peer,
                                        ADDR_IP(nb->remote.addr),
@@ -70,13 +70,11 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
                                    0,
                                    (struct sockaddr *)&nb->remote.addr,
                                    nb->remote.len);
-            /*
             syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d",
-                              nb->idx, nb->grp, bytes,
+                              nb->pidx, nb->gidx, bytes,
                               ADDR_IP(nb->remote.addr),
                               ADDR_PORT(nb->remote.addr),
                               nb->attempt);
-                              */
             if (nb->status == NET_ONESHOT) return list.del(l, nb);
             if (bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
             nb->status = NET_ACK_WAITING;

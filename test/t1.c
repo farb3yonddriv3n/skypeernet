@@ -3,7 +3,7 @@
 
 void t2_group_root_load_save()
 {
-    struct config_s *cfg;
+    struct config_s cfg;
     A(config_init(&cfg), 0);
 
     struct group_s *g;
@@ -26,5 +26,5 @@ void t2_group_root_load_save()
     A(root.clean(r[1]), 0);
     A(group.clean(g), 0);
 
-    config_free(cfg);
+    config_free(&cfg);
 }

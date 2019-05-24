@@ -54,6 +54,7 @@ static int init_peer(struct peer_s *p)
     memset(p, 0, sizeof(*p));
     psig = p;
     p->type = INSTANCE_PEER;
+    if (config_init(&p->cfg) != 0) return -1;
     if ((p->net.sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         return -1;
     if (signal(SIGINT, sig_handler) == SIG_ERR) return -1;
@@ -62,9 +63,9 @@ static int init_peer(struct peer_s *p)
     p->net.self.len                  = sizeof(p->net.self.addr);
 
     p->net.remote.addr.sin_family    = AF_INET;
-    p->net.remote.addr.sin_port      = htons(TRACKER_PORT);
+    p->net.remote.addr.sin_port      = htons(p->cfg.net.tracker.port);
     p->net.remote.len                = sizeof(p->net.remote.addr);
-    if (inet_aton(TRACKER_HOST, &p->net.remote.addr.sin_addr) == 0)
+    if (inet_aton(p->cfg.net.tracker.ip, &p->net.remote.addr.sin_addr) == 0)
         return -1;
     syslog(LOG_DEBUG, "Tracker %x:%d",
            ADDR_IP(p->net.remote.addr), ADDR_PORT(p->net.remote.addr));
@@ -77,8 +78,10 @@ static int init_peer(struct peer_s *p)
     ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
-    ev_timer_init(&p->ev.send,            net.send,         .0, PEER_SEND_TIMEOUT);
-    ev_timer_init(&p->ev.peers_reachable, world.peer.check, .0, PEERS_REACHABLE_TIMEOUT);
+    ev_timer_init(&p->ev.send,            net.send,         .0,
+                  p->cfg.net.interval.peer_resend);
+    ev_timer_init(&p->ev.peers_reachable, world.peer.check, .0,
+                  p->cfg.net.interval.peers_reachable);
     p->ev.send.data = (void *)p;
     p->ev.peers_reachable.data = (void *)p;
     p->ev.stdinwatch.data = (void *)p;
@@ -93,10 +96,11 @@ static int init_tracker(struct peer_s *t)
     psig = t;
     if (signal(SIGINT, sig_handler) == SIG_ERR) return -1;
     t->type = INSTANCE_TRACKER;
+    if (config_init(&t->cfg) != 0) return -1;
     t->net.sd = socket(PF_INET, SOCK_DGRAM, 0);
     t->net.self.len = sizeof(t->net.self.addr);
     t->net.self.addr.sin_family = AF_INET;
-    t->net.self.addr.sin_port = htons(TRACKER_PORT);
+    t->net.self.addr.sin_port = htons(t->cfg.net.tracker.port);
     t->net.self.addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(t->net.sd, (struct sockaddr *)&t->net.self.addr,
              sizeof(t->net.self.addr)) != 0) return -1;
@@ -104,8 +108,10 @@ static int init_tracker(struct peer_s *t)
     ev_io_init(&t->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
-    ev_timer_init(&t->ev.send,            net.send,         .0, TRACKER_SEND_TIMEOUT);
-    ev_timer_init(&t->ev.peers_reachable, world.peer.check, .0, PEERS_REACHABLE_TIMEOUT);
+    ev_timer_init(&t->ev.send,            net.send,         .0,
+                  t->cfg.net.interval.tracker_resend);
+    ev_timer_init(&t->ev.peers_reachable, world.peer.check, .0,
+                  t->cfg.net.interval.peers_reachable);
     t->ev.stdinwatch.data = t;
     t->ev.send.data  = t;
     t->ev.read.data  = t;
@@ -127,6 +133,7 @@ static int clean(struct peer_s *p)
     list.clean(&p->recv_buffer.cache);
     list.clean(&p->recv_buffer.sealed);
     list.clean(&p->tasks.list);
+    config_free(&p->cfg);
     return 0;
 }
 

@@ -9,15 +9,15 @@ static int resume(struct peer_s *p)
         if (!t || !p) return -1;
         char *buffer;
         size_t size;
-        if (os.filepart(t->file.name, t->file.iter * MAX_TASK_BUFFER,
-                        MAX_TASK_BUFFER, &buffer, &size) != 0) return -1;
+        if (os.filepart(t->file.name, t->file.iter * p->cfg.net.max.task_buffer,
+                        p->cfg.net.max.task_buffer, &buffer, &size) != 0) return -1;
         p->send_buffer.type = BUFFER_FILE;
         sn_setr(p->send_buffer.u.file.bin, buffer, size);
         int            host  = t->host;
         unsigned short port  = t->port;
         unsigned int   tidx  = t->idx;
         unsigned int   parts = t->parts;
-        if ((++t->file.iter) * MAX_TASK_BUFFER >= t->file.size)
+        if ((++t->file.iter) * p->cfg.net.max.task_buffer >= t->file.size)
             if (list.del(l, t) != 0) return -1;
         if (payload.send(p, COMMAND_FILE, host, port, tidx,
                          parts) != 0) return -1;
@@ -59,7 +59,7 @@ static int init(struct peer_s *p, const char *filename, int nfilename,
     t->port = port;
     t->idx  = ++(p->tasks.idx);
     ifr(os.filesize(t->file.name, &t->file.size));
-    ifr(os.fileparts(t->file.name, MAX_TASK_BUFFER, &t->parts));
+    ifr(os.fileparts(t->file.name, p->cfg.net.max.task_buffer, &t->parts));
     ifr(list.add(&p->tasks.list, t, task.clean));
     return task.update(p);
     /*

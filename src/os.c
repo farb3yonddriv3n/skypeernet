@@ -2,6 +2,21 @@
 #include <dirent.h>
 #include <time.h>
 
+static int load_json_file(json_object **obj, const char *filename)
+{
+    if (!obj || !filename) return -1;
+    sn_initz(fn, (char *)filename);
+    char *content;
+    int n = eioie_fread(&content, fn);
+    if (n <= 1) return -1;
+    struct json_tokener *tok = json_tokener_new();
+    *obj = json_tokener_parse_ex(tok, content, n);
+    json_tokener_free(tok);
+    if (content) free(content);
+    if (!*obj) return -1;
+    return 0;
+}
+
 static int filepart(const char *filename, size_t offset, size_t maxread,
                     char **dst, size_t *ndst)
 {
@@ -153,4 +168,5 @@ const struct module_os_s os = {
     .filesize  = filesize,
     .filewrite = filewrite,
     .filejoin  = filejoin,
+    .loadjson  = load_json_file,
 };
