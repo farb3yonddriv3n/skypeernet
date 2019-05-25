@@ -80,7 +80,7 @@ static int filewrite(const char *fname, const char *mode,
     return (result == ncontent) ? 0 : -1;
 }
 
-static int gettime(char *buffer, size_t nbuffer)
+static int gettimems(double *result)
 {
     long   ms;
     time_t s;
@@ -88,11 +88,15 @@ static int gettime(char *buffer, size_t nbuffer)
     clock_gettime(CLOCK_REALTIME, &spec);
     s  = spec.tv_sec;
     ms = round(spec.tv_nsec / 1.0e6);
-    if (ms > 999) {
-        s++;
-        ms = 0;
-    }
-    snprintf(buffer, nbuffer, "%"PRIdMAX"_%03ld", (intmax_t)s, ms);
+    *result = s + ((double)ms / 1000);
+    return 0;
+}
+
+static int gettime(char *buffer, size_t nbuffer)
+{
+    double result;
+    if (gettimems(&result) != 0) return -1;
+    snprintf(buffer, nbuffer, "%lf", result);
     return 0;
 }
 
@@ -169,4 +173,5 @@ const struct module_os_s os = {
     .filewrite = filewrite,
     .filejoin  = filejoin,
     .loadjson  = load_json_file,
+    .gettimems = gettimems,
 };

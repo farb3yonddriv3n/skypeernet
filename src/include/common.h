@@ -41,6 +41,7 @@
 #include <packet.h>
 #include <net.h>
 #include <data.h>
+#include <traffic.h>
 #include <peer.h>
 #include <task.h>
 #include <world.h>

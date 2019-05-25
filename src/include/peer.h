@@ -70,6 +70,7 @@ struct peer_s {
     struct packet_s    received;
     struct list_s      peers;
     struct config_s    cfg;
+    struct traffic_s   traffic;
     struct send_buffer_s send_buffer;
     struct recv_buffer_s recv_buffer;
     struct {

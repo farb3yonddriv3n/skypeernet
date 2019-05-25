@@ -62,21 +62,21 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
     int cb(struct list_s *l, void *unb, void *uev)
     {
         int item(struct list_s *l, struct net_ev_s *ev,
-                 struct nb_s *nb, int idx)
+                 struct nb_s *nb, int idx, ssize_t *bytes)
         {
-            ssize_t bytes = sendto(nb->sd,
-                                   nb->buffer.s,
-                                   nb->buffer.offset,
-                                   0,
-                                   (struct sockaddr *)&nb->remote.addr,
-                                   nb->remote.len);
+            *bytes = sendto(nb->sd,
+                            nb->buffer.s,
+                            nb->buffer.offset,
+                            0,
+                            (struct sockaddr *)&nb->remote.addr,
+                            nb->remote.len);
             syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d",
-                              nb->pidx, nb->gidx, bytes,
+                              nb->pidx, nb->gidx, *bytes,
                               ADDR_IP(nb->remote.addr),
                               ADDR_PORT(nb->remote.addr),
                               nb->attempt);
             if (nb->status == NET_ONESHOT) return list.del(l, nb);
-            if (bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
+            if (*bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
             nb->status = NET_ACK_WAITING;
             nb->write  = &ev->write;
             return 0;
@@ -87,7 +87,12 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
         bool giveup;
         ifr(maxattempts(l, nb, &giveup));
         if (giveup) return 0;
-        if (item(l, ev, nb, nb->pidx) != 0) return -1;
+        ssize_t bytes;
+        struct peer_s *p = nb->peer;
+        if (item(l, ev, nb, nb->pidx, &bytes) != 0) return -1;
+        bool suspend;
+        ifr(traffic.update(p, bytes, &suspend));
+        if (suspend) return 1;
         return 0;
     }
     ev_io_stop(ev->loop, &ev->write);

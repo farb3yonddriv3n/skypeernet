@@ -14,6 +14,7 @@ struct module_os_s {
                      char *content, int ncontent);
     int (*filejoin)(const char *fname, char *received);
     int (*loadjson)(json_object **obj, const char *filename);
+    int (*gettimems)(double *result);
 };
 
 const struct module_os_s os;
