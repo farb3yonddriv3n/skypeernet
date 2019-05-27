@@ -2,30 +2,25 @@
 
 #define KB_TO_BYTES(m_dst) (m_dst * 1024)
 
-static int update(struct peer_s *p, ssize_t bytes, bool *suspend)
+static int update_send(struct peer_s *p, ssize_t bytes, bool *suspend)
 {
     if (!p || !suspend || bytes < 1) return -1;
-    int limit = 50;
     *suspend = false;
-    p->traffic.sent += bytes;
-    if (p->traffic.start == .0f)
-        return os.gettimems(&p->traffic.start);
-    double diff = 1.0f - p->cfg.net.interval.peer_resend;
     double timestampms;
     if (os.gettimems(&timestampms) != 0) return -1;
-    if ((timestampms - diff) < p->traffic.start &&
-        p->traffic.sent >= KB_TO_BYTES(limit)) {
-        p->traffic.start = .0f;
-        p->traffic.sent  = 0;
+    double diff = 1.0f - p->cfg.net.interval.resend;
+    if (p->traffic.send.start == .0f || (timestampms - diff) >= p->traffic.send.start) {
+        p->traffic.send.bytes = bytes;
+        return os.gettimems(&p->traffic.send.start);
+    }
+    if (p->traffic.send.bytes + bytes >= KB_TO_BYTES(p->cfg.net.max.upload)) {
         *suspend = true;
         return 0;
-    } else if ((timestampms - diff) >= p->traffic.start) {
-        p->traffic.start = .0f;
-        p->traffic.sent  = 0;
     }
+    p->traffic.send.bytes += bytes;
     return 0;
 }
 
 const struct module_traffic_s traffic = {
-    .update = update,
+    .update.send = update_send,
 };

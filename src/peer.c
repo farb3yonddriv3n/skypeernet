@@ -79,7 +79,7 @@ static int init_peer(struct peer_s *p)
     ev_io_init(&p->ev.read,       read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
     ev_timer_init(&p->ev.send,            net.send,         .0,
-                  p->cfg.net.interval.peer_resend);
+                  p->cfg.net.interval.resend);
     ev_timer_init(&p->ev.peers_reachable, world.peer.check, .0,
                   p->cfg.net.interval.peers_reachable);
     p->ev.send.data = (void *)p;
@@ -109,7 +109,7 @@ static int init_tracker(struct peer_s *t)
     ev_io_init(&t->ev.read,  read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
     ev_timer_init(&t->ev.send,            net.send,         .0,
-                  t->cfg.net.interval.tracker_resend);
+                  t->cfg.net.interval.resend);
     ev_timer_init(&t->ev.peers_reachable, world.peer.check, .0,
                   t->cfg.net.interval.peers_reachable);
     t->ev.stdinwatch.data = t;
