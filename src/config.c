@@ -17,8 +17,8 @@ int config_init(struct config_s *cfg)
              json_object_get_string(tmp));
     json_object_object_get_ex(obj, "tracker_port", &tmp);
     cfg->net.tracker.port = json_object_get_int(tmp);
-    json_object_object_get_ex(obj, "interval_resend", &tmp);
-    cfg->net.interval.resend = json_object_get_double(tmp);
+    json_object_object_get_ex(obj, "interval_retry", &tmp);
+    cfg->net.interval.retry = json_object_get_double(tmp);
     json_object_object_get_ex(obj, "interval_peers_reachable", &tmp);
     cfg->net.interval.peers_reachable = json_object_get_double(tmp);
     json_object_object_get_ex(obj, "max_task_buffer", &tmp);
@@ -27,6 +27,8 @@ int config_init(struct config_s *cfg)
     cfg->net.max.send_retry = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_upload_kbytes", &tmp);
     cfg->net.max.upload = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "max_download_kbytes", &tmp);
+    cfg->net.max.download = json_object_get_int(tmp);
     json_object_put(obj);
     return 0;
 }

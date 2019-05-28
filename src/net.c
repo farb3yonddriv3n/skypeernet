@@ -1,14 +1,18 @@
 #include <common.h>
 
-static int receive(int sd, char *data, int len,
+static int receive(struct peer_s *p, int sd, char *data, int len,
                    struct sockaddr_in *addr, socklen_t *naddr)
 {
+    bool suspend;
+    ifr(traffic.update.recv(p, 0, &suspend));
+    if (suspend) return 0;
     // Invalidate only packet header
     memset(data, 0, sizeof(struct header_s));
     socklen_t bytes = recvfrom(sd, data, len, 0, (struct sockaddr *)addr, naddr);
     syslog(LOG_DEBUG, "Received %d bytes from %x:%d",
                       bytes, ADDR_IP((*addr)), ADDR_PORT((*addr)));
     if (bytes == -1) return -1;
+    ifr(traffic.update.recv(p, bytes, &suspend));
     return 0;
 }
 
@@ -101,18 +105,45 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
     return 0;
 }
 
-void net_send(struct ev_loop *loop, struct ev_timer *timer, int revents)
+static void retry(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
     struct peer_s *p = (struct peer_s *)timer->data;
     int sz;
     if (list.size(&p->send.nbl, &sz) != 0) return;
     if (sz > 0) ev_io_start(loop, &p->ev.write);
+    bool suspend;
+    if (traffic.update.recv(p, 0, &suspend) != 0) return;
+    if (!suspend) {
+        double timestampms;
+        if (os.gettimems(&timestampms) != 0) return;
+        net.resume(&p->ev);
+    }
+}
+
+static int resume(struct net_ev_s *ev)
+{
+    if (!ev) return -1;
+    if (ev->read.started) return 0;
+    ev_io_start(ev->loop, &ev->read.ev);
+    ev->read.started = true;
+    return 0;
+}
+
+static int suspend(struct net_ev_s *ev)
+{
+    if (!ev) return -1;
+    if (!ev->read.started) return 0;
+    ev_io_stop(ev->loop, &ev->read.ev);
+    ev->read.started = false;
+    return 0;
 }
 
 const struct module_net_s net = {
     .dispatch = dispatch,
     .receive  = receive,
     .ack      = ack,
-    .send     = net_send,
+    .retry    = retry,
+    .resume   = resume,
+    .suspend  = suspend,
     .nb.clean = nb_clean,
 };

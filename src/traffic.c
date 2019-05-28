@@ -2,25 +2,43 @@
 
 #define KB_TO_BYTES(m_dst) (m_dst * 1024)
 
-static int update_send(struct peer_s *p, ssize_t bytes, bool *suspend)
+static int update(ssize_t bytes, bool *suspend, double retry,
+                  double *start, size_t *total_bytes, int limit)
 {
-    if (!p || !suspend || bytes < 1) return -1;
+    if (!suspend || !start || !total_bytes || bytes < 0) return -1;
     *suspend = false;
     double timestampms;
     if (os.gettimems(&timestampms) != 0) return -1;
-    double diff = 1.0f - p->cfg.net.interval.resend;
-    if (p->traffic.send.start == .0f || (timestampms - diff) >= p->traffic.send.start) {
-        p->traffic.send.bytes = bytes;
-        return os.gettimems(&p->traffic.send.start);
+    double diff = 1.0f - retry;
+    if (*start == .0f || (timestampms - diff) >= *start) {
+        *total_bytes = bytes;
+        return os.gettimems(start);
     }
-    if (p->traffic.send.bytes + bytes >= KB_TO_BYTES(p->cfg.net.max.upload)) {
+    if (*total_bytes + bytes >= KB_TO_BYTES(limit)) {
         *suspend = true;
         return 0;
     }
-    p->traffic.send.bytes += bytes;
+    *total_bytes += bytes;
+    return 0;
+}
+
+static int update_send(struct peer_s *p, ssize_t bytes, bool *suspend)
+{
+    return update(bytes, suspend, p->cfg.net.interval.retry,
+                  &p->traffic.send.start, &p->traffic.send.bytes,
+                  p->cfg.net.max.upload);
+}
+
+static int update_recv(struct peer_s *p, ssize_t bytes, bool *suspend)
+{
+    ifr(update(bytes, suspend, p->cfg.net.interval.retry,
+               &p->traffic.recv.start, &p->traffic.recv.bytes,
+               p->cfg.net.max.download));
+    if (*suspend) return net.suspend(&p->ev);
     return 0;
 }
 
 const struct module_traffic_s traffic = {
     .update.send = update_send,
+    .update.recv = update_recv,
 };

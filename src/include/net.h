@@ -58,7 +58,10 @@ struct net_s {
 
 struct net_ev_s {
     struct ev_loop *loop;
-    struct ev_io    read;
+    struct {
+        struct ev_io ev;
+        bool         started;
+    } read;
     struct ev_io    write;
     struct ev_io    stdinwatch;
     struct ev_timer send;
@@ -66,12 +69,13 @@ struct net_ev_s {
 };
 
 struct module_net_s {
-    int (*receive)(int sd, char *data, int len,
+    int (*receive)(struct peer_s *p, int sd, char *data, int len,
                    struct sockaddr_in *addr, socklen_t *naddr);
     int (*ack)(struct net_ev_s *ev, struct net_send_s *ns, int idx);
     int (*dispatch)(struct net_ev_s *ev, struct net_send_s *ns);
-    void (*send)(struct ev_loop *loop, struct ev_timer *timer, int revents);
-
+    void (*retry)(struct ev_loop *loop, struct ev_timer *timer, int revents);
+    int (*resume)(struct net_ev_s *ev);
+    int (*suspend)(struct net_ev_s *ev);
     struct {
         int (*clean)(void *ptr);
     } nb;

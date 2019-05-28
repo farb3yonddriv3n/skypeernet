@@ -6,6 +6,10 @@ struct traffic_s {
         double start;
         size_t bytes;
     } send;
+    struct {
+        double start;
+        size_t bytes;
+    } recv;
 };
 
 struct peer_s;

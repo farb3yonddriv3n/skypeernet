@@ -16,13 +16,14 @@ struct config_s {
             unsigned short port;
         } tracker;
         struct {
-            double resend;
+            double retry;
             double peers_reachable;
         } interval;
         struct {
             int task_buffer;
             int send_retry;
             int upload;
+            int download;
         } max;
     } net;
 };

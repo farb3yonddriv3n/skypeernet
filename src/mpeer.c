@@ -9,7 +9,7 @@ int main()
                      p.tracker.host,
                      p.tracker.port, 0, 0) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
-    ev_io_start(p.ev.loop, &p.ev.read);
+    ifr(net.resume(&p.ev));
     ev_timer_again(p.ev.loop, &p.ev.peers_reachable);
     ev_loop(p.ev.loop, 0);
     ev_loop_destroy(p.ev.loop);
