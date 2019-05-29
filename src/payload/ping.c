@@ -8,6 +8,11 @@ int ping_write(struct data_s *d, void *userdata)
     return 0;
 }
 
+int ping_read(struct peer_s *p)
+{
+    return 0;
+}
+
 int ping_size(int *sz, void *userdata)
 {
     if (!sz) return -1;

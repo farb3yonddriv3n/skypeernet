@@ -18,9 +18,11 @@ struct config_s {
         struct {
             double retry;
             double peers_reachable;
+            int    resend;
         } interval;
         struct {
             int task_buffer;
+            int send_queue;
             int send_retry;
             int upload;
             int download;

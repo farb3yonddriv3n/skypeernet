@@ -22,7 +22,7 @@ static void read_cb(EV_P_ ev_io *w, int revents)
                         ADDR_PORT(p->net.remote.addr),
                         &p->received) != 0) return;
     if (!valid) return;
-    if (world.handle(p) != 0) abort();
+    if (payload.recv(p) != 0) abort();
 }
 
 static void rlhandler(char *line)

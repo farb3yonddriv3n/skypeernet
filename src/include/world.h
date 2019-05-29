@@ -15,10 +15,10 @@ struct world_peer_s {
     unsigned short       port;
     struct world_peer_s *found;
     unsigned int         unreachable;
+    sn                   key;
 };
 
 struct module_world_s {
-    int (*handle)(struct peer_s *ins);
     struct {
         int (*reachable)(struct peer_s *p, int host, unsigned short port);
         int (*unreachable)(struct peer_s *p, int host, unsigned short port);

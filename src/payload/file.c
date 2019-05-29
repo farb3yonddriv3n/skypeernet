@@ -10,6 +10,31 @@ int file_write(struct data_s *d, void *userdata)
     return 0;
 }
 
+int file_read(struct peer_s *p)
+{
+    //p->recv_buffer.file_size.received += p->recv_buffer.available->data.n;
+    syslog(LOG_INFO, "File received from %x:%d, %ld/%ld",
+                     ADDR_IP(p->net.remote.addr),
+                     ADDR_PORT(p->net.remote.addr),
+                     p->recv_buffer.available->file_size.received,
+                     p->recv_buffer.available->file_size.total);
+    char fname[256];
+    snprintf(fname, sizeof(fname), "%d_%d_%010d_%010d_%010d_%010d.part",
+                                   ADDR_IP(p->net.remote.addr),
+                                   ADDR_PORT(p->net.remote.addr),
+                                   p->received.header.tidx,
+                                   p->received.header.gidx,
+                                   p->received.header.pidx,
+                                   p->received.header.parts);
+    char fnamepath[512];
+    snprintf(fnamepath, sizeof(fnamepath), "%s%s", PARTS_DIR, fname);
+    if (os.filewrite(fnamepath, "wb", p->recv_buffer.available->data.s,
+                                      p->recv_buffer.available->data.n) != 0) return -1;
+    char received[256];
+    ifr(os.filejoin(fname, received));
+    return 0;
+}
+
 int file_size(int *sz, void *userdata)
 {
     struct peer_s *p = (struct peer_s *)userdata;

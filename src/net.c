@@ -46,18 +46,20 @@ static int ack(struct net_ev_s *ev, struct net_send_s *ns, int idx)
     return 0;
 }
 
-static int maxattempts(struct list_s *l, struct nb_s *nb, bool *giveup)
+static int attempts(struct list_s *l, struct nb_s *nb, bool *skip)
 {
-    if (!l || !nb || !giveup) return -1;
-    *giveup = false;
-    if (nb->attempt++ > nb->peer->cfg.net.max.send_retry) {
+    if (!l || !nb || !skip) return -1;
+    *skip = false;
+    if (nb->attempt++ == 0) return 0;
+    if (nb->attempt > nb->peer->cfg.net.max.send_retry) {
         if (nb->cmd == COMMAND_PING)
             ifr(world.peer.unreachable(nb->peer,
                                        ADDR_IP(nb->remote.addr),
                                        ADDR_PORT(nb->remote.addr)));
-        *giveup = true;
+        *skip = true;
         return list.del(l, nb);
-    }
+    } else if (nb->attempt % nb->peer->cfg.net.interval.resend != 0)
+        *skip = true;
     return 0;
 }
 
@@ -88,9 +90,9 @@ static int dispatch(struct net_ev_s *ev, struct net_send_s *ns)
 
         struct nb_s     *nb = (struct nb_s *)unb;
         struct net_ev_s *ev = (struct net_ev_s *)uev;
-        bool giveup;
-        ifr(maxattempts(l, nb, &giveup));
-        if (giveup) return 0;
+        bool skip;
+        ifr(attempts(l, nb, &skip));
+        if (skip) return 0;
         struct peer_s *p = nb->peer;
         bool suspend;
         ifr(traffic.update.send(p, nb->buffer.offset, &suspend));
@@ -113,11 +115,7 @@ static void retry(struct ev_loop *loop, struct ev_timer *timer, int revents)
     if (sz > 0) ev_io_start(loop, &p->ev.write);
     bool suspend;
     if (traffic.update.recv(p, 0, &suspend) != 0) return;
-    if (!suspend) {
-        double timestampms;
-        if (os.gettimems(&timestampms) != 0) return;
-        net.resume(&p->ev);
-    }
+    if (!suspend) net.resume(&p->ev);
 }
 
 static int resume(struct net_ev_s *ev)

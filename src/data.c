@@ -61,15 +61,15 @@ static int packet_set(snb *dst, struct packet_s *p)
         return -1;
     if (snb_bytes_append(dst, (char *)&p->header.chunks,  sizeof(p->header.chunks))  != 0)
         return -1;
-    if (snb_bytes_append(dst, (char *)&p->header.parts,   sizeof(p->header.parts))  != 0)
+    if (snb_bytes_append(dst, (char *)&p->header.parts,   sizeof(p->header.parts))   != 0)
         return -1;
-    if (snb_bytes_append(dst, (char *)&p->header.length,  sizeof(p->header.length))   != 0)
+    if (snb_bytes_append(dst, (char *)&p->header.length,  sizeof(p->header.length))  != 0)
         return -1;
-    if (snb_bytes_append(dst, (char *)&p->header.command, sizeof(p->header.command))  != 0)
+    if (snb_bytes_append(dst, (char *)&p->header.command, sizeof(p->header.command)) != 0)
         return -1;
-    if (snb_bytes_append(dst, (char *)&p->buffer.payload, p->header.length) != 0)
+    if (snb_bytes_append(dst, (char *)&p->buffer.payload, p->header.length)          != 0)
         return -1;
-    if (snb_bytes_append(dst, (char *)&p->buffer.hash,    sizeof(p->buffer.hash)) != 0)
+    if (snb_bytes_append(dst, (char *)&p->buffer.hash,    sizeof(p->buffer.hash))    != 0)
         return -1;
     return 0;
 }
@@ -78,52 +78,51 @@ static int packet_get(struct packet_s *p, char *buffer, int nbuffer)
 {
     memset(p, 0, sizeof(*p));
     sn_initr(b, buffer, nbuffer);
-    if (sn_read((void *)&p->header.pidx,    sizeof(p->header.pidx), &b)    != 0) return -1;
-    if (sn_read((void *)&p->header.gidx,    sizeof(p->header.gidx), &b)    != 0) return -1;
-    if (sn_read((void *)&p->header.tidx,    sizeof(p->header.tidx), &b)    != 0) return -1;
-    if (sn_read((void *)&p->header.offset,  sizeof(p->header.offset), &b)  != 0) return -1;
-    if (sn_read((void *)&p->header.chunks,  sizeof(p->header.chunks), &b)  != 0) return -1;
-    if (sn_read((void *)&p->header.parts,   sizeof(p->header.parts), &b)  != 0) return -1;
-    if (sn_read((void *)&p->header.length,  sizeof(p->header.length), &b)  != 0) return -1;
+    if (sn_read((void *)&p->header.pidx,    sizeof(p->header.pidx),    &b) != 0) return -1;
+    if (sn_read((void *)&p->header.gidx,    sizeof(p->header.gidx),    &b) != 0) return -1;
+    if (sn_read((void *)&p->header.tidx,    sizeof(p->header.tidx),    &b) != 0) return -1;
+    if (sn_read((void *)&p->header.offset,  sizeof(p->header.offset),  &b) != 0) return -1;
+    if (sn_read((void *)&p->header.chunks,  sizeof(p->header.chunks),  &b) != 0) return -1;
+    if (sn_read((void *)&p->header.parts,   sizeof(p->header.parts),   &b) != 0) return -1;
+    if (sn_read((void *)&p->header.length,  sizeof(p->header.length),  &b) != 0) return -1;
     if (sn_read((void *)&p->header.command, sizeof(p->header.command), &b) != 0) return -1;
-
-    if (sn_read(p->buffer.payload, p->header.length, &b) != 0)       return -1;
+    if (sn_read(p->buffer.payload, p->header.length, &b)       != 0) return -1;
     if (sn_read(p->buffer.hash,    sizeof(p->buffer.hash), &b) != 0) return -1;
     return 0;
 }
 
-static int data_send(struct data_s *d, struct peer_s *ins,
+static int data_send(struct data_s *d, struct peer_s *p,
                      int host, unsigned short port,
                      unsigned int tidx, unsigned int parts)
 {
-    if (!d || !ins) return -1;
+    if (!d || !p) return -1;
     struct packet_s *packets;
     int npackets;
     if (packet.serialize.init(d->command, d->payload.s, d->payload.n, &packets,
-                              &npackets, &ins->send_buffer,
+                              &npackets, &p->send_buffer,
                               tidx, parts) != 0) return -1;
     sn_bytes_delete(d->payload);
     int i;
     for (i = 0; i < npackets; i++) {
         struct nb_s *nb = malloc(sizeof(*nb));
         if (!nb) return -1;
-        nb->peer = (struct peer_s *)ins;
+        nb->peer = p;
         nb->pidx = packets[i].header.pidx;
         nb->gidx = packets[i].header.gidx;
         nb->cmd  = packets[i].header.command;
-        nb->sd   = ins->net.sd;
+        nb->sd   = p->net.sd;
         if (packet_set(&nb->buffer, &packets[i]) != 0) return -1;
-        memcpy(&nb->remote.addr, &ins->net.remote.addr, sizeof(ins->net.remote.addr));
-        nb->remote.len = ins->net.remote.len;
+        memcpy(&nb->remote.addr, &p->net.remote.addr, sizeof(p->net.remote.addr));
+        nb->remote.len = p->net.remote.len;
         ADDR_IP(nb->remote.addr)   = host;
         ADDR_PORT(nb->remote.addr) = port;
         nb->status = (packets[i].header.command == COMMAND_ACK)
                      ? NET_ONESHOT : NET_INIT;
         nb->attempt = 0;
-        list.add(&ins->send.nbl, nb, net.nb.clean);
+        list.add(&p->send.nbl, nb, net.nb.clean);
     }
     if (packets) free(packets);
-    ev_io_start(ins->ev.loop, &ins->ev.write);
+    ev_io_start(p->ev.loop, &p->ev.write);
     return 0;
 }
 

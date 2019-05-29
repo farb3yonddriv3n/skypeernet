@@ -10,6 +10,7 @@ enum buffer_e {
     BUFFER_MESSAGE,
     BUFFER_FILE,
     BUFFER_FILE_SEND,
+    BUFFER_TRACKER_ANNOUNCE_PEER,
 };
 
 struct send_buffer_s {
@@ -26,6 +27,11 @@ struct send_buffer_s {
         struct {
             size_t size;
         } file_send;
+        struct {
+            int host;
+            unsigned short port;
+            sn *key;
+        } tracker_peer;
     } u;
 };
 

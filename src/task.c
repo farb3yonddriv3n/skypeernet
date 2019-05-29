@@ -35,7 +35,7 @@ static int update(struct peer_s *p)
     int send_sz, task_sz;
     if (list.size(&p->send.nbl,  &send_sz) != 0) return -1;
     if (list.size(&p->tasks.list, &task_sz) != 0) return -1;
-    if (send_sz == 0 && task_sz != 0) resume(p);
+    if (send_sz < p->cfg.net.max.send_queue && task_sz != 0) resume(p);
     return 0;
 }
 

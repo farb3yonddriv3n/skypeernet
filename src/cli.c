@@ -26,6 +26,12 @@ static int file(struct peer_s *p, char **argv, int argc)
                         host, port, 0, 0);
 }
 
+static int whoami(struct peer_s *p, char **argv, int argc)
+{
+    printf("%x:%d\n", ADDR_IP(p->net.self.addr), ADDR_PORT(p->net.self.addr));
+    return 0;
+}
+
 static int send_file(struct peer_s *p, char **argv, int argc)
 {
     long int    host = strtol(argv[1], NULL, 16);
@@ -43,6 +49,7 @@ static int peers_list(struct peer_s *p, char **argv, int argc)
                wp->port,
                wp->type,
                wp->unreachable);
+        printf("%.*s\n", sn_p(wp->key));
         return 0;
     }
     printf("     Peer |  Port | Type | Unreachable \n");
@@ -75,6 +82,7 @@ static const struct { const char *alias[8];
     { { "m",  "msg" },                2, 3, send_message },
     { { "f",  "file" },               2, 3, file },
     { { "fs", "filesend" },           2, 3, send_file },
+    { { "w",  "whoami" },             2, 0, whoami },
 };
 
 int cli(struct peer_s *p, char *line)
@@ -85,7 +93,7 @@ int cli(struct peer_s *p, char *line)
     if (argc < 1) return 0;
     int i, j;
     bool found = false;
-    for (i = 0; i < argc && found == false; i++) {
+    for (i = 0; i < COUNTOF(cmds) && found == false; i++) {
         for (j = 0; j < cmds[i].nalias; j++) {
             if (strcmp(cmds[i].alias[j], argv[0]) == 0 &&
                 cmds[i].argc == (argc - 1)) {

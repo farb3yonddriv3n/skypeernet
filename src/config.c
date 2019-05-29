@@ -21,6 +21,8 @@ int config_init(struct config_s *cfg)
     cfg->net.interval.retry = json_object_get_double(tmp);
     json_object_object_get_ex(obj, "interval_peers_reachable", &tmp);
     cfg->net.interval.peers_reachable = json_object_get_double(tmp);
+    json_object_object_get_ex(obj, "interval_resend", &tmp);
+    cfg->net.interval.resend = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_task_buffer", &tmp);
     cfg->net.max.task_buffer = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_send_retry", &tmp);
@@ -29,6 +31,8 @@ int config_init(struct config_s *cfg)
     cfg->net.max.upload = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_download_kbytes", &tmp);
     cfg->net.max.download = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "max_send_queue", &tmp);
+    cfg->net.max.send_queue = json_object_get_int(tmp);
     json_object_put(obj);
     return 0;
 }
