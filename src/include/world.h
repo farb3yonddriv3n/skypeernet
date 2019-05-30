@@ -1,8 +1,6 @@
 #ifndef WORLD_H_
 #define WORLD_H_
 
-#define MAX_PEER_UNREACHABLE 10
-
 enum world_peer_e {
     WORLD_PEER_NONE,
     WORLD_PEER_TRACKER,

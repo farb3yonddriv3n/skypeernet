@@ -11,21 +11,6 @@ static int send_message(struct peer_s *p, char **argv, int argc)
                         host, port, 0, 0);
 }
 
-static int file(struct peer_s *p, char **argv, int argc)
-{
-    long int    host = strtol(argv[1], NULL, 16);
-    long int    port = strtol(argv[2], NULL, 10);
-    const char *file = argv[3];
-    char       *buffer;
-    sn_initz(fn, (char *)file);
-    int len = eioie_fread(&buffer, fn);
-    if (len <= 0) return -1;
-    p->send_buffer.type = BUFFER_FILE;
-    sn_setr(p->send_buffer.u.file.bin, buffer, len);
-    return payload.send((struct peer_s *)p, COMMAND_FILE,
-                        host, port, 0, 0);
-}
-
 static int whoami(struct peer_s *p, char **argv, int argc)
 {
     printf("%x:%d\n", ADDR_IP(p->net.self.addr), ADDR_PORT(p->net.self.addr));
@@ -49,7 +34,6 @@ static int peers_list(struct peer_s *p, char **argv, int argc)
                wp->port,
                wp->type,
                wp->unreachable);
-        printf("%.*s\n", sn_p(wp->key));
         return 0;
     }
     printf("     Peer |  Port | Type | Unreachable \n");
@@ -80,7 +64,6 @@ static const struct { const char *alias[8];
                     } cmds[] = {
     { { "p",  "peers", "l", "list" }, 4, 0, peers_list },
     { { "m",  "msg" },                2, 3, send_message },
-    { { "f",  "file" },               2, 3, file },
     { { "fs", "filesend" },           2, 3, send_file },
     { { "w",  "whoami" },             2, 0, whoami },
 };

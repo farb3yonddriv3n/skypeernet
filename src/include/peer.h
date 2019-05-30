@@ -67,6 +67,8 @@ struct recv_buffer_s {
     struct list_s   sealed;
 };
 
+struct world_peer_s;
+
 struct peer_s {
     enum instance_e    type;
     struct net_s       net;
@@ -87,6 +89,16 @@ struct peer_s {
         int            host;
         unsigned short port;
     } tracker;
+    struct {
+        void (*message)(struct peer_s *p, int host,
+                        unsigned short port,
+                        char *msg, int len);
+        void (*file)(struct peer_s *p, int host,
+                     unsigned short port,
+                     const char *filename);
+        void (*online)(struct peer_s *p,
+                       struct world_peer_s *wp);
+    } user;
 };
 
 struct module_peer_s {

@@ -26,8 +26,10 @@ struct config_s {
             int send_retry;
             int upload;
             int download;
+            int peer_unreachable;
         } max;
     } net;
+    char download_dir[128];
 };
 
 int config_init(struct config_s *cfg);

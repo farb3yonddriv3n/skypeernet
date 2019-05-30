@@ -130,7 +130,10 @@ int announce_trt(struct peer_s *p)
     wp->host = ADDR_IP(p->net.remote.addr);
     wp->port = ADDR_PORT(p->net.remote.addr);
     bool added;
-    return peer_add(p, wp, &added);
+    ifr(peer_add(p, wp, &added));
+    if (added && p->user.online)
+        p->user.online(p, wp);
+    return 0;
 }
 
 int announce_trp(struct peer_s *p)
@@ -143,7 +146,10 @@ int announce_trp(struct peer_s *p)
                       p->recv_buffer.available->data.n));
     wp->type = WORLD_PEER_PEER;
     bool added;
-    return peer_add(p, wp, &added);
+    ifr(peer_add(p, wp, &added));
+    if (added && p->user.online)
+        p->user.online(p, wp);
+    return 0;
 }
 
 int announce_prp(struct peer_s *p)

@@ -35,7 +35,7 @@ static int update(struct peer_s *p)
     int send_sz, task_sz;
     if (list.size(&p->send.nbl,  &send_sz) != 0) return -1;
     if (list.size(&p->tasks.list, &task_sz) != 0) return -1;
-    if (send_sz < p->cfg.net.max.send_queue && task_sz != 0) resume(p);
+    if (send_sz < p->cfg.net.max.send_queue && task_sz != 0) return resume(p);
     return 0;
 }
 
@@ -62,13 +62,6 @@ static int init(struct peer_s *p, const char *filename, int nfilename,
     ifr(os.fileparts(t->file.name, p->cfg.net.max.task_buffer, &t->parts));
     ifr(list.add(&p->tasks.list, t, task.clean));
     return task.update(p);
-    /*
-    if (os.filesize(t->file.name, &t->file.size) != 0) return -1;
-    p->send_buffer.type = BUFFER_FILE_SEND;
-    p->send_buffer.u.file_send.size = t->file.size;
-    return payload.send(p, COMMAND_FILE_SEND,
-                        host, port, t->idx);
-    */
 }
 
 struct module_task_s task = {

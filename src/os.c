@@ -100,23 +100,25 @@ static int gettime(char *buffer, size_t nbuffer)
     return 0;
 }
 
-static int append(struct list_s *l)
+static int finalize(struct config_s *cfg, struct list_s *l,
+                    char *dstname, int ndstname)
 {
     void **files = NULL;
     int nfiles, i;
     ifr(list.toarray_sort(l, &files, &nfiles, LIST_ARRAY_SORT_STR));
-    char dstname[64];
-    ifr(gettime(dstname, sizeof(dstname)));
+    ifr(gettime(dstname, ndstname));
     for (i = 0; i < nfiles; i++) {
         char *fname = ((char **)files)[i];
         char *buffer;
         char fbuffer[1024];
-        snprintf(fbuffer, sizeof(fbuffer), "%s%s", PARTS_DIR, fname);
+        snprintf(fbuffer, sizeof(fbuffer), "%s/%s/%s",
+                                           cfg->download_dir,
+                                           PARTS_DIR, fname);
         sn_initz(fn, fbuffer);
         int n = eioie_fread(&buffer, fn);
         if (n <= 0) return -1;
         char fnamepath[256];
-        snprintf(fnamepath, sizeof(fnamepath), "%s%s", DL_DIR, dstname);
+        snprintf(fnamepath, sizeof(fnamepath), "%s/%s", cfg->download_dir, dstname);
         if (eioie_fwrite(fnamepath, "a", buffer, n) != 0) return -1;
         free(buffer);
         if (remove(fbuffer) != 0) return -1;
@@ -132,7 +134,8 @@ static int filejoin_clean(void *fname)
     return 0;
 }
 
-static int filejoin(const char *fname, char *received)
+static int filejoin(struct config_s *cfg, const char *fname, char *received,
+                    int nreceived, bool *finalized)
 {
     struct list_s files;
     ifr(list.init(&files));
@@ -143,7 +146,9 @@ static int filejoin(const char *fname, char *received)
     if (found != 6) return -1;
     DIR *dir;
     struct dirent *ent;
-    if ((dir = opendir(PARTS_DIR)) == NULL) return -1;
+    char partsdir[256];
+    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, PARTS_DIR);
+    if ((dir = opendir(partsdir)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         int shost, sport, stidx;
         found = sscanf(ent->d_name, "%d_%d_%d", &shost, &sport, &stidx);
@@ -157,12 +162,29 @@ static int filejoin(const char *fname, char *received)
         ifr(list.add(&files, (void *)name, filejoin_clean));
     }
     closedir(dir);
+    *finalized = false;
     int size;
     ifr(list.size(&files, &size));
     if (size == parts) {
-        ifr(append(&files));
+        ifr(finalize(cfg, &files, received, nreceived));
+        *finalized = true;
     }
     ifr(list.clean(&files));
+    return 0;
+}
+
+static int dldir(struct config_s *cfg)
+{
+    if (!cfg) return -1;
+    struct stat st = {0};
+    char partsdir[256];
+    if (stat(cfg->download_dir, &st) == -1) {
+        if (mkdir(cfg->download_dir, 0700) != 0) return -1;
+    }
+    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, PARTS_DIR);
+    if (stat(partsdir, &st) == -1) {
+        if (mkdir(partsdir, 0700) != 0) return -1;
+    }
     return 0;
 }
 
@@ -172,6 +194,7 @@ const struct module_os_s os = {
     .filesize  = filesize,
     .filewrite = filewrite,
     .filejoin  = filejoin,
+    .dldir     = dldir,
     .loadjson  = load_json_file,
     .gettimems = gettimems,
 };

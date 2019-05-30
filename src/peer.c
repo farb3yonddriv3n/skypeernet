@@ -55,6 +55,7 @@ static int init_peer(struct peer_s *p)
     psig = p;
     p->type = INSTANCE_PEER;
     if (config_init(&p->cfg) != 0) return -1;
+    if (os.dldir(&p->cfg) != 0) return -1;
     if ((p->net.sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         return -1;
     if (signal(SIGINT, sig_handler) == SIG_ERR) return -1;

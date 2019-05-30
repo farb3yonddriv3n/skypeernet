@@ -33,6 +33,12 @@ int config_init(struct config_s *cfg)
     cfg->net.max.download = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_send_queue", &tmp);
     cfg->net.max.send_queue = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "max_peer_unreachable", &tmp);
+    cfg->net.max.peer_unreachable = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "download_directory", &tmp);
+    snprintf(cfg->download_dir, sizeof(cfg->download_dir), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
     json_object_put(obj);
     return 0;
 }
