@@ -86,6 +86,9 @@ int cli(struct peer_s *p, char *line)
             }
         }
     }
+    if (!found || p->user.cb.cli) {
+        ifr(p->user.cb.cli(p, argv, argc));
+    }
     if (argv) free(argv);
     return 0;
 }

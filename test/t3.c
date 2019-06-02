@@ -10,7 +10,7 @@ void t3_block_append_transactions()
     struct transaction_param_s param;
 
     param.type = TFILE_ADD;
-    sn_setz(param.action.add.name, F128BIN);
+    param.action.add.name = F128BIN;
 
     A(transaction.init(&t, &param), 0);
 

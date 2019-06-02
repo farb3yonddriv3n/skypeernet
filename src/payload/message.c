@@ -13,12 +13,12 @@ int message_write(struct data_s *d, void *userdata)
 int message_read(struct peer_s *p)
 {
     if (!p) return -1;
-    if (p->user.message)
-        p->user.message(p,
-                        ADDR_IP(p->net.remote.addr),
-                        ADDR_PORT(p->net.remote.addr),
-                        p->recv_buffer.available->data.s,
-                        p->recv_buffer.available->data.n);
+    if (p->user.cb.message)
+        ifr(p->user.cb.message(p,
+                               ADDR_IP(p->net.remote.addr),
+                               ADDR_PORT(p->net.remote.addr),
+                               p->recv_buffer.available->data.s,
+                               p->recv_buffer.available->data.n));
     return 0;
 }
 

@@ -6,12 +6,11 @@
 #define FILE_DELETED     FLAG(2) // considered to be deleted
 #define FILE_ENCRYPTED   FLAG(3) // file chunks are encrypted
 
-#define CHUNK_SIZE (512 * 1024) // 512kB
+#define CHUNK_SIZE (500 * 1024) // 512kB
 
 struct file_chunk_s {
-    const unsigned char *ptr;
-    size_t               size;
-    int                  part;
+    size_t size;
+    int    part;
     struct {
         unsigned char content[SHA256HEX];
         unsigned char chunk[SHA256HEX];
@@ -47,8 +46,9 @@ struct file_s {
 };
 
 int file_chunks_alloc(struct file_s *f, const int size);
-int file_chunks(const char *bytes, size_t nbytes,
-                struct file_chunk_s **chunks, size_t *nchunks);
+int file_chunks(const char *filename, size_t nbytes,
+                struct file_chunk_s **chunks,
+                size_t *nchunks);
 void file_chunks_free(struct file_chunk_s *chunks);
 
 #endif

@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <json.h>
 #include <ev.h>
+#include <pthread.h>
 
 #include <sn.h>
 #include <utils.h>
@@ -50,5 +51,7 @@
 #include <payload.h>
 #include <cli.h>
 #include <os.h>
+
+#include <distfs.h>
 
 #endif

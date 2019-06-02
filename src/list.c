@@ -80,7 +80,7 @@ static int clean(struct list_s *l)
     if (!l) return -1;
     struct list_internal_s *li, *d;
     for (li = l->head; li != NULL; ) {
-        if (li->data.clean(li->data.ptr) != 0) return -1;
+        if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
         d = li;
         li = li->next;
         free(d);

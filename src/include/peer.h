@@ -90,14 +90,19 @@ struct peer_s {
         unsigned short port;
     } tracker;
     struct {
-        void (*message)(struct peer_s *p, int host,
+        struct {
+            int (*message)(struct peer_s *p, int host,
+                           unsigned short port,
+                           char *msg, int len);
+            int (*file)(struct peer_s *p, int host,
                         unsigned short port,
-                        char *msg, int len);
-        void (*file)(struct peer_s *p, int host,
-                     unsigned short port,
-                     const char *filename);
-        void (*online)(struct peer_s *p,
-                       struct world_peer_s *wp);
+                        const char *filename);
+            int (*online)(struct peer_s *p,
+                          struct world_peer_s *wp);
+            int (*cli)(struct peer_s *p, char **argv,
+                       int argc);
+        } cb;
+        void *data;
     } user;
 };
 

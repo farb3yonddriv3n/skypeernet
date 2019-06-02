@@ -14,7 +14,7 @@ void t2_group_root_load_save()
     struct root_s *r[3];
     json_object *obj;
     r[0] = g->roots.array[0];
-    A(root.data.save(r[0], &obj), 0);
+    A(root.data.save.object(r[0], &obj), 0);
     A(root.data.load.object(&r[1], obj), 0);
 
     struct root_diff_s diff;

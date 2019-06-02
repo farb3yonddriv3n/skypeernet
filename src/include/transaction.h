@@ -35,7 +35,7 @@ struct transaction_param_s {
     enum transaction_e type;
     union {
         struct {
-            sn name;
+            const char *name;
         } add;
         struct {
             bool *valid;

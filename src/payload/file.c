@@ -32,11 +32,11 @@ int file_read(struct peer_s *p)
     char received[256];
     bool finalized;
     ifr(os.filejoin(&p->cfg, fname, received, sizeof(received), &finalized));
-    if (finalized && p->user.file)
-        p->user.file(p,
-                     ADDR_IP(p->net.remote.addr),
-                     ADDR_PORT(p->net.remote.addr),
-                     received);
+    if (finalized && p->user.cb.file)
+        ifr(p->user.cb.file(p,
+                            ADDR_IP(p->net.remote.addr),
+                            ADDR_PORT(p->net.remote.addr),
+                            received));
     return 0;
 }
 

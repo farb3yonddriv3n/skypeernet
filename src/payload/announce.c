@@ -131,8 +131,8 @@ int announce_trt(struct peer_s *p)
     wp->port = ADDR_PORT(p->net.remote.addr);
     bool added;
     ifr(peer_add(p, wp, &added));
-    if (added && p->user.online)
-        p->user.online(p, wp);
+    if (added && p->user.cb.online)
+        ifr(p->user.cb.online(p, wp));
     return 0;
 }
 
@@ -147,8 +147,8 @@ int announce_trp(struct peer_s *p)
     wp->type = WORLD_PEER_PEER;
     bool added;
     ifr(peer_add(p, wp, &added));
-    if (added && p->user.online)
-        p->user.online(p, wp);
+    if (added && p->user.cb.online)
+        ifr(p->user.cb.online(p, wp));
     return 0;
 }
 

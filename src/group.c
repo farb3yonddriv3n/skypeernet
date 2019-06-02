@@ -106,7 +106,7 @@ static int db_save(struct group_s *g)
     for (i = 0; i < g->roots.size; i++) {
         struct root_s *r = g->roots.array[i];
         json_object *dst;
-        if (root.data.save(r, &dst) != 0) return -1;
+        if (root.data.save.object(r, &dst) != 0) return -1;
         const char *root_json = json_object_to_json_string(dst);
         char fname[1024];
         filename(fname, sizeof(fname), r->hash, sizeof(r->hash));

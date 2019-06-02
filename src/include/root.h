@@ -4,7 +4,7 @@
 #define DISTFS_BASE_ROOT_HASH "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 struct root_s {
-    char hash[SHA256HEX];
+    unsigned char hash[SHA256HEX];
     struct {
         struct block_s **array;
         size_t           size;
@@ -34,7 +34,10 @@ struct module_root_s {
             int (*file)(struct root_s **r, const char *filename);
             int (*object)(struct root_s **r, const json_object *obj);
         } load;
-        int (*save)(const struct root_s *r, json_object **robj);
+        struct {
+            int (*file)(const struct root_s *r, const char *filename);
+            int (*object)(const struct root_s *r, json_object **robj);
+        } save;
     } data;
 };
 

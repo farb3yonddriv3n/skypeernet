@@ -5,7 +5,7 @@ static int t_file_add(const char *filename, struct block_s *b)
 {
     struct transaction_param_s param;
     param.type = TFILE_ADD;
-    sn_setz(param.action.add.name, (char *)filename);
+    param.action.add.name = (char *)filename;
 
     struct transaction_s *t;
     int ret = transaction.init(&t, &param);

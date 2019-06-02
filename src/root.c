@@ -11,6 +11,7 @@ static int mallocz(struct root_s **r)
 static int init(struct root_s **r)
 {
     if (mallocz(r) != 0) return -1;
+    memcpy((*r)->hash, DISTFS_BASE_ROOT_HASH, sizeof((*r)->hash));
     return 0;
 }
 
@@ -150,7 +151,7 @@ static int merge(struct root_s *dst, struct root_s *src,
     return 0;
 }
 
-static int save(const struct root_s *r, json_object **robj)
+static int save_object(const struct root_s *r, json_object **robj)
 {
     if (!r || !robj) return -1;
     *robj = json_object_new_object();
@@ -163,6 +164,18 @@ static int save(const struct root_s *r, json_object **robj)
         if (ret != 0) return ret;
         json_object_array_add(blocks, bobj);
     }
+    return 0;
+}
+
+static int save_file(const struct root_s *r, const char *filename)
+{
+    json_object *obj;
+    if (root.data.save.object(r, &obj) != 0) return -1;
+    const char *json = json_object_to_json_string(obj);
+    if (!json) return -1;
+    if (eioie_fwrite(filename, "w", (char *)json, strlen(json)) != 0)
+        return -1;
+    json_object_put(obj);
     return 0;
 }
 
@@ -179,7 +192,7 @@ static int copy(struct root_s **dst, const struct root_s *src)
 {
     if (!src) return -1;
     json_object *obj;
-    if (root.data.save(src, &obj) != 0) return -1;
+    if (root.data.save.object(src, &obj) != 0) return -1;
     if (root.data.load.object(dst, obj) != 0) return -1;
     return 0;
 }
@@ -231,5 +244,6 @@ const struct module_root_s root = {
     //.blocks.import    = blocks_import,
     .data.load.file   = load_file,
     .data.load.object = load_object,
-    .data.save        = save,
+    .data.save.file   = save_file,
+    .data.save.object = save_object,
 };

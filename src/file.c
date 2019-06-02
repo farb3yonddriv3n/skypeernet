@@ -8,8 +8,9 @@ int file_chunks_alloc(struct file_s *f, const int size)
     return 0;
 }
 
-int file_chunks(const char *bytes, size_t nbytes,
-                struct file_chunk_s **chunks, size_t *nchunks)
+int file_chunks(const char *filename, size_t nbytes,
+                struct file_chunk_s **chunks,
+                size_t *nchunks)
 {
     if (nbytes < 1) return -1;
 
@@ -20,13 +21,17 @@ int file_chunks(const char *bytes, size_t nbytes,
         *chunks = realloc(*chunks, sizeof(**chunks) * (i + 1));
         if (*chunks == NULL) return -1;
         struct file_chunk_s *fc = &((*chunks)[i]);
-        fc->ptr  = (const unsigned char *)(bytes + (i * CHUNK_SIZE));
         fc->size = (nbytes < CHUNK_SIZE) ? nbytes :
                    (((i + 1) * CHUNK_SIZE) > nbytes ?
                    nbytes - (i * CHUNK_SIZE) :
                    CHUNK_SIZE);
         fc->part = i;
-        sha256hex(fc->ptr, fc->size, fc->hash.content);
+        char *fpart;
+        size_t nfpart;
+        if (os.filepart(filename, i * CHUNK_SIZE, fc->size, &fpart,
+                        &nfpart) != 0) return -1;
+        sha256hex((unsigned char *)fpart, nfpart, fc->hash.content);
+        free(fpart);
 
         char buffer[1024];
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
