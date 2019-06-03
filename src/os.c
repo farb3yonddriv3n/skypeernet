@@ -2,6 +2,16 @@
 #include <dirent.h>
 #include <time.h>
 
+static int load_json(json_object **obj, char *content, int ncontent)
+{
+    if (!obj || !content || ncontent < 1) return -1;
+    struct json_tokener *tok = json_tokener_new();
+    *obj = json_tokener_parse_ex(tok, content, ncontent);
+    json_tokener_free(tok);
+    if (!*obj) return -1;
+    return 0;
+}
+
 static int load_json_file(json_object **obj, const char *filename)
 {
     if (!obj || !filename) return -1;
@@ -9,11 +19,17 @@ static int load_json_file(json_object **obj, const char *filename)
     char *content;
     int n = eioie_fread(&content, fn);
     if (n <= 1) return -1;
-    struct json_tokener *tok = json_tokener_new();
-    *obj = json_tokener_parse_ex(tok, content, n);
-    json_tokener_free(tok);
+    if (load_json(obj, content, n) != 0) return -1;
     if (content) free(content);
-    if (!*obj) return -1;
+    return 0;
+}
+
+static int fileexists(const char *filename, bool *exists)
+{
+    FILE *pfile;
+    pfile = fopen(filename, "r");
+    *exists = false;
+    if (pfile) *exists = true;
     return 0;
 }
 
@@ -106,7 +122,9 @@ static int finalize(struct config_s *cfg, struct list_s *l,
     void **files = NULL;
     int nfiles, i;
     ifr(list.toarray_sort(l, &files, &nfiles, LIST_ARRAY_SORT_STR));
-    ifr(gettime(dstname, ndstname));
+    char timems[128];
+    ifr(gettime(timems, sizeof(timems)));
+    snprintf(dstname, ndstname, "%s/%s", cfg->download_dir, timems);
     for (i = 0; i < nfiles; i++) {
         char *fname = ((char **)files)[i];
         char *buffer;
@@ -117,9 +135,7 @@ static int finalize(struct config_s *cfg, struct list_s *l,
         sn_initz(fn, fbuffer);
         int n = eioie_fread(&buffer, fn);
         if (n <= 0) return -1;
-        char fnamepath[256];
-        snprintf(fnamepath, sizeof(fnamepath), "%s/%s", cfg->download_dir, dstname);
-        if (eioie_fwrite(fnamepath, "a", buffer, n) != 0) return -1;
+        if (eioie_fwrite(dstname, "a", buffer, n) != 0) return -1;
         free(buffer);
         if (remove(fbuffer) != 0) return -1;
     }
@@ -189,12 +205,14 @@ static int dldir(struct config_s *cfg)
 }
 
 const struct module_os_s os = {
-    .filepart  = filepart,
-    .fileparts = fileparts,
-    .filesize  = filesize,
-    .filewrite = filewrite,
-    .filejoin  = filejoin,
-    .dldir     = dldir,
-    .loadjson  = load_json_file,
-    .gettimems = gettimems,
+    .filepart      = filepart,
+    .fileparts     = fileparts,
+    .filesize      = filesize,
+    .filewrite     = filewrite,
+    .filejoin      = filejoin,
+    .fileexists    = fileexists,
+    .dldir         = dldir,
+    .loadjsonfile  = load_json_file,
+    .loadjson      = load_json,
+    .gettimems     = gettimems,
 };

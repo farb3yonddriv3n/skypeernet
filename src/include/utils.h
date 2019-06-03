@@ -13,6 +13,9 @@
 
 #define ifr(m_src) if (m_src != 0) return -1
 
+#define dmemcmp(m_src, m_nsrc, m_dst, m_ndst)\
+    (m_nsrc == m_ndst && memcmp(m_src, m_dst, m_ndst) == 0)
+
 int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent);
 int eioie_fread(char **dst, sn fname);
 void bin2hexstr(char *dst, size_t dstlen,

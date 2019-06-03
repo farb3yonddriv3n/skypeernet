@@ -54,6 +54,10 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     size_t size;
     if (os.filesize(param->action.add.name, &size) != 0) return -1;
 
+    snprintf(t->action.add.meta.name,
+             sizeof(t->action.add.meta.name),
+             "%s",
+             param->action.add.name);
     t->action.add.meta.size = size;
     int ret = hash_meta(t, t->action.add.meta.hash);
     if (ret != 0) return -1;
@@ -211,17 +215,12 @@ static int save(struct transaction_s *t, json_object **parent)
 
 static int dump(struct transaction_s *t)
 {
-    transaction.metadump(t);
     struct file_s *f = &t->action.add;
-    printf("File size: %ld\n", f->meta.size);
-    printf("File description: %s\n", f->meta.description);
-    printf("File meta hash: %.*s\n", (int)sizeof(f->meta.hash), f->meta.hash);
-    printf("File chunks size: %ld\n", f->chunks.size);
-    int i;
-    for (i = 0; i < f->chunks.size; i++) {
-        printf("\tChunk part %d size: %ld\n", f->chunks.array[i].part,
-                                             f->chunks.array[i].size);
-    }
+    printf("\tFile name: %s\n", f->meta.name);
+    printf("\tFile size: %ld\n", f->meta.size);
+    printf("\tFile description: %s\n", f->meta.description);
+    printf("\tFile hash: %.*s\n", (int)sizeof(f->hash), f->hash);
+    printf("\tFile chunks size: %ld\n", f->chunks.size);
     return 0;
 }
 

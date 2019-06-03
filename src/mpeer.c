@@ -2,26 +2,85 @@
 
 #define BLOCK_FILE "block_db"
 
+enum distfs_cmd_e {
+    DISTFS_HELLO,
+};
+
+#define MSG_HELLO      "hello"
+#define MSG_HELLO_SIZE (sizeof(MSG_HELLO) - 1)
+
+static int hello_write(struct distfs_s *dfs, int host, unsigned short port);
+
+static const struct { enum distfs_cmd_e cmd;
+                      int (*write)(struct distfs_s *dfs, int host, unsigned short port);
+                      int (*read)(struct distfs_s *dfs);
+                    } dfs_cmds[] = {
+    { DISTFS_HELLO, hello_write, NULL },
+};
+
 static int message(struct peer_s *p, int host,
-                    unsigned short port,
-                    char *msg, int len)
+                   unsigned short port,
+                   char *msg, int len)
 {
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
+    if (dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len)) {
+        bool exists;
+        ifr(os.fileexists(BLOCK_FILE, &exists));
+        if (exists) return task.init(p, BLOCK_FILE, strlen(BLOCK_FILE), host, port);
+    }
     return 0;
 }
 
-static int file(struct peer_s *p, int host,
+static int dfile(struct peer_s *p, int host,
                  unsigned short port,
                  const char *received)
 {
-    printf("Received file: %s\n", received);
+    struct root_s *r;
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
+    if (root.data.load.file(&r, received) == 0) {
+        ifr(root.net.set(r, host, port));
+        ifr(group.roots.add(dfs->blocks.remote, r));
+    } else {
+    }
     return 0;
+}
+
+static int distfs_cmd_find(enum distfs_cmd_e cmd, int *idx)
+{
+    int i;
+    for (i = 0; i < COUNTOF(dfs_cmds); i++) {
+        if (dfs_cmds[i].cmd == cmd) {
+            *idx = i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static int hello_write(struct distfs_s *dfs, int host, unsigned short port)
+{
+    if (!dfs) return -1;
+    struct peer_s *p = (struct peer_s *)dfs->peer;
+    p->send_buffer.type = BUFFER_MESSAGE;
+    p->send_buffer.u.message.str = MSG_HELLO;
+    return payload.send(p, COMMAND_MESSAGE,
+                        host, port, 0, 0);
+    return 0;
+}
+
+static int distfs_command_send(struct distfs_s *dfs, enum distfs_cmd_e cmd,
+                               int host, unsigned short port)
+{
+    int idx;
+    if (distfs_cmd_find(cmd, &idx) != 0) return -1;
+    return dfs_cmds[idx].write(dfs, host, port);
 }
 
 static int online(struct peer_s *p, struct world_peer_s *wp)
 {
     printf("New peer: %x:%d of type %d\n", wp->host, wp->port, wp->type);
-    return 0;
+    if (wp->type == WORLD_PEER_TRACKER) return 0;
+    return distfs_command_send(p->user.data, DISTFS_HELLO, wp->host, wp->port);
 }
 
 static bool mining = false;
@@ -46,21 +105,21 @@ static void *mine(void *data)
         ifr(block.transactions.add(b, t));
         return 0;
     }
-    if (root.init(&dfs->local_block) != 0)
+    if (root.init(&dfs->blocks.local) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (root.data.load.file(&dfs->local_block, BLOCK_FILE))
+    if (root.data.load.file(&dfs->blocks.local, BLOCK_FILE))
         syslog(LOG_DEBUG, "DB file not found %s:%d", __FILE__, __LINE__);
     bool valid;
-    if (root.validate(dfs->local_block, &valid) != 0)
+    if (root.validate(dfs->blocks.local, &valid) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (!valid)
         return mine_thread_fail(__FILE__, __LINE__);
     size_t size;
-    if (root.blocks.size(dfs->local_block, &size) != 0)
+    if (root.blocks.size(dfs->blocks.local, &size) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     unsigned char *prev_block;
     if (size == 0) prev_block = DISTFS_BASE_ROOT_HASH;
-    else           prev_block = dfs->local_block->hash;
+    else           prev_block = dfs->blocks.local->hash;
     struct block_s *b;
     if (block.init(&b, prev_block) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
@@ -70,11 +129,11 @@ static void *mine(void *data)
         return mine_thread_fail(__FILE__, __LINE__);
     if (block.mine(b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (root.blocks.add(dfs->local_block, b) != 0)
+    if (root.blocks.add(dfs->blocks.local, b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (root.data.save.file(dfs->local_block, BLOCK_FILE) != 0)
+    if (root.data.save.file(dfs->blocks.local, BLOCK_FILE) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (root.clean(dfs->local_block) != 0)
+    if (root.clean(dfs->blocks.local) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (list.clean(&dfs->transactions) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
@@ -93,6 +152,13 @@ static int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc)
     return 0;
 }
 
+static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs) return -1;
+    ifr(group.dump(dfs->blocks.remote));
+    return 0;
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -101,6 +167,7 @@ static const struct { const char *alias[8];
     { { "t",  "tadd"  }, 2, 2, dfs_transaction_add  },
     { { "tl", "tlist" }, 2, 0, dfs_transaction_list },
     { { "bm", "bmine" }, 2, 0, dfs_block_mine },
+    { { "lf", "listfiles" }, 2, 0, dfs_list_files },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)
@@ -133,10 +200,12 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     if (!p || !dfs) return -1;
     memset(dfs, 0, sizeof(*dfs));
     p->user.cb.message = message;
-    p->user.cb.file    = file;
+    p->user.cb.file    = dfile;
     p->user.cb.online  = online;
     p->user.cb.cli     = dfs_cli;
     p->user.data       = dfs;
+    dfs->peer          = p;
+    ifr(group.init(&dfs->blocks.remote));
     return 0;
 }
 

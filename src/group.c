@@ -30,6 +30,16 @@ static int clean(struct group_s *g)
     return 0;
 }
 
+static int dump(struct group_s *g)
+{
+    if (!g) return -1;
+    int i;
+    for (i = 0; i < g->roots.size; i++) {
+        if (root.dump(g->roots.array[i]) != 0) return -1;
+    }
+    return 0;
+}
+
 static void filename(char *buffer, size_t nbuffer, char *fname, int nfname)
 {
     snprintf(buffer, nbuffer, "%s%.*s", DB_DIR, nfname, fname);
@@ -133,6 +143,7 @@ const struct module_group_s group = {
     .compare   = compare,
     //.receive = receive,
     .validate  = validate,
+    .dump      = dump,
     .clean     = clean,
     .roots.add = roots_add,
     .db.save   = db_save,

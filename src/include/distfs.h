@@ -2,8 +2,11 @@
 #define DISTFS_H_
 
 struct distfs_s {
-    struct root_s  *local_block;
-    struct group_s *remote_blocks;
+    struct peer_s *peer;
+    struct {
+        struct root_s  *local;
+        struct group_s *remote;
+    } blocks;
     struct list_s   transactions;
 };
 

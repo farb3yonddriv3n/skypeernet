@@ -7,7 +7,7 @@ static int send_message(struct peer_s *p, char **argv, int argc)
     const char *message = argv[3];
     p->send_buffer.type = BUFFER_MESSAGE;
     p->send_buffer.u.message.str = message;
-    return payload.send((struct peer_s *)p, COMMAND_MESSAGE,
+    return payload.send(p, COMMAND_MESSAGE,
                         host, port, 0, 0);
 }
 

@@ -50,13 +50,26 @@ static int load_object(struct root_s **r, const json_object *obj)
         }
     }
     json_object_put((json_object *)obj);
+    bool valid;
+    if (root.validate(*r, &valid) != 0) return -1;
+    if (!valid) {
+        if (root.clean(*r) != 0) return -1;
+        return -1;
+    }
     return 0;
 }
 
-static int load_file(struct root_s **r, const char *filename)
+static int load_json_file(struct root_s **r, const char *filename)
 {
     json_object *obj;
-    if (os.loadjson(&obj, filename) != 0) return -1;
+    if (os.loadjsonfile(&obj, filename) != 0) return -1;
+    return root.data.load.object(r, obj);
+}
+
+static int load_json(struct root_s **r, char *content, int ncontent)
+{
+    json_object *obj;
+    if (os.loadjson(&obj, content, ncontent) != 0) return -1;
     return root.data.load.object(r, obj);
 }
 
@@ -167,7 +180,7 @@ static int save_object(const struct root_s *r, json_object **robj)
     return 0;
 }
 
-static int save_file(const struct root_s *r, const char *filename)
+static int save_json_file(const struct root_s *r, const char *filename)
 {
     json_object *obj;
     if (root.data.save.object(r, &obj) != 0) return -1;
@@ -216,6 +229,18 @@ static int validate(const struct root_s *r, bool *valid)
     return 0;
 }
 
+static int dump(struct root_s *r)
+{
+    if (!r) return -1;
+    printf("Peer: %x:%d\n", r->net.host, r->net.port);
+    int i;
+    for (i = 0; i < r->blocks.size; i++) {
+        struct block_s *b = r->blocks.array[i];
+        if (block.dump(b) != 0) return -1;
+    }
+    return 0;
+}
+
 static int clean(struct root_s *r)
 {
     if (!r) return -1;
@@ -229,6 +254,14 @@ static int clean(struct root_s *r)
     return 0;
 }
 
+static int net_set(struct root_s *r, int host, unsigned short port)
+{
+    if (!r) return -1;
+    r->net.host = host;
+    r->net.port = port;
+    return 0;
+}
+
 const struct module_root_s root = {
     .init             = init,
     .compare          = compare,
@@ -236,14 +269,17 @@ const struct module_root_s root = {
     .validate         = validate,
     .canmerge         = canmerge,
     .merge            = merge,
+    .dump             = dump,
     .clean            = clean,
     .blocks.add       = blocks_add,
     .blocks.append    = blocks_append,
     .blocks.size      = blocks_size,
     .blocks.export    = blocks_export,
     //.blocks.import    = blocks_import,
-    .data.load.file   = load_file,
+    .data.load.json   = load_json,
+    .data.load.file   = load_json_file,
     .data.load.object = load_object,
-    .data.save.file   = save_file,
+    .data.save.file   = save_json_file,
     .data.save.object = save_object,
+    .net.set          = net_set,
 };

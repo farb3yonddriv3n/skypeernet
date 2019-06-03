@@ -9,7 +9,7 @@ int config_init(struct config_s *cfg)
     }
 
     json_object *obj;
-    if (os.loadjson(&obj, "config/settings.cfg") != 0) return -1;
+    if (os.loadjsonfile(&obj, "config/settings.cfg") != 0) return -1;
     json_object *tmp;
     json_object_object_get_ex(obj, "tracker_ip", &tmp);
     snprintf(cfg->net.tracker.ip, sizeof(cfg->net.tracker.ip), "%.*s",

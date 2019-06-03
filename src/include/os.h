@@ -13,8 +13,10 @@ struct module_os_s {
                      char *content, int ncontent);
     int (*filejoin)(struct config_s *cfg, const char *fname, char *received,
                     int nreceived, bool *finalized);
+    int (*fileexists)(const char *filename, bool *exists);
     int (*dldir)(struct config_s *cfg);
-    int (*loadjson)(json_object **obj, const char *filename);
+    int (*loadjson)(json_object **obj, char *content, int ncontent);
+    int (*loadjsonfile)(json_object **obj, const char *filename);
     int (*gettimems)(double *result);
 };
 

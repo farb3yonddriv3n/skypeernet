@@ -9,6 +9,10 @@ struct root_s {
         struct block_s **array;
         size_t           size;
     } blocks;
+    struct {
+        int            host;
+        unsigned short port;
+    } net;
 };
 
 struct module_root_s {
@@ -21,6 +25,7 @@ struct module_root_s {
                     struct root_diff_s *diff);
     int (*merge)(struct root_s *dst, struct root_s *src,
                  bool *merged);
+    int (*dump)(struct root_s *r);
     int (*clean)(struct root_s *r);
     struct {
         int (*add)(struct root_s *r, struct block_s *b);
@@ -31,6 +36,7 @@ struct module_root_s {
     } blocks;
     struct {
         struct {
+            int (*json)(struct root_s **r, char *content, int ncontent);
             int (*file)(struct root_s **r, const char *filename);
             int (*object)(struct root_s **r, const json_object *obj);
         } load;
@@ -39,6 +45,9 @@ struct module_root_s {
             int (*object)(const struct root_s *r, json_object **robj);
         } save;
     } data;
+    struct {
+        int (*set)(struct root_s *r, int host, unsigned short port);
+    } net;
 };
 
 enum root_merge_e {

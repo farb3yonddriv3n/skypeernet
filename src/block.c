@@ -213,6 +213,16 @@ static int size(struct block_s *b, size_t *s)
     return 0;
 }
 
+static int dump(struct block_s *b)
+{
+    if (!b) return -1;
+    int i;
+    for (i = 0; i < b->transactions.size; i++) {
+        if (transaction.dump(b->transactions.array[i]) != 0) return -1;
+    }
+    return 0;
+}
+
 static int clean(struct block_s *b)
 {
     if (!b) return -1;
@@ -232,6 +242,7 @@ const struct module_block_s block = {
     .compare           = compare,
     .size              = size,
     .clean             = clean,
+    .dump              = dump,
     .transactions.add  = transactions_add,
     .transactions.lock = transactions_lock,
     .data.load         = load,
