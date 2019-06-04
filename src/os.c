@@ -2,6 +2,8 @@
 #include <dirent.h>
 #include <time.h>
 
+static const char *dirs[] = { "parts", "blocks" };
+
 static int load_json(json_object **obj, char *content, int ncontent)
 {
     if (!obj || !content || ncontent < 1) return -1;
@@ -131,7 +133,7 @@ static int finalize(struct config_s *cfg, struct list_s *l,
         char fbuffer[1024];
         snprintf(fbuffer, sizeof(fbuffer), "%s/%s/%s",
                                            cfg->download_dir,
-                                           PARTS_DIR, fname);
+                                           dirs[0], fname);
         sn_initz(fn, fbuffer);
         int n = eioie_fread(&buffer, fn);
         if (n <= 0) return -1;
@@ -163,7 +165,7 @@ static int filejoin(struct config_s *cfg, const char *fname, char *received,
     DIR *dir;
     struct dirent *ent;
     char partsdir[256];
-    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, PARTS_DIR);
+    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[0]);
     if ((dir = opendir(partsdir)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         int shost, sport, stidx;
@@ -197,10 +199,36 @@ static int dldir(struct config_s *cfg)
     if (stat(cfg->download_dir, &st) == -1) {
         if (mkdir(cfg->download_dir, 0700) != 0) return -1;
     }
-    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, PARTS_DIR);
-    if (stat(partsdir, &st) == -1) {
-        if (mkdir(partsdir, 0700) != 0) return -1;
+    int i;
+    for (i = 0; i < COUNTOF(dirs); i++) {
+        snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[i]);
+        if (stat(partsdir, &st) == -1) {
+            if (mkdir(partsdir, 0700) != 0) return -1;
+        }
     }
+    return 0;
+}
+
+static const char *getpartsdir()
+{
+    return dirs[0];
+}
+
+static int filemove(const char *dst, const char *src)
+{
+    if (!dst || !src) return -1;
+    if (rename(dst, src) != 0) return -1;
+    return 0;
+}
+
+static int blockname(struct config_s *cfg, char *blockname, int nblockname,
+                     const char *received, unsigned char *keyhash)
+{
+    if (!blockname || !received || !keyhash) return -1;
+    snprintf(blockname, nblockname, "%s/%s/%.*s",
+                                    cfg->download_dir,
+                                    dirs[1],
+                                    SHA256HEX, keyhash);
     return 0;
 }
 
@@ -211,8 +239,11 @@ const struct module_os_s os = {
     .filewrite     = filewrite,
     .filejoin      = filejoin,
     .fileexists    = fileexists,
+    .filemove      = filemove,
+    .blockname     = blockname,
     .dldir         = dldir,
     .loadjsonfile  = load_json_file,
     .loadjson      = load_json,
     .gettimems     = gettimems,
+    .getpartsdir   = getpartsdir,
 };

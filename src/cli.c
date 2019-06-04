@@ -22,7 +22,7 @@ static int send_file(struct peer_s *p, char **argv, int argc)
     long int    host = strtol(argv[1], NULL, 16);
     long int    port = strtol(argv[2], NULL, 10);
     const char *file = argv[3];
-    return task.init(p, file, strlen(file), host, port);
+    return task.add(p, file, strlen(file), host, port);
 }
 
 static int peers_list(struct peer_s *p, char **argv, int argc)
@@ -86,7 +86,7 @@ int cli(struct peer_s *p, char *line)
             }
         }
     }
-    if (!found || p->user.cb.cli) {
+    if (!found && p->user.cb.cli) {
         ifr(p->user.cb.cli(p, argv, argc));
     }
     if (argv) free(argv);

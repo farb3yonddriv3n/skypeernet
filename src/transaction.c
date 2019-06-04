@@ -1,6 +1,5 @@
 #include <common.h>
 
-#define MAX_TRANSACTIONS 1
 #define VERSION          1
 
 enum transaction_process_e {
@@ -9,6 +8,7 @@ enum transaction_process_e {
     PROCESS_DUMP,
     PROCESS_IMPORT,
     PROCESS_EXPORT,
+    PROCESS_FIND,
     PROCESS_CLEAN,
 };
 
@@ -17,7 +17,7 @@ struct transaction_map_s {
     const struct transaction_sub_s *module;
 };
 
-static struct transaction_map_s transaction_module[MAX_TRANSACTIONS] = {
+static struct transaction_map_s transaction_module[] = {
     { TFILE_ADD, &transaction_file_add },
 };
 
@@ -25,7 +25,7 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                    struct transaction_param_s *param, unsigned char *dst_hash)
 {
     int i;
-    for (i = 0; i < MAX_TRANSACTIONS; i++)
+    for (i = 0; i < COUNTOF(transaction_module); i++)
         if (transaction_module[i].type == t->type)
             switch (ptype) {
                 case PROCESS_INIT:
@@ -39,6 +39,9 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                     return transaction_module[i].module->data.load(t, param->action.load.obj);
                 case PROCESS_EXPORT:
                     return transaction_module[i].module->data.save(t, param->action.save.obj);
+                case PROCESS_FIND:
+                    return transaction_module[i].module->find(t, param->action.find.hash,
+                                                              param->action.find.found);
                 case PROCESS_CLEAN:
                     return transaction_module[i].module->clean(t);
                 default:
@@ -185,6 +188,15 @@ static int save(struct transaction_s *t, json_object **tobj)
     return 0;
 }
 
+static int find(struct transaction_s *t, unsigned char *h,
+                void **found)
+{
+    if (!t || !h || !found) return -1;
+    struct transaction_param_s param = { .action.find.hash  = h,
+                                         .action.find.found = found };
+    return process(PROCESS_FIND, t, &param, NULL);
+}
+
 static int clean(struct transaction_s *t)
 {
     if (!t) return -1;
@@ -197,6 +209,7 @@ const struct module_transaction_s transaction = {
     .init        = init,
     .hash        = hash,
     .validate    = validate,
+    .find        = find,
     .metadump    = metadump,
     .dump        = dump,
     .clean       = clean,

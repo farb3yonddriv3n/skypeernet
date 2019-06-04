@@ -78,7 +78,6 @@ int rsa_generate()
     int  pub_len;
     char *pri_key;
     char *pub_key;
-
     RSA *keypair = RSA_generate_key(KEY_LENGTH, PUB_EXP, NULL, NULL);
 
     BIO *pri = BIO_new(BIO_s_mem());

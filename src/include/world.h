@@ -14,6 +14,7 @@ struct world_peer_s {
     struct world_peer_s *found;
     unsigned int         unreachable;
     sn                   key;
+    unsigned char        keyhash[SHA256HEX];
 };
 
 struct module_world_s {

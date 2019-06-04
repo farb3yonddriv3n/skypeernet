@@ -40,6 +40,7 @@ static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
     int keysize = nsrc - sizeof(wp->host) - sizeof(wp->port);
     sn_bytes_init_new(wp->key, keysize);
     if (sn_read((void *)wp->key.s, keysize, &bf) != 0) return -1;
+    sha256hex((unsigned char *)wp->key.s, keysize, wp->keyhash);
     return 0;
 }
 

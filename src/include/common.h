@@ -53,5 +53,6 @@
 #include <os.h>
 
 #include <distfs.h>
+#include <job.h>
 
 #endif

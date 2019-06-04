@@ -14,6 +14,7 @@ struct list_s {
 struct module_list_s {
     int (*init)(struct list_s *l);
     int (*add)(struct list_s *l, void *userdata, int (*clean)(void *ptr));
+    int (*add_head)(struct list_s *l, void *userdata, int (*clean)(void *ptr));
     int (*del)(struct list_s *l, void *userdata);
     int (*map)(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
                void *userdata);

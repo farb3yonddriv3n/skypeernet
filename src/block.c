@@ -223,6 +223,17 @@ static int dump(struct block_s *b)
     return 0;
 }
 
+static int find(struct block_s *b, unsigned char *h, void **found)
+{
+    if (!b || !h || !found) return -1;
+    int i;
+    for (i = 0; i < b->transactions.size; i++) {
+        if (transaction.find(b->transactions.array[i], h, found) != 0) return -1;
+        if (*found) break;
+    }
+    return 0;
+}
+
 static int clean(struct block_s *b)
 {
     if (!b) return -1;
@@ -241,6 +252,7 @@ const struct module_block_s block = {
     .validate          = validate,
     .compare           = compare,
     .size              = size,
+    .find              = find,
     .clean             = clean,
     .dump              = dump,
     .transactions.add  = transactions_add,

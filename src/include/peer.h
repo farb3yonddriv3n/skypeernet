@@ -96,6 +96,7 @@ struct peer_s {
                            char *msg, int len);
             int (*file)(struct peer_s *p, int host,
                         unsigned short port,
+                        unsigned char *keyhash,
                         const char *filename);
             int (*online)(struct peer_s *p,
                           struct world_peer_s *wp);

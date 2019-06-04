@@ -58,6 +58,8 @@ static int init_peer(struct peer_s *p)
     if (os.dldir(&p->cfg) != 0) return -1;
     if ((p->net.sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         return -1;
+    int nb = 1;
+    ioctl(p->net.sd, FIONBIO, &nb);
     if (signal(SIGINT, sig_handler) == SIG_ERR) return -1;
     p->net.self.addr.sin_family      = AF_INET;
     p->net.self.addr.sin_addr.s_addr = htonl(INADDR_ANY);

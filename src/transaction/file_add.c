@@ -78,6 +78,16 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     return 0;
 }
 
+static int find(struct transaction_s *t, unsigned char *file_hash,
+                void **found)
+{
+    if (!t || !file_hash || !found) return -1;
+    struct file_s *f    = &t->action.add;
+    if (dmemcmp(f->hash, sizeof(f->hash), file_hash, SHA256HEX))
+        *(struct file_s **)found = f;
+    return 0;
+}
+
 static int validate(struct transaction_s *t, unsigned char *dst_hash,
                     bool *valid)
 {
@@ -216,11 +226,8 @@ static int save(struct transaction_s *t, json_object **parent)
 static int dump(struct transaction_s *t)
 {
     struct file_s *f = &t->action.add;
-    printf("\tFile name: %s\n", f->meta.name);
-    printf("\tFile size: %ld\n", f->meta.size);
-    printf("\tFile description: %s\n", f->meta.description);
-    printf("\tFile hash: %.*s\n", (int)sizeof(f->hash), f->hash);
-    printf("\tFile chunks size: %ld\n", f->chunks.size);
+    printf(" | %15s | %.*s | %9ldkB |\n", f->meta.name, (int)sizeof(f->hash), f->hash,
+                                          f->meta.size / 1024);
     return 0;
 }
 
@@ -234,6 +241,7 @@ static int clean(struct transaction_s *t)
 const struct transaction_sub_s transaction_file_add = {
     .init        = init,
     .validate    = validate,
+    .find        = find,
     .dump        = dump,
     .clean       = clean,
     .data.load   = load,

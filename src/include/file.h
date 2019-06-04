@@ -26,9 +26,11 @@ struct file_s {
         char          type[32];
         unsigned char hash[SHA256HEX];
     } meta;
+    /*
     struct {
         unsigned char hash[SHA256HEX];
     } content;
+    */
     struct {
         struct file_chunk_s *array;
         size_t               size;

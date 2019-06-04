@@ -7,7 +7,8 @@ struct distfs_s {
         struct root_s  *local;
         struct group_s *remote;
     } blocks;
-    struct list_s   transactions;
+    struct list_s transactions;
+    struct list_s jobs;
 };
 
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc);

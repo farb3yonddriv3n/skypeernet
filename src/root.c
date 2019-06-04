@@ -241,6 +241,17 @@ static int dump(struct root_s *r)
     return 0;
 }
 
+static int find(struct root_s *r, unsigned char *h, void **found)
+{
+    if (!r || !h || !found) return -1;
+    int i;
+    for (i = 0; i < r->blocks.size; i++) {
+        if (block.find(r->blocks.array[i], h, found) != 0) return -1;
+        if (*found) break;
+    }
+    return 0;
+}
+
 static int clean(struct root_s *r)
 {
     if (!r) return -1;
@@ -269,6 +280,7 @@ const struct module_root_s root = {
     .validate         = validate,
     .canmerge         = canmerge,
     .merge            = merge,
+    .find             = find,
     .dump             = dump,
     .clean            = clean,
     .blocks.add       = blocks_add,

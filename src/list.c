@@ -41,6 +41,24 @@ static int add(struct list_s *l, void *userdata, int (*clean)(void *ptr))
     return 0;
 }
 
+static int add_head(struct list_s *l, void *userdata, int (*clean)(void *ptr))
+{
+    if (!l || !userdata) return -1;
+    struct list_internal_s *li;
+    if (init_internal(&li) != 0) return -1;
+    li->data.ptr   = userdata;
+    li->data.clean = clean;
+    li->next       = l->head;
+    li->prev       = NULL;
+    if (l->head) {
+        l->head->prev = li;
+        l->head       = li;
+    }
+    else l->head = l->tail = li;
+    l->size++;
+    return 0;
+}
+
 static int del(struct list_s *l, void *userdata)
 {
     if (!l || !userdata) return -1;
@@ -139,6 +157,7 @@ static int toarray_sort(struct list_s *l, void ***dst, int *ndst,
 const struct module_list_s list = {
     .init         = init,
     .add          = add,
+    .add_head     = add_head,
     .del          = del,
     .map          = map,
     .size         = size,

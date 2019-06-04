@@ -18,6 +18,18 @@ static int init(struct group_s **g)
     return 0;
 }
 
+static int find(struct group_s *g, unsigned char *h, void **found)
+{
+    if (!g || !h || !found) return -1;
+    int i;
+    for (i = 0; i < g->roots.size; i++) {
+        if (root.find(g->roots.array[i], h, found) != 0) return -1;
+        if (*found) break;
+    }
+    return 0;
+}
+
+
 static int clean(struct group_s *g)
 {
     if (!g) return -1;
@@ -144,6 +156,7 @@ const struct module_group_s group = {
     //.receive = receive,
     .validate  = validate,
     .dump      = dump,
+    .find      = find,
     .clean     = clean,
     .roots.add = roots_add,
     .db.save   = db_save,

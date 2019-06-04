@@ -35,7 +35,7 @@ static int update(struct peer_s *p)
     int send_sz, task_sz;
     if (list.size(&p->send.nbl,  &send_sz) != 0) return -1;
     if (list.size(&p->tasks.list, &task_sz) != 0) return -1;
-    if (send_sz < p->cfg.net.max.send_queue && task_sz != 0) return resume(p);
+    if (send_sz <= p->cfg.net.max.send_queue && task_sz != 0) return resume(p);
     return 0;
 }
 
@@ -46,8 +46,8 @@ static int clean(void *t)
     return 0;
 }
 
-static int init(struct peer_s *p, const char *filename, int nfilename,
-                int host, unsigned int port)
+static int add(struct peer_s *p, const char *filename, int nfilename,
+               int host, unsigned int port)
 {
     if (!p || !filename) return -1;
     struct task_s *t = malloc(sizeof(*t));
@@ -65,7 +65,7 @@ static int init(struct peer_s *p, const char *filename, int nfilename,
 }
 
 struct module_task_s task = {
-    .init   = init,
+    .add    = add,
     .update = update,
     .clean  = clean,
 };

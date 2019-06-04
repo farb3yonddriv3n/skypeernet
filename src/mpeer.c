@@ -26,20 +26,24 @@ static int message(struct peer_s *p, int host,
     if (dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len)) {
         bool exists;
         ifr(os.fileexists(BLOCK_FILE, &exists));
-        if (exists) return task.init(p, BLOCK_FILE, strlen(BLOCK_FILE), host, port);
+        if (exists) return task.add(p, BLOCK_FILE, strlen(BLOCK_FILE), host, port);
     }
     return 0;
 }
 
 static int dfile(struct peer_s *p, int host,
                  unsigned short port,
+                 unsigned char *keyhash,
                  const char *received)
 {
     struct root_s *r;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     if (root.data.load.file(&r, received) == 0) {
-        ifr(root.net.set(r, host, port));
+        ifr(root.net.set(r, host, port, keyhash));
         ifr(group.roots.add(dfs->blocks.remote, r));
+        char blockname[256];
+        ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), received, keyhash));
+        ifr(os.filemove(received, blockname));
     } else {
     }
     return 0;
@@ -159,6 +163,16 @@ static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
     return 0;
 }
 
+static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs || !argv) return -1;
+    unsigned char *h = (unsigned char *)argv[1];
+    struct file_s *found = NULL;
+    ifr(job.add(dfs->blocks.remote, h, (void **)&found));
+    printf("found: %p\n", found);
+    return 0;
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -168,6 +182,7 @@ static const struct { const char *alias[8];
     { { "tl", "tlist" }, 2, 0, dfs_transaction_list },
     { { "bm", "bmine" }, 2, 0, dfs_block_mine },
     { { "lf", "listfiles" }, 2, 0, dfs_list_files },
+    { { "ja", "jobadd" }, 2, 1, dfs_job_add },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)
