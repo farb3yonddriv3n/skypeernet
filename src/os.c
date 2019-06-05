@@ -158,7 +158,7 @@ static int filejoin(struct config_s *cfg, const char *fname, char *received,
     struct list_s files;
     ifr(list.init(&files));
     int host, port, tidx, gidx, pidx, parts;
-    int found = sscanf(fname, "%d_%d_%d_%d_%d_%d.part",
+    int found = sscanf(fname, "%x_%d_%d_%d_%d_%d.part",
                                &host, &port, &tidx,
                                &gidx, &pidx, &parts);
     if (found != 6) return -1;
@@ -169,7 +169,7 @@ static int filejoin(struct config_s *cfg, const char *fname, char *received,
     if ((dir = opendir(partsdir)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         int shost, sport, stidx;
-        found = sscanf(ent->d_name, "%d_%d_%d", &shost, &sport, &stidx);
+        found = sscanf(ent->d_name, "%x_%d_%d", &shost, &sport, &stidx);
         if (found != 3) continue;
         if (host != shost || port != sport || tidx != stidx) continue;
         int len = strlen(ent->d_name) + 1;
@@ -232,6 +232,28 @@ static int blockname(struct config_s *cfg, char *blockname, int nblockname,
     return 0;
 }
 
+static int partexists(struct config_s *cfg, const char *startswith,
+                      bool *exists)
+{
+    if (!startswith || !exists) return -1;
+    *exists = false;
+    DIR *dir;
+    struct dirent *ent;
+    char partsdir[256];
+    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[0]);
+    if ((dir = opendir(partsdir)) == NULL) return -1;
+    while ((ent = readdir(dir)) != NULL) {
+        if (strlen(ent->d_name) < strlen(startswith)) continue;
+        if (dmemcmp(startswith, strlen(startswith),
+                    ent->d_name, strlen(startswith))) {
+            *exists = true;
+            break;
+        }
+    }
+    closedir(dir);
+    return 0;
+}
+
 const struct module_os_s os = {
     .filepart      = filepart,
     .fileparts     = fileparts,
@@ -240,6 +262,7 @@ const struct module_os_s os = {
     .filejoin      = filejoin,
     .fileexists    = fileexists,
     .filemove      = filemove,
+    .partexists    = partexists,
     .blockname     = blockname,
     .dldir         = dldir,
     .loadjsonfile  = load_json_file,

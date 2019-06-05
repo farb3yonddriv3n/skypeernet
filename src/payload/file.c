@@ -17,15 +17,21 @@ int file_read(struct peer_s *p)
                      ADDR_PORT(p->net.remote.addr),
                      p->recv_buffer.available->file_size.received,
                      p->recv_buffer.available->file_size.total);
-    char fname[256];
-    snprintf(fname, sizeof(fname), "%d_%d_%010d_%010d_%010d_%010d.part",
+    char startswith[256];
+    snprintf(startswith, sizeof(startswith), "%08x_%05d_%010d_%010d",
                                    ADDR_IP(p->net.remote.addr),
                                    ADDR_PORT(p->net.remote.addr),
                                    p->received.header.tidx,
-                                   p->received.header.gidx,
+                                   p->received.header.gidx);
+    bool exists;
+    ifr(os.partexists(&p->cfg, startswith, &exists));
+    if (exists) return 0;
+    char fname[512];
+    snprintf(fname, sizeof(fname), "%s_%010d_%010d.part",
+                                   startswith,
                                    p->received.header.pidx,
                                    p->received.header.parts);
-    char fnamepath[512];
+    char fnamepath[1024];
     snprintf(fnamepath, sizeof(fnamepath), "%s/%s/%s",
              p->cfg.download_dir, os.getpartsdir(), fname);
     if (os.filewrite(fnamepath, "wb", p->recv_buffer.available->data.s,

@@ -57,6 +57,16 @@ static int tokenize(char *line, char ***argv, int *argc)
     return 0;
 }
 
+static int cli_traffic(struct peer_s *p, char **argv, int argc)
+{
+    if (!p) return -1;
+    printf(" Download | Upload |\n");
+    printf("   %4dkB | %4dkB |\n",
+           p->traffic.recv.bytes / 1024,
+           p->traffic.send.bytes / 1024);
+    return 0;
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -66,6 +76,7 @@ static const struct { const char *alias[8];
     { { "m",  "msg" },                2, 3, send_message },
     { { "fs", "filesend" },           2, 3, send_file },
     { { "w",  "whoami" },             2, 0, whoami },
+    { { "tf", "traffic" },            2, 0, cli_traffic },
 };
 
 int cli(struct peer_s *p, char *line)

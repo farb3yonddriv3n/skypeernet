@@ -174,7 +174,7 @@ static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
     if (list.map(&c->packets.all, avcb,
                  &c->data) != 0) return -1;
     *available = c;
-    ifr(seal_add(&rb->sealed, received));
+    //ifr(seal_add(&rb->sealed, received));
     return 0;
 }
 

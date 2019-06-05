@@ -16,7 +16,7 @@ static int packet_create(enum command_e cmd, char *buffer, int nbuffer,
     p->header.tidx    = tidx;
     p->header.offset  = offset;
     p->header.chunks  = chunks;
-    p->header.parts  = parts;
+    p->header.parts   = parts;
     p->header.length  = nbuffer;
     p->header.command = cmd;
     memcpy(p->buffer.payload, buffer, nbuffer);

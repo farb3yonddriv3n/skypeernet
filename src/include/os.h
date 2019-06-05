@@ -13,6 +13,8 @@ struct module_os_s {
                     int nreceived, bool *finalized);
     int (*fileexists)(const char *filename, bool *exists);
     int (*filemove)(const char *dst, const char *src);
+    int (*partexists)(struct config_s *cfg, const char *startswith,
+                      bool *exists);
     int (*blockname)(struct config_s *cfg, char *blockname, int nblockname,
                      const char *received, unsigned char *keyhash);
     int (*dldir)(struct config_s *cfg);
