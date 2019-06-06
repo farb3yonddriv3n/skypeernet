@@ -61,7 +61,7 @@ static int cli_traffic(struct peer_s *p, char **argv, int argc)
 {
     if (!p) return -1;
     printf(" Download | Upload |\n");
-    printf("   %4dkB | %4dkB |\n",
+    printf("   %4ldkB | %4ldkB |\n",
            p->traffic.recv.bytes / 1024,
            p->traffic.send.bytes / 1024);
     return 0;

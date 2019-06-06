@@ -5,7 +5,17 @@ static struct peer_s *psig;
 static void write_cb(EV_P_ ev_io *w, int revents)
 {
     struct peer_s *p = w->data;
-    net.dispatch(&p->ev, &p->send);
+    net.dispatch(&p->send.nbl);
+    ev_io_stop(p->ev.loop, &p->ev.write);
+    ev_timer_again(p->ev.loop, &p->ev.send);
+}
+
+static void write_instant_cb(EV_P_ ev_io *w, int revents)
+{
+    struct peer_s *p = w->data;
+    net.dispatch(&p->send.instant);
+    ev_io_stop(p->ev.loop, &p->ev.write_instant);
+    list.clean(&p->send.instant);
 }
 
 static void read_cb(EV_P_ ev_io *w, int revents)
@@ -81,6 +91,7 @@ static int init_peer(struct peer_s *p)
     ev_io_init(&p->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&p->ev.read.ev,    read_cb,  p->net.sd,     EV_READ);
     ev_io_init(&p->ev.write,      write_cb, p->net.sd,     EV_WRITE);
+    ev_io_init(&p->ev.write_instant,      write_instant_cb, p->net.sd,     EV_WRITE);
     ev_timer_init(&p->ev.send,            net.retry,        .0,
                   p->cfg.net.interval.retry);
     ev_timer_init(&p->ev.peers_reachable, world.peer.check, .0,
@@ -90,6 +101,8 @@ static int init_peer(struct peer_s *p)
     p->ev.stdinwatch.data = (void *)p;
     p->ev.read.ev.data  = (void *)p;
     p->ev.write.data = (void *)p;
+    p->ev.write_instant.data = (void *)p;
+    ev_timer_again(p->ev.loop, &p->ev.send);
     return 0;
 }
 
@@ -111,6 +124,7 @@ static int init_tracker(struct peer_s *t)
     ev_io_init(&t->ev.stdinwatch, stdin_cb, fileno(stdin), EV_READ);
     ev_io_init(&t->ev.read.ev, read_cb,  t->net.sd, EV_READ);
     ev_io_init(&t->ev.write, write_cb, t->net.sd, EV_WRITE);
+    ev_io_init(&t->ev.write_instant, write_instant_cb, t->net.sd, EV_WRITE);
     ev_timer_init(&t->ev.send,            net.retry,        .0,
                   t->cfg.net.interval.retry);
     ev_timer_init(&t->ev.peers_reachable, world.peer.check, .0,
@@ -119,6 +133,7 @@ static int init_tracker(struct peer_s *t)
     t->ev.send.data  = t;
     t->ev.read.ev.data  = t;
     t->ev.write.data = t;
+    t->ev.write_instant.data = t;
     t->ev.peers_reachable.data  = t;
     rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
     ev_timer_again(t->ev.loop, &t->ev.send);

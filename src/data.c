@@ -119,11 +119,14 @@ static int data_send(struct data_s *d, struct peer_s *p,
         nb->status = (packets[i].header.command == COMMAND_ACK)
                      ? NET_ONESHOT : NET_INIT;
         nb->attempt = 0;
-        if (nb->cmd == COMMAND_ACK) assert(list.add_head(&p->send.nbl, nb, net.nb.clean) == 0);
-        else                        list.add(&p->send.nbl, nb, net.nb.clean);
+        if (nb->cmd == COMMAND_ACK) {
+            ifr(list.add(&p->send.instant, nb, net.nb.clean));
+            ev_io_start(p->ev.loop, &p->ev.write_instant);
+        } else {
+            ifr(list.add(&p->send.nbl, nb, net.nb.clean));
+        }
     }
     if (packets) free(packets);
-    ev_io_start(p->ev.loop, &p->ev.write);
     return 0;
 }
 

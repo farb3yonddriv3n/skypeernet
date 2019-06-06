@@ -14,7 +14,7 @@ int ack_read(struct peer_s *p)
     sn_initr(bf, p->recv_buffer.available->data.s,
              p->recv_buffer.available->data.n);
     if (sn_read((void *)&idx, sizeof(idx), &bf) != 0) return -1;
-    return net.ack(&p->ev, &p->send, idx);
+    return net.ack(&p->send, idx);
 }
 
 int ack_size(int *sz, void *userdata)

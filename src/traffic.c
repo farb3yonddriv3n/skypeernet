@@ -9,8 +9,7 @@ static int update(ssize_t bytes, bool *suspend, double retry,
     *suspend = false;
     double timestampms;
     if (os.gettimems(&timestampms) != 0) return -1;
-    double diff = 1.0f - retry;
-    if (*start == .0f || (timestampms - diff) >= *start) {
+    if (*start == .0f || (timestampms - 1.0f) >= *start) {
         *total_bytes = bytes;
         return os.gettimems(start);
     }

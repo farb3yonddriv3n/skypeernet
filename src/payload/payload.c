@@ -26,7 +26,6 @@ static int exec(struct peer_s *parent, enum command_e cmd,
     struct data_s d;
     if (data.init(&d, cmd, cb_write, cb_size, parent) != 0) return -1;
     if (data.send(&d, parent, host, port, tidx, parts) != 0) return -1;
-    ev_io_start(parent->ev.loop, &parent->ev.write);
     return 0;
 }
 
