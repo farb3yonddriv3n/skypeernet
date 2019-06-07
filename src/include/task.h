@@ -5,9 +5,9 @@ struct task_s {
     unsigned int idx;
     unsigned int parts;
     struct {
-        uint64_t size;
-        uint64_t iter;
-        char     name[256];
+        uint64_t      size;
+        uint64_t      iter;
+        unsigned char name[SHA256HEX];
     } file;
     int            host;
     unsigned short port;

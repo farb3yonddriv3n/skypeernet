@@ -8,7 +8,7 @@ static int send_message(struct peer_s *p, char **argv, int argc)
     p->send_buffer.type = BUFFER_MESSAGE;
     p->send_buffer.u.message.str = message;
     return payload.send(p, COMMAND_MESSAGE,
-                        host, port, 0, 0);
+                        host, port, 0, 0, NULL);
 }
 
 static int whoami(struct peer_s *p, char **argv, int argc)

@@ -36,7 +36,7 @@ static int fileexists(const char *filename, bool *exists)
 }
 
 static int filepart(const char *filename, size_t offset, size_t maxread,
-                    char **dst, size_t *ndst)
+                    char **dst, uint64_t *ndst)
 {
     if (!filename) return -1;
     FILE *pfile;

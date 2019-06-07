@@ -34,7 +34,7 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
         syslog(LOG_DEBUG, "Checking peer's availability: %x:%d", wp->host, wp->port);
         return payload.send(p, COMMAND_PING,
                             wp->host,
-                            wp->port, 0, 0);
+                            wp->port, 0, 0, NULL);
     }
     assert(list.map(&p->peers, cb, p) == 0);
     ev_timer_again(p->ev.loop, &p->ev.peers_reachable);

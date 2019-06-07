@@ -25,6 +25,7 @@ struct header_s {
     unsigned int   parts;
     unsigned int   length;
     enum command_e command;
+    unsigned char  filename[SHA256HEX];
     ALIGN16(12);
 };
 
@@ -53,7 +54,8 @@ struct module_packet_s {
         int (*init)(enum command_e, char *buffer, int nbuffer,
                     struct packet_s **packets, int *npackets,
                     struct send_buffer_s *sb,
-                    unsigned int tidx, unsigned int parts);
+                    unsigned int tidx, unsigned int parts,
+                    unsigned char *filename);
         int (*validate)(struct packet_s *packets, size_t nbuffer, bool *valid);
     } serialize;
     struct {

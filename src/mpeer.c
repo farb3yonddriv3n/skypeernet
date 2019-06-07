@@ -1,6 +1,6 @@
 #include <common.h>
 
-#define BLOCK_FILE "block_db"
+#define BLOCK_FILE "aaaabbbbccccddddaaaabbbbccccddddaaaabbbbccccddddaaaabbbbccccdddd"
 
 enum distfs_cmd_e {
     DISTFS_HELLO,
@@ -68,7 +68,8 @@ static int hello_write(struct distfs_s *dfs, int host, unsigned short port)
     p->send_buffer.type = BUFFER_MESSAGE;
     p->send_buffer.u.message.str = MSG_HELLO;
     return payload.send(p, COMMAND_MESSAGE,
-                        host, port, 0, 0);
+                        host, port, 0, 0,
+                        NULL);
     return 0;
 }
 
@@ -167,9 +168,16 @@ static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs || !argv) return -1;
     unsigned char *h = (unsigned char *)argv[1];
-    struct file_s *found = NULL;
-    ifr(job.add(dfs->blocks.remote, h, (void **)&found));
-    printf("found: %p\n", found);
+    bool added, found;
+    ifr(job.add(&dfs->jobs, dfs->blocks.remote, h,
+                strlen((const char *)h), &added,
+                &found));
+    if (!found) {
+        printf("File not found\n");
+        return 0;
+    }
+    if (added) printf("Job %s added", h);
+    else       printf("Job %s exists", h);
     return 0;
 }
 
@@ -233,7 +241,7 @@ int main()
     if (init(&p, &dfs) != 0) return -1;
     if (payload.send(&p, COMMAND_PEER_ANNOUNCE_PEER,
                      p.tracker.host,
-                     p.tracker.port, 0, 0) != 0) return -1;
+                     p.tracker.port, 0, 0, NULL) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ifr(net.resume(&p.ev));
     ev_timer_again(p.ev.loop, &p.ev.peers_reachable);

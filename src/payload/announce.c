@@ -73,7 +73,7 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
             p->send_buffer.u.tracker_peer.host = src;
             p->send_buffer.u.tracker_peer.port = srcport;
             if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_PEER,
-                             dst, dstport, 0, 0) != 0) return -1;
+                             dst, dstport, 0, 0, NULL) != 0) return -1;
             return 0;
         }
         ifr(item(wp->host, wp->port, ex->host, ex->port, &ex->key));
@@ -165,7 +165,7 @@ int announce_prp(struct peer_s *p)
     wp->host = ADDR_IP(p->net.remote.addr);
     wp->port = ADDR_PORT(p->net.remote.addr);
     if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_TRACKER,
-                     wp->host, wp->port, 0, 0) != 0) return -1;
+                     wp->host, wp->port, 0, 0, NULL) != 0) return -1;
     bool added;
     ifr(peer_add(p, wp, &added));
     if (added) return peer_broadcast(p, wp);

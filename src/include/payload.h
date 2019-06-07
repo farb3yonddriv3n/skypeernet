@@ -9,7 +9,8 @@ struct module_handler_s {
 struct module_payload_s {
     int (*send)(void *parent, enum command_e cmd,
                 int host, unsigned short port,
-                unsigned int tidx, unsigned int parts);
+                unsigned int tidx, unsigned int parts,
+                unsigned char *filename);
     int (*recv)(struct peer_s *p);
 };
 

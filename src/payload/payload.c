@@ -21,11 +21,11 @@ static int exec(struct peer_s *parent, enum command_e cmd,
                 int host, unsigned short port,
                 int (*cb_write)(struct data_s*, void*),
                 int (*cb_size)(int*, void*), unsigned int tidx,
-                unsigned int parts)
+                unsigned int parts, unsigned char *filename)
 {
     struct data_s d;
-    if (data.init(&d, cmd, cb_write, cb_size, parent) != 0) return -1;
-    if (data.send(&d, parent, host, port, tidx, parts) != 0) return -1;
+    if (data.init(&d, cmd, cb_write, cb_size, parent)            != 0) return -1;
+    if (data.send(&d, parent, host, port, tidx, parts, filename) != 0) return -1;
     return 0;
 }
 
@@ -43,14 +43,16 @@ static int command_find(int *idx, enum command_e cmd)
 
 static int payload_send(void *parent, enum command_e cmd,
                         int host, unsigned short port,
-                        unsigned int tidx, unsigned int parts)
+                        unsigned int tidx, unsigned int parts,
+                        unsigned char *filename)
 {
     int idx;
     ifr(command_find(&idx, cmd));
     return exec(parent, cmd, host, port,
                 cmds[idx].cb_write,
                 cmds[idx].cb_size,
-                tidx, parts);
+                tidx, parts,
+                filename);
 }
 
 static int cache_clean(void *uc)
