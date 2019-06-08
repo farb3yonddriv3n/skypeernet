@@ -142,6 +142,8 @@ static int init_tracker(struct peer_s *t)
 
 static int clean(struct peer_s *p)
 {
+    if (!p) return -1;
+    if (p->user.cb.clean) p->user.cb.clean(p, p->user.data);
     ev_io_stop(p->ev.loop, &p->ev.read.ev);
     ev_io_stop(p->ev.loop, &p->ev.write);
     ev_io_stop(p->ev.loop, &p->ev.stdinwatch);

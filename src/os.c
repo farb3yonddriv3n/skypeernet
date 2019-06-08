@@ -119,14 +119,16 @@ static int gettime(char *buffer, size_t nbuffer)
 }
 
 static int finalize(struct config_s *cfg, struct list_s *l,
-                    char *dstname, int ndstname)
+                    char *fullpath, int nfullpath,
+                    char *filename, int nfilename)
 {
     void **files = NULL;
     int nfiles, i;
     ifr(list.toarray_sort(l, &files, &nfiles, LIST_ARRAY_SORT_STR));
     char timems[128];
     ifr(gettime(timems, sizeof(timems)));
-    snprintf(dstname, ndstname, "%s/%s", cfg->download_dir, timems);
+    char dstnamems[512];
+    snprintf(dstnamems, sizeof(dstnamems), "%s/%s", cfg->download_dir, timems);
     for (i = 0; i < nfiles; i++) {
         char *fname = ((char **)files)[i];
         char *buffer;
@@ -137,10 +139,19 @@ static int finalize(struct config_s *cfg, struct list_s *l,
         sn_initz(fn, fbuffer);
         int n = eioie_fread(&buffer, fn);
         if (n <= 0) return -1;
-        if (eioie_fwrite(dstname, "a", buffer, n) != 0) return -1;
+        if (eioie_fwrite(dstnamems, "a", buffer, n) != 0) return -1;
         free(buffer);
         if (remove(fbuffer) != 0) return -1;
     }
+    unsigned char dstnamehash[SHA256HEX];
+    sn_initz(sdstnamems, dstnamems);
+    char *buffer;
+    int n = eioie_fread(&buffer, sdstnamems);
+    if (n <= 0) return -1;
+    sha256hex((unsigned char *)buffer, n, dstnamehash);
+    snprintf(fullpath, nfullpath, "%s/%.*s", cfg->download_dir, SHA256HEX, dstnamehash);
+    snprintf(filename, nfilename, "%.*s", SHA256HEX, dstnamehash);
+    ifr(os.filemove(dstnamems, fullpath));
     if (files) free(files);
     return 0;
 }
@@ -152,8 +163,10 @@ static int filejoin_clean(void *fname)
     return 0;
 }
 
-static int filejoin(struct config_s *cfg, const char *fname, char *received,
-                    int nreceived, bool *finalized)
+static int filejoin(struct config_s *cfg, const char *fname,
+                    char *fullpath, int nfullpath,
+                    char *filename, int nfilename,
+                    bool *finalized)
 {
     struct list_s files;
     ifr(list.init(&files));
@@ -184,7 +197,8 @@ static int filejoin(struct config_s *cfg, const char *fname, char *received,
     int size;
     ifr(list.size(&files, &size));
     if (size == parts) {
-        ifr(finalize(cfg, &files, received, nreceived));
+        ifr(finalize(cfg, &files, fullpath, nfullpath,
+                     filename, nfilename));
         *finalized = true;
     }
     ifr(list.clean(&files));
@@ -214,10 +228,10 @@ static const char *getpartsdir()
     return dirs[0];
 }
 
-static int filemove(const char *dst, const char *src)
+static int filemove(const char *src, const char *dst)
 {
     if (!dst || !src) return -1;
-    if (rename(dst, src) != 0) return -1;
+    if (rename(src, dst) != 0) return -1;
     return 0;
 }
 

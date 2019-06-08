@@ -9,10 +9,12 @@ struct module_os_s {
     int (*filesize)(const char *filename, uint64_t *size);
     int (*filewrite)(const char *fname, const char *mode,
                      char *content, int ncontent);
-    int (*filejoin)(struct config_s *cfg, const char *fname, char *received,
-                    int nreceived, bool *finalized);
+    int (*filejoin)(struct config_s *cfg, const char *fname,
+                    char *fullpath, int nfullpath,
+                    char *filename, int nfilename,
+                    bool *finalized);
     int (*fileexists)(const char *filename, bool *exists);
-    int (*filemove)(const char *dst, const char *src);
+    int (*filemove)(const char *src, const char *dst);
     int (*partexists)(struct config_s *cfg, const char *startswith,
                       bool *exists);
     int (*blockname)(struct config_s *cfg, char *blockname, int nblockname,

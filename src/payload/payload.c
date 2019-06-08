@@ -14,6 +14,7 @@ static const struct { enum command_e cmd;
     { COMMAND_PEER_ANNOUNCE_PEER,       announce_pwp,  announce_size, announce_prp, ack_reply },
     { COMMAND_MESSAGE,                  message_write, message_size,  message_read, ack_reply },
     { COMMAND_FILE,                     file_write,    file_size,     file_read,    ack_reply },
+    { COMMAND_FILEASK,                  fileask_write, fileask_size,  fileask_read, ack_reply },
     { COMMAND_PING,                     ping_write,    ping_size,     ping_read,    ack_reply },
 };
 

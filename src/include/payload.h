@@ -37,6 +37,10 @@ int file_write(struct data_s *d, void *userdata);
 int file_size(int *sz, void *userdata);
 int file_read(struct peer_s *p);
 
+int fileask_write(struct data_s *d, void *userdata);
+int fileask_read(struct peer_s *p);
+int fileask_size(int *sz, void *userdata);
+
 int ping_write(struct data_s *d, void *userdata);
 int ping_size(int *sz, void *userdata);
 int ping_read(struct peer_s *p);

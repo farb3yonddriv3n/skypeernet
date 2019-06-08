@@ -18,17 +18,17 @@ static int init(struct group_s **g)
     return 0;
 }
 
-static int find(struct group_s *g, unsigned char *h, void **found)
+static int find(struct group_s *g, unsigned char *h, void **found,
+                int *host, unsigned short *port)
 {
     if (!g || !h || !found) return -1;
     int i;
     for (i = 0; i < g->roots.size; i++) {
-        if (root.find(g->roots.array[i], h, found) != 0) return -1;
+        if (root.find(g->roots.array[i], h, found, host, port) != 0) return -1;
         if (*found) break;
     }
     return 0;
 }
-
 
 static int clean(struct group_s *g)
 {
@@ -131,7 +131,7 @@ static int db_save(struct group_s *g)
         if (root.data.save.object(r, &dst) != 0) return -1;
         const char *root_json = json_object_to_json_string(dst);
         char fname[1024];
-        filename(fname, sizeof(fname), r->hash, sizeof(r->hash));
+        filename(fname, sizeof(fname), (char *)r->hash, sizeof(r->hash));
         if (eioie_fwrite(fname, "w", (char *)root_json, strlen(root_json)) != 0)
             return -1;
         json_object_put(dst);

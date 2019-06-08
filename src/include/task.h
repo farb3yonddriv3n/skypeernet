@@ -15,7 +15,7 @@ struct task_s {
 
 struct module_task_s {
     int (*add)(struct peer_s *p, const char *filename, int nfilename,
-               int host, unsigned int port);
+               int host, unsigned short port);
     int (*update)(struct peer_s *p);
     int (*clean)(void *t);
 };

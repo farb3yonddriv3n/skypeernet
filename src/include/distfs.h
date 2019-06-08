@@ -9,6 +9,9 @@ struct distfs_s {
     } blocks;
     struct list_s transactions;
     struct list_s jobs;
+    struct {
+        struct ev_timer jobs;
+    } ev;
 };
 
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc);

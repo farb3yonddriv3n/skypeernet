@@ -31,20 +31,59 @@ static int message(struct peer_s *p, int host,
     return 0;
 }
 
+static int dfileask(struct peer_s *p, int host,
+                    unsigned short port,
+                    char *data, int len)
+{
+    if (!p || !data) return -1;
+    unsigned char filename[SHA256HEX];
+    unsigned char chunk[SHA256HEX];
+    sn_initr(buffer, data, len);
+    if (sn_read((void *)filename, sizeof(filename), &buffer) != 0) return -1;
+    if (sn_read((void *)chunk,    sizeof(chunk),    &buffer) != 0) return -1;
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
+    struct file_s *f = NULL;
+    int            localhost = -1;
+    unsigned short localport = -1;
+    ifr(root.find(dfs->blocks.local, filename, (void **)&f,
+                  &localhost, &localport));
+    if (!f) return 0;
+    int i;
+    for (i = 0; i < f->chunks.size; i++) {
+        if (dmemcmp(f->chunks.array[i].hash.content,
+                    sizeof(f->chunks.array[i].hash.content),
+                    chunk, sizeof(chunk))) {
+            char    *tmp;
+            uint64_t ntmp;
+            char zfilename[128];
+            snprintf(zfilename, sizeof(zfilename), "%.*s", SHA256HEX, filename);
+            ifr(os.filepart(zfilename, i * CHUNK_SIZE,
+                            f->chunks.array[i].size, &tmp, &ntmp));
+            char chunkfile[128];
+            snprintf(chunkfile, sizeof(chunkfile), "%.*s", SHA256HEX, chunk);
+            ifr(os.filewrite(chunkfile, "wb", tmp, ntmp));
+            return task.add(p, chunkfile, strlen(chunkfile), host, port);
+        }
+    }
+    return 0;
+}
+
 static int dfile(struct peer_s *p, int host,
                  unsigned short port,
                  unsigned char *keyhash,
-                 const char *received)
+                 const char *fullpath,
+                 const char *fullname)
 {
     struct root_s *r;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
-    if (root.data.load.file(&r, received) == 0) {
+    if (root.data.load.file(&r, fullpath) == 0) {
         ifr(root.net.set(r, host, port, keyhash));
         ifr(group.roots.add(dfs->blocks.remote, r));
         char blockname[256];
-        ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), received, keyhash));
-        ifr(os.filemove(received, blockname));
+        ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, keyhash));
+        ifr(os.filemove(fullpath, blockname));
     } else {
+        ifr(job.update(&dfs->jobs, fullname));
     }
     return 0;
 }
@@ -170,10 +209,10 @@ static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
     unsigned char *h = (unsigned char *)argv[1];
     bool added, found;
     ifr(job.add(&dfs->jobs, dfs->blocks.remote, h,
-                strlen((const char *)h), &added,
-                &found));
+                strlen((const char *)h), &found,
+                &added));
     if (!found) {
-        printf("File not found\n");
+        printf("File %s not found\n", h);
         return 0;
     }
     if (added) printf("Job %s added", h);
@@ -218,17 +257,34 @@ static int dfs_cli(struct peer_s *p, char **argv, int argc)
     return cmds[idx].cb(dfs, argv, argc);
 }
 
+static int clean(struct peer_s *p, void *data)
+{
+    struct distfs_s *dfs = (struct distfs_s *)data;
+    ev_timer_stop(p->ev.loop, &dfs->ev.jobs);
+    return 0;
+}
+
 static int init(struct peer_s *p, struct distfs_s *dfs)
 {
     if (!p || !dfs) return -1;
     memset(dfs, 0, sizeof(*dfs));
+    p->user.cb.clean   = clean;
     p->user.cb.message = message;
     p->user.cb.file    = dfile;
+    p->user.cb.fileask = dfileask;
     p->user.cb.online  = online;
     p->user.cb.cli     = dfs_cli;
     p->user.data       = dfs;
     dfs->peer          = p;
     ifr(group.init(&dfs->blocks.remote));
+    ev_timer_init(&dfs->ev.jobs, job.resume, .0, 15.0);
+    dfs->ev.jobs.data = (void *)dfs;
+    ev_timer_again(p->ev.loop, &dfs->ev.jobs);
+    bool exists;
+    ifr(os.fileexists(BLOCK_FILE, &exists));
+    if (exists) {
+        ifr(root.data.load.file(&dfs->blocks.local, BLOCK_FILE));
+    }
     return 0;
 }
 

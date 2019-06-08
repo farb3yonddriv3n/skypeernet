@@ -82,8 +82,8 @@ static int find(struct transaction_s *t, unsigned char *file_hash,
                 void **found)
 {
     if (!t || !file_hash || !found) return -1;
-    struct file_s *f    = &t->action.add;
-    if (dmemcmp(f->hash, sizeof(f->hash), file_hash, SHA256HEX))
+    struct file_s *f = &t->action.add;
+    if (dmemcmp(f->meta.name, strlen(f->meta.name), file_hash, SHA256HEX))
         *(struct file_s **)found = f;
     return 0;
 }
@@ -226,8 +226,8 @@ static int save(struct transaction_s *t, json_object **parent)
 static int dump(struct transaction_s *t)
 {
     struct file_s *f = &t->action.add;
-    printf(" | %15s | %.*s | %9ldkB |\n", f->meta.name, (int)sizeof(f->hash), f->hash,
-                                          f->meta.size / 1024);
+    printf(" | %s | %9ldkB |\n", f->meta.name,
+                                 f->meta.size / 1024);
     return 0;
 }
 

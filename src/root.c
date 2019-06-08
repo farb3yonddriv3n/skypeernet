@@ -241,13 +241,18 @@ static int dump(struct root_s *r)
     return 0;
 }
 
-static int find(struct root_s *r, unsigned char *h, void **found)
+static int find(struct root_s *r, unsigned char *h, void **found,
+                int *host, unsigned short *port)
 {
     if (!r || !h || !found) return -1;
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         if (block.find(r->blocks.array[i], h, found) != 0) return -1;
-        if (*found) break;
+        if (*found && r->net.host != *host && r->net.port != *port) {
+            *host = r->net.host;
+            *port = r->net.port;
+            break;
+        } else *found = NULL;
     }
     return 0;
 }

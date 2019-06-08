@@ -9,7 +9,7 @@ enum instance_e {
 enum buffer_e {
     BUFFER_MESSAGE,
     BUFFER_FILE,
-    BUFFER_FILE_SEND,
+    BUFFER_FILEASK,
     BUFFER_TRACKER_ANNOUNCE_PEER,
 };
 
@@ -25,8 +25,9 @@ struct send_buffer_s {
             sn bin;
         } file;
         struct {
-            size_t size;
-        } file_send;
+            unsigned char *file;
+            unsigned char *chunk;
+        } fileask;
         struct {
             int host;
             unsigned short port;
@@ -91,13 +92,18 @@ struct peer_s {
     } tracker;
     struct {
         struct {
+            int (*clean)(struct peer_s *p, void *data);
             int (*message)(struct peer_s *p, int host,
                            unsigned short port,
                            char *msg, int len);
             int (*file)(struct peer_s *p, int host,
                         unsigned short port,
                         unsigned char *keyhash,
-                        const char *filename);
+                        const char *fullpath,
+                        const char *fullname);
+            int (*fileask)(struct peer_s *p, int host,
+                           unsigned short port,
+                           char *msg, int len);
             int (*online)(struct peer_s *p,
                           struct world_peer_s *wp);
             int (*cli)(struct peer_s *p, char **argv,

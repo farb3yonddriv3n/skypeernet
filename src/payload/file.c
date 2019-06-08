@@ -36,9 +36,11 @@ int file_read(struct peer_s *p)
              p->cfg.download_dir, os.getpartsdir(), fname);
     if (os.filewrite(fnamepath, "wb", p->recv_buffer.available->data.s,
                                       p->recv_buffer.available->data.n) != 0) return -1;
-    char received[256];
+    char fullpath[256];
+    char filename[128];
     bool finalized;
-    ifr(os.filejoin(&p->cfg, fname, received, sizeof(received), &finalized));
+    ifr(os.filejoin(&p->cfg, fname, fullpath, sizeof(fullpath),
+                    filename, sizeof(filename), &finalized));
     struct world_peer_s wp = { .host = ADDR_IP(p->net.remote.addr),
                                .port = ADDR_PORT(p->net.remote.addr),
                                .found = NULL };
@@ -49,7 +51,7 @@ int file_read(struct peer_s *p)
                             ADDR_IP(p->net.remote.addr),
                             ADDR_PORT(p->net.remote.addr),
                             wp.found->keyhash,
-                            received));
+                            fullpath, filename));
     return 0;
 }
 
