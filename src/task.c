@@ -9,23 +9,14 @@ static int resume(struct peer_s *p)
         if (!t || !p) return -1;
         char *buffer;
         uint64_t size;
-        char fpfilename[128];
-        snprintf(fpfilename, sizeof(fpfilename), "%.*s", (int)sizeof(t->file.name),
-                 t->file.name);
-        if (os.filepart(fpfilename, t->file.iter * p->cfg.net.max.task_buffer,
+        if (os.filepart(t->file.fullpath, t->file.iter * p->cfg.net.max.task_buffer,
                         p->cfg.net.max.task_buffer, &buffer, &size) != 0) return -1;
         p->send_buffer.type = BUFFER_FILE;
         sn_setr(p->send_buffer.u.file.bin, buffer, size);
-        int            host  = t->host;
-        unsigned short port  = t->port;
-        unsigned int   tidx  = t->idx;
-        unsigned int   parts = t->parts;
-        unsigned char  filename[SHA256HEX];
-        memcpy(filename, t->file.name, sizeof(t->file.name));
+        if (payload.send(p, COMMAND_FILE, t->host, t->port, t->idx,
+                         t->parts, t->file.name) != 0) return -1;
         if ((++t->file.iter) * p->cfg.net.max.task_buffer >= t->file.size)
             if (list.del(l, t) != 0) return -1;
-        if (payload.send(p, COMMAND_FILE, host, port, tidx,
-                         parts, filename) != 0) return -1;
         if (buffer) free(buffer);
         return 1;
     }
@@ -44,9 +35,13 @@ static int update(struct peer_s *p)
     return 0;
 }
 
-static int clean(void *t)
+static int clean(void *ut)
 {
-    if (!t) return -1;
+    if (!ut) return -1;
+    struct task_s *t = (struct task_s *)ut;
+    if (t->action == TASK_FILE_DELETE) {
+        ifr(remove(t->file.fullpath));
+    }
     free(t);
     return 0;
 }
@@ -79,8 +74,9 @@ static int find(struct list_s *tasks, const char *filename,
     return 0;
 }
 
-static int add(struct peer_s *p, const char *filename, int nfilename,
-               int host, unsigned short port)
+static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
+               int nfilename, int host, unsigned short port,
+               enum task_e action)
 {
     if (!p || !filename) return -1;
     if (nfilename != SHA256HEX) return -1;
@@ -92,11 +88,15 @@ static int add(struct peer_s *p, const char *filename, int nfilename,
     memset(t, 0, sizeof(*t));
     if (nfilename != sizeof(t->file.name)) return -1;
     memcpy(t->file.name, filename, nfilename);
-    t->host = host;
-    t->port = port;
+    snprintf(t->file.fullpath, sizeof(t->file.fullpath), "%s/%.*s",
+                                                         blockdir,
+                                                         nfilename, filename);
+    t->host   = host;
+    t->port   = port;
+    t->action = action;
     t->idx  = ++(p->tasks.idx);
-    ifr(os.filesize(filename, &t->file.size));
-    ifr(os.fileparts(filename, p->cfg.net.max.task_buffer, &t->parts));
+    ifr(os.filesize(t->file.fullpath, &t->file.size));
+    ifr(os.fileparts(t->file.fullpath, p->cfg.net.max.task_buffer, &t->parts));
     ifr(list.add(&p->tasks.list, t, task.clean));
     return task.update(p);
 }

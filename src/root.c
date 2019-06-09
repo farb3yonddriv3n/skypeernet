@@ -50,7 +50,7 @@ static int load_object(struct root_s **r, const json_object *obj)
         }
     }
     json_object_put((json_object *)obj);
-    bool valid;
+    bool valid = true;
     if (root.validate(*r, &valid) != 0) return -1;
     if (!valid) {
         if (root.clean(*r) != 0) return -1;

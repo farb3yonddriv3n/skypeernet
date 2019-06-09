@@ -25,8 +25,11 @@ static int message(struct peer_s *p, int host,
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
     if (dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len)) {
         bool exists;
-        ifr(os.fileexists(BLOCK_FILE, &exists));
-        if (exists) return task.add(p, BLOCK_FILE, strlen(BLOCK_FILE), host, port);
+        char path[256];
+        snprintf(path, sizeof(path), "%s/%s", "block", BLOCK_FILE);
+        ifr(os.fileexists(path, &exists));
+        if (exists) return task.add(p, "block", (unsigned char *)BLOCK_FILE, strlen(BLOCK_FILE),
+                                    host, port, TASK_FILE_KEEP);
     }
     return 0;
 }
@@ -45,6 +48,7 @@ static int dfileask(struct peer_s *p, int host,
     struct file_s *f = NULL;
     int            localhost = -1;
     unsigned short localport = -1;
+    if (!dfs->blocks.local) return 0;
     ifr(root.find(dfs->blocks.local, filename, (void **)&f,
                   &localhost, &localport));
     if (!f) return 0;
@@ -55,14 +59,18 @@ static int dfileask(struct peer_s *p, int host,
                     chunk, sizeof(chunk))) {
             char    *tmp;
             uint64_t ntmp;
-            char zfilename[128];
-            snprintf(zfilename, sizeof(zfilename), "%.*s", SHA256HEX, filename);
+            char zfilename[256];
+            snprintf(zfilename, sizeof(zfilename), "%s/%.*s", p->cfg.download_dir,
+                                                              SHA256HEX, filename);
             ifr(os.filepart(zfilename, i * CHUNK_SIZE,
                             f->chunks.array[i].size, &tmp, &ntmp));
-            char chunkfile[128];
-            snprintf(chunkfile, sizeof(chunkfile), "%.*s", SHA256HEX, chunk);
+            char chunkfile[256];
+            snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.download_dir,
+                                                              SHA256HEX, chunk);
             ifr(os.filewrite(chunkfile, "wb", tmp, ntmp));
-            return task.add(p, chunkfile, strlen(chunkfile), host, port);
+            free(tmp);
+            return task.add(p, p->cfg.download_dir, chunk, sizeof(chunk),
+                            host, port, TASK_FILE_DELETE);
         }
     }
     return 0;
@@ -76,14 +84,17 @@ static int dfile(struct peer_s *p, int host,
 {
     struct root_s *r;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
-    if (root.data.load.file(&r, fullpath) == 0) {
+    size_t size;
+    ifr(os.filesize(fullpath, &size));
+    if (size != CHUNK_SIZE && root.data.load.file(&r, fullpath) == 0) {
         ifr(root.net.set(r, host, port, keyhash));
         ifr(group.roots.add(dfs->blocks.remote, r));
         char blockname[256];
         ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, keyhash));
         ifr(os.filemove(fullpath, blockname));
     } else {
-        ifr(job.update(&dfs->jobs, fullname));
+        ifr(job.update(p->cfg.download_dir, &dfs->jobs,
+                       fullname));
     }
     return 0;
 }
@@ -215,9 +226,15 @@ static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
         printf("File %s not found\n", h);
         return 0;
     }
-    if (added) printf("Job %s added", h);
-    else       printf("Job %s exists", h);
+    if (added) printf("Job %s added\n", h);
+    else       printf("Job %s exists\n", h);
     return 0;
+}
+
+static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs) return -1;
+    return job.show(&dfs->jobs);
 }
 
 static const struct { const char *alias[8];
@@ -230,6 +247,7 @@ static const struct { const char *alias[8];
     { { "bm", "bmine" }, 2, 0, dfs_block_mine },
     { { "lf", "listfiles" }, 2, 0, dfs_list_files },
     { { "ja", "jobadd" }, 2, 1, dfs_job_add },
+    { { "js", "jobshow" }, 2, 0, dfs_job_show },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)
@@ -261,6 +279,10 @@ static int clean(struct peer_s *p, void *data)
 {
     struct distfs_s *dfs = (struct distfs_s *)data;
     ev_timer_stop(p->ev.loop, &dfs->ev.jobs);
+    ifr(group.clean(dfs->blocks.remote));
+    ifr(root.clean(dfs->blocks.local));
+    ifr(list.clean(&dfs->transactions));
+    ifr(list.clean(&dfs->jobs));
     return 0;
 }
 
@@ -281,9 +303,11 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     dfs->ev.jobs.data = (void *)dfs;
     ev_timer_again(p->ev.loop, &dfs->ev.jobs);
     bool exists;
-    ifr(os.fileexists(BLOCK_FILE, &exists));
+    char blockfile[256];
+    snprintf(blockfile, sizeof(blockfile), "%s/%s", "block", BLOCK_FILE);
+    ifr(os.fileexists(blockfile, &exists));
     if (exists) {
-        ifr(root.data.load.file(&dfs->blocks.local, BLOCK_FILE));
+        ifr(root.data.load.file(&dfs->blocks.local, blockfile));
     }
     return 0;
 }

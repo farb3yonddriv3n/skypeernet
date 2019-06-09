@@ -150,6 +150,8 @@ static int clean(struct peer_s *p)
     ev_timer_stop(p->ev.loop, &p->ev.send);
     ev_timer_stop(p->ev.loop, &p->ev.peers_reachable);
     list.clean(&p->peers);
+    list.clean(&p->send.nbl);
+    list.clean(&p->send.instant);
     list.clean(&p->recv_buffer.cache);
     list.clean(&p->recv_buffer.sealed);
     list.clean(&p->tasks.list);

@@ -21,7 +21,10 @@ static int load_json_file(json_object **obj, const char *filename)
     char *content;
     int n = eioie_fread(&content, fn);
     if (n <= 1) return -1;
-    if (load_json(obj, content, n) != 0) return -1;
+    if (load_json(obj, content, n) != 0) {
+        if (content) free(content);
+        return -1;
+    }
     if (content) free(content);
     return 0;
 }
@@ -149,6 +152,7 @@ static int finalize(struct config_s *cfg, struct list_s *l,
     int n = eioie_fread(&buffer, sdstnamems);
     if (n <= 0) return -1;
     sha256hex((unsigned char *)buffer, n, dstnamehash);
+    free(buffer);
     snprintf(fullpath, nfullpath, "%s/%.*s", cfg->download_dir, SHA256HEX, dstnamehash);
     snprintf(filename, nfilename, "%.*s", SHA256HEX, dstnamehash);
     ifr(os.filemove(dstnamems, fullpath));

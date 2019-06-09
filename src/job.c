@@ -92,6 +92,7 @@ static int add(struct list_s *jobs, struct group_s *remote,
         j->chunks.array[idx].updated  = .0f;
         j->chunks.array[idx].net.host = 0;
         j->chunks.array[idx].net.port = 0;
+        j->counter.none++;
     }
     ifr(list.add(jobs, j, clean));
     *added = true;
@@ -103,11 +104,14 @@ static int show(struct list_s *jobs)
     if (!jobs) return -1;
     int cb(struct list_s *l, void *uj, void *ud) {
         struct job_s *j  = (struct job_s *)uj;
-        printf("| %.*s | %13ld | %8ld |\n", (int)sizeof(j->file.name), j->file.name,
-                                             j->file.size, j->chunks.size);
+        printf("| %.*s | %10dkB | %5ld | %d/%d/%d/%d |\n",
+               (int)sizeof(j->file.name), j->file.name,
+               (int)(j->file.size / 1024), j->chunks.size, j->counter.none,
+               j->counter.receiving, j->counter.notfound,
+               j->counter.done);
         return 0;
     }
-    printf("| File | Size | Chunks |\n");
+    printf("| File | Size | Chunks | Counter |\n");
     return list.map(jobs, cb, NULL);
 }
 
@@ -162,7 +166,30 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
     assert(list.map(&dfs->jobs, cb, dfs) == 0);
 }
 
-static int update(struct list_s *jobs, const char *filename)
+static int finalize(const char *downloaddir, struct job_s *j)
+{
+    if (!j) return -1;
+    char dst[256], chunkpath[256];
+    snprintf(dst, sizeof(dst), "%s/%.*s", downloaddir, (int)sizeof(j->file.name),
+                                        j->file.name);
+    int i;
+    for (i = 0; i < j->chunks.size; i++) {
+        snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s", downloaddir,
+                                                          (int)sizeof(j->chunks.array[i].chunk),
+                                                          j->chunks.array[i].chunk);
+        char *buffer;
+        sn_initz(cn, chunkpath);
+        int n = eioie_fread(&buffer, cn);
+        if (n <= 0) return -1;
+        ifr(eioie_fwrite(dst, "a", buffer, n));
+        free(buffer);
+        ifr(remove(chunkpath));
+    }
+    return 0;
+}
+
+static int update(const char *downloaddir, struct list_s *jobs,
+                  const char *filename)
 {
     if (!jobs || !filename) return -1;
     struct chunk_find_s { const char         *filename;
@@ -192,8 +219,10 @@ static int update(struct list_s *jobs, const char *filename)
     }
     ifr(chunk_state(cf.foundj, cf.foundjc, JOBCHUNK_DONE));
     if (cf.foundj->counter.done == cf.foundj->chunks.size) {
+        ifr(finalize(downloaddir, cf.foundj));
         printf("Job done: %.*s\n", (int)sizeof(cf.foundj->file.name),
                                    cf.foundj->file.name);
+        ifr(list.del(jobs, cf.foundj));
     }
     return 0;
 }

@@ -45,7 +45,7 @@ struct module_job_s {
     int (*add)(struct list_s *jobs, struct group_s *remote,
                unsigned char *file, int nfile, bool *found,
                bool *added);
-    int (*update)(struct list_s *jobs, const char *filename);
+    int (*update)(const char *downloaddir, struct list_s *jobs, const char *filename);
     void (*resume)(struct ev_loop *loop, struct ev_timer *timer, int revents);
     int (*show)(struct list_s *jobs);
 };
