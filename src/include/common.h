@@ -33,6 +33,7 @@
 #include <sn.h>
 #include <utils.h>
 #include <list.h>
+#include <backtrace.h>
 #include <config.h>
 #include <rsa.h>
 #include <file.h>

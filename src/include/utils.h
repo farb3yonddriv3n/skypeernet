@@ -11,7 +11,10 @@
 
 #define ALIGN16(m_src) char align16[m_src]
 
-#define ifr(m_src) if (m_src != 0) return -1
+#define ifr(m_src) if (m_src != 0) {\
+        backtrace.add(__FILE__, __LINE__);\
+        return -1;\
+    }
 
 #define dmemcmp(m_src, m_nsrc, m_dst, m_ndst)\
     (m_nsrc == m_ndst && memcmp(m_src, m_dst, m_ndst) == 0)

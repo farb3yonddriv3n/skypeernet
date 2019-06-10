@@ -32,7 +32,10 @@ static void read_cb(EV_P_ ev_io *w, int revents)
                         ADDR_PORT(p->net.remote.addr),
                         &p->received) != 0) return;
     if (!valid) return;
-    if (payload.recv(p) != 0) abort();
+    if (payload.recv(p) != 0) {
+        backtrace.show();
+        abort();
+    }
 }
 
 static void rlhandler(char *line)
@@ -103,6 +106,7 @@ static int init_peer(struct peer_s *p)
     p->ev.write.data = (void *)p;
     p->ev.write_instant.data = (void *)p;
     ev_timer_again(p->ev.loop, &p->ev.send);
+    backtrace.init();
     return 0;
 }
 
@@ -137,6 +141,7 @@ static int init_tracker(struct peer_s *t)
     t->ev.peers_reachable.data  = t;
     rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
     ev_timer_again(t->ev.loop, &t->ev.send);
+    backtrace.init();
     return 0;
 }
 
@@ -156,6 +161,7 @@ static int clean(struct peer_s *p)
     list.clean(&p->recv_buffer.sealed);
     list.clean(&p->tasks.list);
     config_free(&p->cfg);
+    backtrace.clean();
     return 0;
 }
 

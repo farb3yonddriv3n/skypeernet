@@ -1,6 +1,6 @@
 #include <common.h>
 
-#define MAX_JOB_IDLE 10.0f
+#define MAX_JOB_CHUNK_IDLE 10.0f
 
 static int clean(void *uj)
 {
@@ -137,6 +137,17 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
                         NULL);
 }
 
+static int chunk_restart(struct distfs_s *dfs, struct job_s *j,
+                         struct job_chunk_s *jc)
+{
+    if (!dfs || !j || !jc) return -1;
+    bool reachable;
+    ifr(world.peer.isreachable(dfs->peer, jc->net.host, jc->net.port,
+                               &reachable));
+    if (!reachable) return chunk_start(dfs, j, jc);
+    return 0;
+}
+
 static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
     struct distfs_s *dfs = (struct distfs_s *)timer->data;
@@ -153,8 +164,8 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
                     ifr(chunk_start(dfs, j, &j->chunks.array[i]));
                     } break;
                 case JOBCHUNK_RECEIVING: {
-                    if ((timems - MAX_JOB_IDLE) > j->chunks.array[i].updated) {
-                        ifr(chunk_start(dfs, j, &j->chunks.array[i]));
+                    if ((timems - MAX_JOB_CHUNK_IDLE) > j->chunks.array[i].updated) {
+                        ifr(chunk_restart(dfs, j, &j->chunks.array[i]));
                     }
                     } break;
                 default:

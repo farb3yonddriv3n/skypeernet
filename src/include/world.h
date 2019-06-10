@@ -22,6 +22,8 @@ struct module_world_s {
         int (*reachable)(struct peer_s *p, int host, unsigned short port);
         int (*unreachable)(struct peer_s *p, int host, unsigned short port);
         void (*check)(struct ev_loop *loop, struct ev_timer *timer, int revents);
+        int (*isreachable)(struct peer_s *p, int host, unsigned short port,
+                           bool *reachable);
     } peer;
 };
 

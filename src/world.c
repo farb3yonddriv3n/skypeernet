@@ -1,5 +1,16 @@
 #include <common.h>
 
+static peer_isreachable(struct peer_s *p, int host, unsigned short port,
+                        bool *reachable)
+{
+    if (!p || !reachable) return -1;
+    struct world_peer_s wp = { .host  = host, .port  = port, .found = NULL };
+    ifr(list.map(&p->peers, peer_find, &wp));
+    if (wp.found && wp.found->unreachable == 0) *reachable = true;
+    else                                        *reachable = false;
+    return 0;
+}
+
 static int reachable_set(struct peer_s *p, int host, unsigned short port,
                          bool reachable)
 {
@@ -44,4 +55,5 @@ const struct module_world_s world = {
     .peer.reachable   = peer_reachable,
     .peer.unreachable = peer_unreachable,
     .peer.check       = peer_check,
+    .peer.isreachable = peer_isreachable,
 };

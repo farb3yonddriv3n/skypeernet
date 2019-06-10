@@ -120,7 +120,6 @@ static int hello_write(struct distfs_s *dfs, int host, unsigned short port)
     return payload.send(p, COMMAND_MESSAGE,
                         host, port, 0, 0,
                         NULL);
-    return 0;
 }
 
 static int distfs_command_send(struct distfs_s *dfs, enum distfs_cmd_e cmd,
@@ -160,15 +159,6 @@ static void *mine(void *data)
         ifr(block.transactions.add(b, t));
         return 0;
     }
-    if (root.init(&dfs->blocks.local) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
-    if (root.data.load.file(&dfs->blocks.local, BLOCK_FILE))
-        syslog(LOG_DEBUG, "DB file not found %s:%d", __FILE__, __LINE__);
-    bool valid;
-    if (root.validate(dfs->blocks.local, &valid) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
-    if (!valid)
-        return mine_thread_fail(__FILE__, __LINE__);
     size_t size;
     if (root.blocks.size(dfs->blocks.local, &size) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
@@ -180,15 +170,13 @@ static void *mine(void *data)
         return mine_thread_fail(__FILE__, __LINE__);
     if (list.map(&dfs->transactions, cb, b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (block.transactions.lock(b))
+    if (block.transactions.lock(b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (block.mine(b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (root.blocks.add(dfs->blocks.local, b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (root.data.save.file(dfs->blocks.local, BLOCK_FILE) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
-    if (root.clean(dfs->blocks.local) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (list.clean(&dfs->transactions) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
