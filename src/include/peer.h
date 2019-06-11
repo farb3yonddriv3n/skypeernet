@@ -100,8 +100,8 @@ struct peer_s {
             int (*file)(struct peer_s *p, int host,
                         unsigned short port,
                         unsigned char *keyhash,
-                        const char *fullpath,
-                        const char *fullname);
+                        char *fullpath, int nfullpath,
+                        char *filename, int nfilename);
             int (*fileask)(struct peer_s *p, int host,
                            unsigned short port,
                            char *msg, int len);
@@ -123,5 +123,6 @@ struct module_peer_s {
 };
 
 extern const struct module_peer_s peer;
+extern struct peer_s *psig;
 
 #endif

@@ -81,20 +81,21 @@ static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
     if (!p || !filename) return -1;
     if (nfilename != SHA256HEX) return -1;
     struct task_s *exists;
-    ifr(find(&p->tasks.list, filename, host, port, &exists));
+    ifr(find(&p->tasks.list, (const char *)filename, host, port, &exists));
     if (exists) return 0;
     struct task_s *t = malloc(sizeof(*t));
     if (!t) return -1;
     memset(t, 0, sizeof(*t));
     if (nfilename != sizeof(t->file.name)) return -1;
-    memcpy(t->file.name, filename, nfilename);
-    snprintf(t->file.fullpath, sizeof(t->file.fullpath), "%s/%.*s",
-                                                         blockdir,
-                                                         nfilename, filename);
     t->host   = host;
     t->port   = port;
     t->action = action;
     t->idx  = ++(p->tasks.idx);
+    memcpy(t->file.name, filename, nfilename);
+    snprintf(t->file.fullpath, sizeof(t->file.fullpath), "%s/%.*s",
+                                                         blockdir,
+                                                         nfilename, filename);
+    printf("task fullpath %s\n", t->file.fullpath);
     ifr(os.filesize(t->file.fullpath, &t->file.size));
     ifr(os.fileparts(t->file.fullpath, p->cfg.net.max.task_buffer, &t->parts));
     ifr(list.add(&p->tasks.list, t, task.clean));

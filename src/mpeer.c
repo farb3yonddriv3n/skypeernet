@@ -57,6 +57,7 @@ static int dfileask(struct peer_s *p, int host,
                   &localhost, &localport));
     if (!f) return 0;
     int i;
+    printf("file ask size %d\n", f->chunks.size);
     for (i = 0; i < f->chunks.size; i++) {
         if (dmemcmp(f->chunks.array[i].hash.content,
                     sizeof(f->chunks.array[i].hash.content),
@@ -68,10 +69,14 @@ static int dfileask(struct peer_s *p, int host,
                                                               SHA256HEX, filename);
             ifr(os.filepart(zfilename, i * CHUNK_SIZE,
                             f->chunks.array[i].size, &tmp, &ntmp));
+            unsigned char tmpenc[CHUNK_SIZE];
+            int ntmpenc = aes_encrypt(tmp, ntmp, aes_aad, strlen(aes_aad), aes_key,
+                                      aes_iv, tmpenc, aes_tag);
+            if (ntmpenc < 1) return -1;
             char chunkfile[256];
             snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.download_dir,
-                                                              SHA256HEX, chunk);
-            ifr(os.filewrite(chunkfile, "wb", tmp, ntmp));
+                                                              (int )sizeof(chunk), chunk);
+            ifr(os.filewrite(chunkfile, "wb", (char *)tmpenc, ntmpenc));
             free(tmp);
             return task.add(p, p->cfg.download_dir, chunk, sizeof(chunk),
                             host, port, TASK_FILE_DELETE);
@@ -83,8 +88,8 @@ static int dfileask(struct peer_s *p, int host,
 static int dfile(struct peer_s *p, int host,
                  unsigned short port,
                  unsigned char *pubkeyhash,
-                 const char *fullpath,
-                 const char *fullname)
+                 char *fullpath, int nfullpath,
+                 char *filename, int nfilename)
 {
     struct root_s *r;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
@@ -98,7 +103,7 @@ static int dfile(struct peer_s *p, int host,
         ifr(os.filemove(fullpath, blockname));
     } else {
         ifr(job.update(p->cfg.download_dir, &dfs->jobs,
-                       fullname));
+                       filename));
     }
     return 0;
 }
@@ -242,6 +247,19 @@ static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
     return 0;
 }
 
+static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs || !argv) return -1;
+    unsigned char *h = (unsigned char *)argv[1];
+    bool finalized;
+    ifr(job.finalize(dfs->blocks.remote, h,
+                     strlen((const char *)h), &finalized));
+    if (finalized) {
+        printf ("Job finalized\n");
+        return  0;
+    } else           return -1;
+}
+
 static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
@@ -259,6 +277,7 @@ static const struct { const char *alias[8];
     { { "lf", "listfiles" }, 2, 0, dfs_list_files },
     { { "ja", "jobadd" }, 2, 1, dfs_job_add },
     { { "js", "jobshow" }, 2, 0, dfs_job_show },
+    { { "jf", "jobfinalize" }, 2, 1, dfs_job_finalize },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)

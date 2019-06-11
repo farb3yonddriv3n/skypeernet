@@ -13,6 +13,7 @@ int rsa_decrypt(RSA *privkey, const unsigned char *src, const int srclen,
 {
     char err[128];
     *dst = malloc(srclen);
+    if (!dst) return -1;
     *dstlen = RSA_private_decrypt(srclen, src, *dst,
                                   privkey, RSA_PKCS1_OAEP_PADDING);
     if (*dstlen == -1) {
@@ -30,6 +31,7 @@ int rsa_encrypt(RSA *pubkey, const unsigned char *src, const int srclen,
 {
     char err[128];
     *dst = malloc(RSA_size(pubkey));
+    if (!dst) return -1;
     if ((*dstlen = RSA_public_encrypt(srclen, src, *dst,
                                       pubkey, RSA_PKCS1_OAEP_PADDING)) == -1) {
         ERR_load_crypto_strings();

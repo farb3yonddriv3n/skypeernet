@@ -25,11 +25,15 @@
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#include <openssl/evp.h>
+#include <openssl/aes.h>
 #include <openssl/err.h>
 #include <json.h>
 #include <ev.h>
 #include <pthread.h>
 
+#include <aes.h>
+#include <base64.h>
 #include <sn.h>
 #include <utils.h>
 #include <list.h>

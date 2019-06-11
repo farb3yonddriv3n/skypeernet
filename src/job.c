@@ -177,25 +177,46 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
     assert(list.map(&dfs->jobs, cb, dfs) == 0);
 }
 
-static int finalize(const char *downloaddir, struct job_s *j)
+static int finalize(struct group_s *remote, unsigned char *file,
+                    int nfile, bool *finalized)
 {
-    if (!j) return -1;
+    if (!remote || !file || !finalized) return -1;
+    if (nfile != SHA256HEX) return -1;
+    *finalized = false;
+    struct file_s *f    = NULL;
+    int            host = 0;
+    unsigned short port = 0;
+    ifr(group.find(remote, file, (void **)&f,
+                   &host, &port));
+    if (!f) return -1;
+
     char dst[256], chunkpath[256];
-    snprintf(dst, sizeof(dst), "%s/%.*s", downloaddir, (int)sizeof(j->file.name),
-                                        j->file.name);
+    snprintf(dst, sizeof(dst), "%s/%.*s", "downloads", SHA256HEX, file);
+    remove(dst);
     int i;
-    for (i = 0; i < j->chunks.size; i++) {
-        snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s", downloaddir,
-                                                          (int)sizeof(j->chunks.array[i].chunk),
-                                                          j->chunks.array[i].chunk);
+    for (i = 0; i < f->chunks.size; i++) {
+        snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s", "downloads",
+                                                          (int)sizeof(f->chunks.array[i].hash.content),
+                                                          f->chunks.array[i].hash.content);
         char *buffer;
         sn_initz(cn, chunkpath);
         int n = eioie_fread(&buffer, cn);
         if (n <= 0) return -1;
-        ifr(eioie_fwrite(dst, "a", buffer, n));
+        size_t ntag;
+        unsigned char *tag = base64_decode(f->chunks.array[i].tag,
+                                           strlen(f->chunks.array[i].tag),
+                                           &ntag);
+        unsigned char *tagdec;
+        size_t         ntagdec;
+        ifr(rsa_decrypt(psig->cfg.rsakey.private, tag, ntag, &tagdec, &ntagdec));
+        unsigned char decrypted[CHUNK_SIZE];
+        int dc = aes_decrypt(buffer, n, aes_aad, sizeof(aes_aad), tagdec,
+                             aes_key, aes_iv, decrypted);
+        if (dc < 1) return -1;
+        ifr(eioie_fwrite(dst, "a", decrypted, dc));
         free(buffer);
-        ifr(remove(chunkpath));
     }
+    *finalized = true;
     return 0;
 }
 
@@ -230,7 +251,6 @@ static int update(const char *downloaddir, struct list_s *jobs,
     }
     ifr(chunk_state(cf.foundj, cf.foundjc, JOBCHUNK_DONE));
     if (cf.foundj->counter.done == cf.foundj->chunks.size) {
-        ifr(finalize(downloaddir, cf.foundj));
         printf("Job done: %.*s\n", (int)sizeof(cf.foundj->file.name),
                                    cf.foundj->file.name);
         ifr(list.del(jobs, cf.foundj));
@@ -249,8 +269,9 @@ static int export()
 }
 
 const struct module_job_s job = {
-    .add    = add,
-    .update = update,
-    .resume = resume,
-    .show   = show,
+    .add      = add,
+    .update   = update,
+    .resume   = resume,
+    .finalize = finalize,
+    .show     = show,
 };

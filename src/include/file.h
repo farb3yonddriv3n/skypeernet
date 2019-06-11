@@ -11,6 +11,7 @@
 struct file_chunk_s {
     size_t size;
     int    part;
+    char   tag[512];
     struct {
         unsigned char content[SHA256HEX];
         unsigned char chunk[SHA256HEX];

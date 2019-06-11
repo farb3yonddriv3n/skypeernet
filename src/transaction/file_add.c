@@ -8,11 +8,12 @@ static int hash_chunks(struct transaction_s *t,
     int i;
     for (i = 0; i < t->action.add.chunks.size; i++) {
         struct file_chunk_s *fc = &t->action.add.chunks.array[i];
-        char buffer[SHA256HEX * 4];
-        snprintf(buffer, sizeof(buffer), "%.*s%ld%d%.*s%.*s",
+        char buffer[2048];
+        snprintf(buffer, sizeof(buffer), "%.*s%ld%d%s%.*s%.*s",
                  (int)sizeof(prev), prev,
                  fc->size,
                  fc->part,
+                 fc->tag,
                  (int)sizeof(fc->hash.content), fc->hash.content,
                  (int)sizeof(fc->hash.chunk), fc->hash.chunk);
         sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
@@ -161,6 +162,8 @@ static int load(struct transaction_s *t, json_object *tobj)
 
             BIND_INT64(f->chunks.array[i].size, "size", obj, chunk_item);
             BIND_INT64(f->chunks.array[i].part, "part", obj, chunk_item);
+            memset(f->chunks.array[i].tag, 0, sizeof(f->chunks.array[i].tag));
+            BIND_STRLEN(f->chunks.array[i].tag, "tag",  obj, chunk_item);
 
             json_object *chash;
             json_object_object_get_ex(chunk_item, "hash", &chash);
@@ -210,6 +213,8 @@ static int save(struct transaction_s *t, json_object **parent)
         json_object_object_add(chunk, "size", chunk_size);
         json_object *chunk_part = json_object_new_int(fc->part);
         json_object_object_add(chunk, "part", chunk_part);
+        json_object *chunk_tag = json_object_new_string((const char *)fc->tag);
+        json_object_object_add(chunk, "tag", chunk_tag);
 
         struct json_object *chunk_hash = json_object_new_object();
         json_object_object_add(chunk, "hash", chunk_hash);

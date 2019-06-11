@@ -1,7 +1,7 @@
 #include <common.h>
 
-static peer_isreachable(struct peer_s *p, int host, unsigned short port,
-                        bool *reachable)
+static int peer_isreachable(struct peer_s *p, int host, unsigned short port,
+                            bool *reachable)
 {
     if (!p || !reachable) return -1;
     struct world_peer_s wp = { .host  = host, .port  = port, .found = NULL };

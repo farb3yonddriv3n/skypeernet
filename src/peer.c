@@ -1,6 +1,6 @@
 #include <common.h>
 
-static struct peer_s *psig;
+struct peer_s *psig;
 
 static void write_cb(EV_P_ ev_io *w, int revents)
 {

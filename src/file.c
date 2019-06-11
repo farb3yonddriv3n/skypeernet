@@ -26,13 +26,26 @@ int file_chunks(const char *filename, size_t nbytes,
                    nbytes - (i * CHUNK_SIZE) :
                    CHUNK_SIZE);
         fc->part = i;
-        char *fpart;
-        size_t nfpart;
-        if (os.filepart(filename, i * CHUNK_SIZE, fc->size, &fpart,
+        unsigned char *fpart;
+        size_t         nfpart;
+        if (os.filepart(filename, i * CHUNK_SIZE, fc->size, (char *)&fpart,
                         &nfpart) != 0) return -1;
-        sha256hex((unsigned char *)fpart, nfpart, fc->hash.content);
+        unsigned char fpartenc[CHUNK_SIZE];
+        int nfpartenc = aes_encrypt(fpart, nfpart, aes_aad, sizeof(aes_aad),
+                                    (unsigned char *)aes_key, aes_iv,
+                                    fpartenc, aes_tag);
+        if (nfpartenc < 1) return -1;
+        fc->size = nfpartenc;
+        unsigned char *tagenc;
+        int            ntagenc;
+        ifr(rsa_encrypt(psig->cfg.rsakey.public, (unsigned char *)aes_tag, sizeof(aes_tag),
+                       &tagenc, &ntagenc));
+        size_t nencoded;
+        unsigned char *encoded = base64_encode(tagenc, ntagenc, &nencoded);
+        if (!encoded) return -1;
+        snprintf(fc->tag, sizeof(fc->tag), "%.*s", (int)nencoded, encoded);
+        sha256hex(fpartenc, nfpartenc, fc->hash.content);
         free(fpart);
-
         char buffer[1024];
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
                  fc->size, fc->part,

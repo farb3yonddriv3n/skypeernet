@@ -46,12 +46,14 @@ int file_read(struct peer_s *p)
                                .found = NULL };
     ifr(list.map(&p->peers, peer_find, &wp));
     if (!wp.found) return -1;
-    if (finalized && p->user.cb.file)
+    if (finalized && p->user.cb.file) {
         ifr(p->user.cb.file(p,
                             ADDR_IP(p->net.remote.addr),
                             ADDR_PORT(p->net.remote.addr),
                             wp.found->pubkeyhash,
-                            fullpath, filename));
+                            fullpath, sizeof(fullpath),
+                            filename, sizeof(filename)));
+    }
     return 0;
 }
 

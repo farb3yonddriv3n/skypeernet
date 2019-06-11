@@ -45,6 +45,7 @@ static void show()
     int frame = 0;
     printf("Backtrace:\n");
     if (list.map(&backtrace_list, cb, &frame) != 0) abort();
+    if (list.clean(&backtrace_list) != 0)           abort();
 }
 
 const struct module_backtrace_s backtrace = {
