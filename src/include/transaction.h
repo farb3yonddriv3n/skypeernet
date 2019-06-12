@@ -36,6 +36,7 @@ struct transaction_param_s {
     union {
         struct {
             const char *name;
+            const char *pathname;
         } add;
         struct {
             bool *valid;

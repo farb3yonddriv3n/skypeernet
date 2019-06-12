@@ -30,6 +30,7 @@ struct config_s {
         } max;
     } net;
     char download_dir[128];
+    char block_dir[128];
 };
 
 int config_init(struct config_s *cfg);

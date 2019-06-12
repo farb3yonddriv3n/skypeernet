@@ -39,6 +39,10 @@ int config_init(struct config_s *cfg)
     snprintf(cfg->download_dir, sizeof(cfg->download_dir), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
+    json_object_object_get_ex(obj, "block_directory", &tmp);
+    snprintf(cfg->block_dir, sizeof(cfg->block_dir), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
     json_object_put(obj);
     return 0;
 }

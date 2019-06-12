@@ -271,12 +271,12 @@ static int clean(struct root_s *r)
 }
 
 static int net_set(struct root_s *r, int host, unsigned short port,
-                   unsigned char *keyhash)
+                   unsigned char *pubkeyhash)
 {
     if (!r) return -1;
-    r->net.host    = host;
-    r->net.port    = port;
-    r->net.keyhash = keyhash;
+    r->net.host       = host;
+    r->net.port       = port;
+    r->net.pubkeyhash = pubkeyhash;
     return 0;
 }
 

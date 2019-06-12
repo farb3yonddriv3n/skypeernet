@@ -50,7 +50,7 @@ int file_read(struct peer_s *p)
         ifr(p->user.cb.file(p,
                             ADDR_IP(p->net.remote.addr),
                             ADDR_PORT(p->net.remote.addr),
-                            wp.found->keyhash,
+                            wp.found->pubkeyhash,
                             fullpath, filename));
     return 0;
 }

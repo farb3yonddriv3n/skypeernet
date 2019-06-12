@@ -19,6 +19,8 @@ struct module_os_s {
                       bool *exists);
     int (*blockname)(struct config_s *cfg, char *blockname, int nblockname,
                      const char *received, unsigned char *keyhash);
+    int (*blockfile)(struct config_s *cfg, unsigned char *bfile,
+                     int nbfile, bool *found, char *blockpath, int nblockpath);
     int (*dldir)(struct config_s *cfg);
     int (*loadjson)(json_object **obj, char *content, int ncontent);
     int (*loadjsonfile)(json_object **obj, const char *filename);

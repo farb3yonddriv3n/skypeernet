@@ -167,6 +167,28 @@ static int filejoin_clean(void *fname)
     return 0;
 }
 
+static int blockfile(struct config_s *cfg, unsigned char *bfile,
+                     int nbfile, bool *found, char *blockpath,
+                     int nblockpath)
+{
+    if (!cfg || !bfile || !found || !blockpath) return -1;
+    DIR *dir;
+    struct dirent *ent;
+    *found = false;
+    if ((dir = opendir(cfg->block_dir)) == NULL) return -1;
+    while ((ent = readdir(dir)) != NULL) {
+        if (strlen(ent->d_name) == nbfile) {
+            memcpy(bfile, ent->d_name, nbfile);
+            snprintf(blockpath, nblockpath, "%s/%.*s", cfg->block_dir,
+                                                       nbfile, bfile);
+            *found = true;
+            break;
+        }
+    }
+    closedir(dir);
+    return 0;
+}
+
 static int filejoin(struct config_s *cfg, const char *fname,
                     char *fullpath, int nfullpath,
                     char *filename, int nfilename,
@@ -213,10 +235,14 @@ static int dldir(struct config_s *cfg)
 {
     if (!cfg) return -1;
     struct stat st = {0};
-    char partsdir[256];
+    if (stat(cfg->block_dir, &st) == -1) {
+        if (mkdir(cfg->block_dir, 0700) != 0) return -1;
+    }
+    memset(&st, 0, sizeof(st));
     if (stat(cfg->download_dir, &st) == -1) {
         if (mkdir(cfg->download_dir, 0700) != 0) return -1;
     }
+    char partsdir[256];
     int i;
     for (i = 0; i < COUNTOF(dirs); i++) {
         snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[i]);
@@ -282,6 +308,7 @@ const struct module_os_s os = {
     .filemove      = filemove,
     .partexists    = partexists,
     .blockname     = blockname,
+    .blockfile     = blockfile,
     .dldir         = dldir,
     .loadjsonfile  = load_json_file,
     .loadjson      = load_json,

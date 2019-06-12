@@ -45,8 +45,10 @@ static void rlhandler(char *line)
         if (*line != 0) {
             add_history(line);
         }
-        if (cli(psig, line) != 0)
+        if (cli(psig, line) != 0) {
             printf("Command %s failed\n", line);
+            backtrace.show();
+        }
         free(line);
     }
 }

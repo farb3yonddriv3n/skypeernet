@@ -52,7 +52,7 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     memset(&t->action.add, 0, sizeof(t->action.add));
 
     size_t size;
-    if (os.filesize(param->action.add.name, &size) != 0) return -1;
+    if (os.filesize(param->action.add.pathname, &size) != 0) return -1;
 
     snprintf(t->action.add.meta.name,
              sizeof(t->action.add.meta.name),
@@ -62,7 +62,7 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     int ret = hash_meta(t, t->action.add.meta.hash);
     if (ret != 0) return -1;
 
-    ret = file_chunks(param->action.add.name, size,
+    ret = file_chunks(param->action.add.pathname, size,
                       &t->action.add.chunks.array,
                       &t->action.add.chunks.size);
     if (ret != 0) return -1;

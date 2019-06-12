@@ -6,6 +6,7 @@ struct distfs_s {
     struct {
         struct root_s  *local;
         struct group_s *remote;
+        unsigned char   file[SHA256HEX];
     } blocks;
     struct list_s transactions;
     struct list_s jobs;

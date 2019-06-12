@@ -1,7 +1,5 @@
 #include <common.h>
 
-#define BLOCK_FILE "aaaabbbbccccddddaaaabbbbccccddddaaaabbbbccccddddaaaabbbbccccdddd"
-
 enum distfs_cmd_e {
     DISTFS_HELLO,
 };
@@ -22,13 +20,19 @@ static int message(struct peer_s *p, int host,
                    unsigned short port,
                    char *msg, int len)
 {
+    if (!p || !msg) return -1;
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
-    if (dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len)) {
+    if (dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len) &&
+        strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
         bool exists;
-        char path[256];
-        snprintf(path, sizeof(path), "%s/%s", "block", BLOCK_FILE);
-        ifr(os.fileexists(path, &exists));
-        if (exists) return task.add(p, "block", (unsigned char *)BLOCK_FILE, strlen(BLOCK_FILE),
+        char blockfile[256];
+        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.block_dir,
+                                                          (int )sizeof(dfs->blocks.file),
+                                                          dfs->blocks.file);
+        ifr(os.fileexists(blockfile, &exists));
+        if (exists) return task.add(p, p->cfg.block_dir, dfs->blocks.file,
+                                    sizeof(dfs->blocks.file),
                                     host, port, TASK_FILE_KEEP);
     }
     return 0;
@@ -78,7 +82,7 @@ static int dfileask(struct peer_s *p, int host,
 
 static int dfile(struct peer_s *p, int host,
                  unsigned short port,
-                 unsigned char *keyhash,
+                 unsigned char *pubkeyhash,
                  const char *fullpath,
                  const char *fullname)
 {
@@ -87,10 +91,10 @@ static int dfile(struct peer_s *p, int host,
     size_t size;
     ifr(os.filesize(fullpath, &size));
     if (size != CHUNK_SIZE && root.data.load.file(&r, fullpath) == 0) {
-        ifr(root.net.set(r, host, port, keyhash));
+        ifr(root.net.set(r, host, port, pubkeyhash));
         ifr(group.roots.add(dfs->blocks.remote, r));
         char blockname[256];
-        ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, keyhash));
+        ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, pubkeyhash));
         ifr(os.filemove(fullpath, blockname));
     } else {
         ifr(job.update(p->cfg.download_dir, &dfs->jobs,
@@ -146,6 +150,24 @@ static void *mine_thread_fail(const char *file, const int line)
     return NULL;
 }
 
+static int mine_block_file(struct distfs_s *dfs)
+{
+    if (!dfs) return -1;
+    struct peer_s *p = dfs->peer;
+    char blockfile[256];
+    if (strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
+        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.block_dir,
+                                                          (int )sizeof(dfs->blocks.file),
+                                                          dfs->blocks.file);
+        if (remove(blockfile) != 0) return -1;
+    }
+    memcpy(dfs->blocks.file, dfs->blocks.local->hash, sizeof(dfs->blocks.local->hash));
+    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.block_dir,
+                                                      (int )sizeof(dfs->blocks.file),
+                                                      dfs->blocks.file);
+    return root.data.save.file(dfs->blocks.local, blockfile);
+}
+
 static void *mine(void *data)
 {
     if (!data)
@@ -176,7 +198,8 @@ static void *mine(void *data)
         return mine_thread_fail(__FILE__, __LINE__);
     if (root.blocks.add(dfs->blocks.local, b) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (root.data.save.file(dfs->blocks.local, BLOCK_FILE) != 0)
+    if (mine_block_file(dfs) != 0)
+    //if (root.data.save.file(dfs->blocks.local, BLOCK_FILE) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     if (list.clean(&dfs->transactions) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
@@ -291,11 +314,13 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     dfs->ev.jobs.data = (void *)dfs;
     ev_timer_again(p->ev.loop, &dfs->ev.jobs);
     bool exists;
-    char blockfile[256];
-    snprintf(blockfile, sizeof(blockfile), "%s/%s", "block", BLOCK_FILE);
-    ifr(os.fileexists(blockfile, &exists));
+    char blockpath[256];
+    if (os.blockfile(&p->cfg, dfs->blocks.file, sizeof(dfs->blocks.file),
+                     &exists, blockpath, sizeof(blockpath)) != 0) return -1;
     if (exists) {
-        ifr(root.data.load.file(&dfs->blocks.local, blockfile));
+        ifr(root.data.load.file(&dfs->blocks.local, blockpath));
+    } else {
+        ifr(root.init(&dfs->blocks.local));
     }
     return 0;
 }

@@ -40,7 +40,7 @@ static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
     int keysize = nsrc - sizeof(wp->host) - sizeof(wp->port);
     sn_bytes_init_new(wp->key, keysize);
     if (sn_read((void *)wp->key.s, keysize, &bf) != 0) return -1;
-    sha256hex((unsigned char *)wp->key.s, keysize, wp->keyhash);
+    sha256hex((unsigned char *)wp->key.s, keysize, wp->pubkeyhash);
     return 0;
 }
 
@@ -66,8 +66,6 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
         int item(int dst, unsigned short dstport,
                  int src, unsigned short srcport,
                  sn *key) {
-            //ADDR_IP(p->net.remote.addr)   = src;
-            //ADDR_PORT(p->net.remote.addr) = srcport;
             p->send_buffer.type = BUFFER_TRACKER_ANNOUNCE_PEER;
             p->send_buffer.u.tracker_peer.key  = key;
             p->send_buffer.u.tracker_peer.host = src;
@@ -171,11 +169,3 @@ int announce_prp(struct peer_s *p)
     if (added) return peer_broadcast(p, wp);
     return 0;
 }
-
-/*
-const struct module_handler_s announce = {
-    .tracker.write = announce_write_tracker,
-    .peer.write    = announce_write_peer,
-    .size          = announce_size,
-};
-*/

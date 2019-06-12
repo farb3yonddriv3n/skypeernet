@@ -12,7 +12,7 @@ struct root_s {
     struct {
         int            host;
         unsigned short port;
-        unsigned char *keyhash;
+        unsigned char *pubkeyhash;
     } net;
 };
 
@@ -50,7 +50,7 @@ struct module_root_s {
     } data;
     struct {
         int (*set)(struct root_s *r, int host, unsigned short port,
-                   unsigned char *keyhash);
+                   unsigned char *pubkeyhash);
     } net;
 };
 
