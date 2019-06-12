@@ -14,7 +14,7 @@ int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc)
     param.type = TFILE_ADD;
     param.action.add.name = argv[2];
     char pathname[256];
-    snprintf(pathname, sizeof(pathname), "%s/%s", p->cfg.download_dir,
+    snprintf(pathname, sizeof(pathname), "%s/%s", p->cfg.dir.download,
                                                   argv[2]);
     param.action.add.pathname = pathname;
     ifr(transaction.init(&t, &param));

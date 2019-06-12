@@ -131,13 +131,13 @@ static int finalize(struct config_s *cfg, struct list_s *l,
     char timems[128];
     ifr(gettime(timems, sizeof(timems)));
     char dstnamems[512];
-    snprintf(dstnamems, sizeof(dstnamems), "%s/%s", cfg->download_dir, timems);
+    snprintf(dstnamems, sizeof(dstnamems), "%s/%s", cfg->dir.download, timems);
     for (i = 0; i < nfiles; i++) {
         char *fname = ((char **)files)[i];
         char *buffer;
         char fbuffer[1024];
         snprintf(fbuffer, sizeof(fbuffer), "%s/%s/%s",
-                                           cfg->download_dir,
+                                           cfg->dir.download,
                                            dirs[0], fname);
         sn_initz(fn, fbuffer);
         int n = eioie_fread(&buffer, fn);
@@ -153,7 +153,7 @@ static int finalize(struct config_s *cfg, struct list_s *l,
     if (n <= 0) return -1;
     sha256hex((unsigned char *)buffer, n, dstnamehash);
     free(buffer);
-    snprintf(fullpath, nfullpath, "%s/%.*s", cfg->download_dir, SHA256HEX, dstnamehash);
+    snprintf(fullpath, nfullpath, "%s/%.*s", cfg->dir.download, SHA256HEX, dstnamehash);
     snprintf(filename, nfilename, "%.*s", SHA256HEX, dstnamehash);
     ifr(os.filemove(dstnamems, fullpath));
     if (files) free(files);
@@ -175,11 +175,11 @@ static int blockfile(struct config_s *cfg, unsigned char *bfile,
     DIR *dir;
     struct dirent *ent;
     *found = false;
-    if ((dir = opendir(cfg->block_dir)) == NULL) return -1;
+    if ((dir = opendir(cfg->dir.block)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         if (strlen(ent->d_name) == nbfile) {
             memcpy(bfile, ent->d_name, nbfile);
-            snprintf(blockpath, nblockpath, "%s/%.*s", cfg->block_dir,
+            snprintf(blockpath, nblockpath, "%s/%.*s", cfg->dir.block,
                                                        nbfile, bfile);
             *found = true;
             break;
@@ -204,7 +204,7 @@ static int filejoin(struct config_s *cfg, const char *fname,
     DIR *dir;
     struct dirent *ent;
     char partsdir[256];
-    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[0]);
+    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->dir.download, dirs[0]);
     if ((dir = opendir(partsdir)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         int shost, sport, stidx;
@@ -235,17 +235,21 @@ static int dldir(struct config_s *cfg)
 {
     if (!cfg) return -1;
     struct stat st = {0};
-    if (stat(cfg->block_dir, &st) == -1) {
-        if (mkdir(cfg->block_dir, 0700) != 0) return -1;
+    if (stat(cfg->dir.block, &st) == -1) {
+        if (mkdir(cfg->dir.block, 0700) != 0) return -1;
     }
     memset(&st, 0, sizeof(st));
-    if (stat(cfg->download_dir, &st) == -1) {
-        if (mkdir(cfg->download_dir, 0700) != 0) return -1;
+    if (stat(cfg->dir.download, &st) == -1) {
+        if (mkdir(cfg->dir.download, 0700) != 0) return -1;
+    }
+    memset(&st, 0, sizeof(st));
+    if (stat(cfg->dir.download, &st) == -1) {
+        if (mkdir(cfg->dir.keys, 0700) != 0) return -1;
     }
     char partsdir[256];
     int i;
     for (i = 0; i < COUNTOF(dirs); i++) {
-        snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[i]);
+        snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->dir.download, dirs[i]);
         if (stat(partsdir, &st) == -1) {
             if (mkdir(partsdir, 0700) != 0) return -1;
         }
@@ -270,7 +274,7 @@ static int blockname(struct config_s *cfg, char *blockname, int nblockname,
 {
     if (!blockname || !received || !keyhash) return -1;
     snprintf(blockname, nblockname, "%s/%s/%.*s",
-                                    cfg->download_dir,
+                                    cfg->dir.download,
                                     dirs[1],
                                     SHA256HEX, keyhash);
     return 0;
@@ -284,7 +288,7 @@ static int partexists(struct config_s *cfg, const char *startswith,
     DIR *dir;
     struct dirent *ent;
     char partsdir[256];
-    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->download_dir, dirs[0]);
+    snprintf(partsdir, sizeof(partsdir), "%s/%s/", cfg->dir.download, dirs[0]);
     if ((dir = opendir(partsdir)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         if (strlen(ent->d_name) < strlen(startswith)) continue;

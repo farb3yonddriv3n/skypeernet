@@ -29,6 +29,7 @@ struct job_s {
         unsigned char name[SHA256HEX];
         uint64_t      size;
     } file;
+    unsigned char pubkeyhash[SHA256HEX];
     struct {
         struct job_chunk_s *array;
         size_t              size;
@@ -42,14 +43,14 @@ struct job_s {
 };
 
 struct module_job_s {
-    int (*add)(struct list_s *jobs, struct group_s *remote,
+    int (*add)(struct config_s *cfg, struct list_s *jobs, struct group_s *remote,
                unsigned char *file, int nfile, bool *found,
-               bool *added);
+               bool *added, bool *exists);
     int (*update)(const char *downloaddir, struct list_s *jobs, const char *filename);
     void (*resume)(struct ev_loop *loop, struct ev_timer *timer, int revents);
     int (*finalize)(struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized);
-    int (*show)(struct list_s *jobs);
+    int (*show)(struct config_s *cfg, struct list_s *jobs);
 };
 
 extern const struct module_job_s job;

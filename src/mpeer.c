@@ -27,11 +27,11 @@ static int message(struct peer_s *p, int host,
         strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
         bool exists;
         char blockfile[256];
-        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.block_dir,
+        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
                                                           (int )sizeof(dfs->blocks.file),
                                                           dfs->blocks.file);
         ifr(os.fileexists(blockfile, &exists));
-        if (exists) return task.add(p, p->cfg.block_dir, dfs->blocks.file,
+        if (exists) return task.add(p, p->cfg.dir.block, dfs->blocks.file,
                                     sizeof(dfs->blocks.file),
                                     host, port, TASK_FILE_KEEP);
     }
@@ -52,9 +52,10 @@ static int dfileask(struct peer_s *p, int host,
     struct file_s *f = NULL;
     int            localhost = -1;
     unsigned short localport = -1;
+    unsigned char *pubkeyhash;
     if (!dfs->blocks.local) return 0;
     ifr(root.find(dfs->blocks.local, filename, (void **)&f,
-                  &localhost, &localport));
+                  &localhost, &localport, &pubkeyhash));
     if (!f) return 0;
     int i;
     printf("file ask size %d\n", f->chunks.size);
@@ -65,7 +66,7 @@ static int dfileask(struct peer_s *p, int host,
             char    *tmp;
             uint64_t ntmp;
             char zfilename[256];
-            snprintf(zfilename, sizeof(zfilename), "%s/%.*s", p->cfg.download_dir,
+            snprintf(zfilename, sizeof(zfilename), "%s/%.*s", p->cfg.dir.download,
                                                               SHA256HEX, filename);
             ifr(os.filepart(zfilename, i * CHUNK_SIZE,
                             f->chunks.array[i].size, &tmp, &ntmp));
@@ -74,11 +75,11 @@ static int dfileask(struct peer_s *p, int host,
                                       aes_iv, tmpenc, aes_tag);
             if (ntmpenc < 1) return -1;
             char chunkfile[256];
-            snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.download_dir,
+            snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.dir.download,
                                                               (int )sizeof(chunk), chunk);
             ifr(os.filewrite(chunkfile, "wb", (char *)tmpenc, ntmpenc));
             free(tmp);
-            return task.add(p, p->cfg.download_dir, chunk, sizeof(chunk),
+            return task.add(p, p->cfg.dir.download, chunk, sizeof(chunk),
                             host, port, TASK_FILE_DELETE);
         }
     }
@@ -96,13 +97,13 @@ static int dfile(struct peer_s *p, int host,
     size_t size;
     ifr(os.filesize(fullpath, &size));
     if (size != CHUNK_SIZE && root.data.load.file(&r, fullpath) == 0) {
-        ifr(root.net.set(r, host, port, pubkeyhash));
+        ifr(root.net.set(r, host, port));
         ifr(group.roots.add(dfs->blocks.remote, r));
         char blockname[256];
         ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, pubkeyhash));
         ifr(os.filemove(fullpath, blockname));
     } else {
-        ifr(job.update(p->cfg.download_dir, &dfs->jobs,
+        ifr(job.update(p->cfg.dir.download, &dfs->jobs,
                        filename));
     }
     return 0;
@@ -161,13 +162,13 @@ static int mine_block_file(struct distfs_s *dfs)
     struct peer_s *p = dfs->peer;
     char blockfile[256];
     if (strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
-        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.block_dir,
+        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
                                                           (int )sizeof(dfs->blocks.file),
                                                           dfs->blocks.file);
         if (remove(blockfile) != 0) return -1;
     }
     memcpy(dfs->blocks.file, dfs->blocks.local->hash, sizeof(dfs->blocks.local->hash));
-    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.block_dir,
+    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
                                                       (int )sizeof(dfs->blocks.file),
                                                       dfs->blocks.file);
     return root.data.save.file(dfs->blocks.local, blockfile);
@@ -188,6 +189,8 @@ static void *mine(void *data)
     }
     size_t size;
     if (root.blocks.size(dfs->blocks.local, &size) != 0)
+        return mine_thread_fail(__FILE__, __LINE__);
+    if (root.set(dfs->blocks.local, dfs->peer->cfg.keys.local.hash.public) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     unsigned char *prev_block;
     if (size == 0) prev_block = DISTFS_BASE_ROOT_HASH;
@@ -226,7 +229,7 @@ static int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc)
 static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
-    ifr(group.dump(dfs->blocks.remote));
+    ifr(group.dump(dfs->blocks.remote, &dfs->peer->cfg));
     return 0;
 }
 
@@ -234,10 +237,14 @@ static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs || !argv) return -1;
     unsigned char *h = (unsigned char *)argv[1];
-    bool added, found;
-    ifr(job.add(&dfs->jobs, dfs->blocks.remote, h,
+    bool added, found, exists;
+    ifr(job.add(&dfs->peer->cfg, &dfs->jobs, dfs->blocks.remote, h,
                 strlen((const char *)h), &found,
-                &added));
+                &added, &exists));
+    if (exists) {
+        printf("File %s exists, no need to download it\n", h);
+        return 0;
+    }
     if (!found) {
         printf("File %s not found\n", h);
         return 0;
@@ -263,7 +270,7 @@ static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
 static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
-    return job.show(&dfs->jobs);
+    return job.show(&dfs->peer->cfg, &dfs->jobs);
 }
 
 static const struct { const char *alias[8];

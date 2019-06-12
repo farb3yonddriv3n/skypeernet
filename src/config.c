@@ -2,12 +2,6 @@
 
 int config_init(struct config_s *cfg)
 {
-    if (!cfg) return -1;
-    if (rsa_load(cfg) != 0) {
-        if (rsa_generate() != 0) return -1;
-        if (rsa_load(cfg) != 0) return -1;
-    }
-
     json_object *obj;
     if (os.loadjsonfile(&obj, "config/settings.cfg") != 0) return -1;
     json_object *tmp;
@@ -36,21 +30,30 @@ int config_init(struct config_s *cfg)
     json_object_object_get_ex(obj, "max_peer_unreachable", &tmp);
     cfg->net.max.peer_unreachable = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "download_directory", &tmp);
-    snprintf(cfg->download_dir, sizeof(cfg->download_dir), "%.*s",
+    snprintf(cfg->dir.download, sizeof(cfg->dir.download), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
     json_object_object_get_ex(obj, "block_directory", &tmp);
-    snprintf(cfg->block_dir, sizeof(cfg->block_dir), "%.*s",
+    snprintf(cfg->dir.block, sizeof(cfg->dir.block), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
+    json_object_object_get_ex(obj, "keys_directory", &tmp);
+    snprintf(cfg->dir.keys, sizeof(cfg->dir.keys), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
     json_object_put(obj);
+    if (!cfg) return -1;
+    if (rsa_load(cfg) != 0) {
+        if (rsa_generate() != 0) return -1;
+        if (rsa_load(cfg) != 0) return -1;
+    }
     return 0;
 }
 
 void config_free(struct config_s *cfg)
 {
-    RSA_free(cfg->rsakey.public);
-    RSA_free(cfg->rsakey.private);
-    sn_free(cfg->key.public);
-    sn_free(cfg->key.private);
+    RSA_free(cfg->keys.local.rsa.public);
+    RSA_free(cfg->keys.local.rsa.private);
+    sn_free(cfg->keys.local.str.public);
+    sn_free(cfg->keys.local.str.private);
 }

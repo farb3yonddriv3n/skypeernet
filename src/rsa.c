@@ -60,17 +60,30 @@ static int read_key(RSA *func(FILE *pfile, RSA **x, pem_password_cb *cb, void *u
 
 int rsa_load(struct config_s *cfg)
 {
-    sn_initz(fpub, KEY_PUB);
+    if (!cfg) return -1;
+    sn_initz(fpub,  KEY_PUB);
     sn_initz(fpriv, KEY_PRIV);
-
-    int ret = read_key(PEM_read_RSAPublicKey, &cfg->rsakey.public,
-                       fpub, &cfg->key.public);
+    int ret = read_key(PEM_read_RSAPublicKey, &cfg->keys.local.rsa.public,
+                       fpub, &cfg->keys.local.str.public);
     if (ret != 0) return ret;
-
-    ret = read_key(PEM_read_RSAPrivateKey, &cfg->rsakey.private,
-                   fpriv, &cfg->key.private);
+    ret = read_key(PEM_read_RSAPrivateKey, &cfg->keys.local.rsa.private,
+                   fpriv, &cfg->keys.local.str.private);
     if (ret != 0) return ret;
+    sha256hex(cfg->keys.local.str.public.s, cfg->keys.local.str.public.n,
+              cfg->keys.local.hash.public);
+    sha256hex(cfg->keys.local.str.private.s, cfg->keys.local.str.private.n,
+              cfg->keys.local.hash.private);
+    cfg->keys.active = &cfg->keys.local;
+    return 0;
+}
 
+int rsa_find(struct config_s *cfg, unsigned char *keyhash,
+             bool *found)
+{
+    if (!cfg || !found) return -1;
+    if (dmemcmp(cfg->keys.local.hash.public, sizeof(cfg->keys.local.hash.public),
+                keyhash, SHA256HEX)) *found = true;
+    else                             *found = false;
     return 0;
 }
 

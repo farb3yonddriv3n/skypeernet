@@ -33,7 +33,7 @@ int file_read(struct peer_s *p)
                                    p->received.header.parts);
     char fnamepath[1024];
     snprintf(fnamepath, sizeof(fnamepath), "%s/%s/%s",
-             p->cfg.download_dir, os.getpartsdir(), fname);
+             p->cfg.dir.download, os.getpartsdir(), fname);
     if (os.filewrite(fnamepath, "wb", p->recv_buffer.available->data.s,
                                       p->recv_buffer.available->data.n) != 0) return -1;
     char fullpath[256];

@@ -19,12 +19,14 @@ static int init(struct group_s **g)
 }
 
 static int find(struct group_s *g, unsigned char *h, void **found,
-                int *host, unsigned short *port)
+                int *host, unsigned short *port,
+                unsigned char **pubkeyhash)
 {
     if (!g || !h || !found) return -1;
     int i;
     for (i = 0; i < g->roots.size; i++) {
-        if (root.find(g->roots.array[i], h, found, host, port) != 0) return -1;
+        if (root.find(g->roots.array[i], h, found, host, port,
+                      pubkeyhash) != 0) return -1;
         if (*found) break;
     }
     return 0;
@@ -42,12 +44,12 @@ static int clean(struct group_s *g)
     return 0;
 }
 
-static int dump(struct group_s *g)
+static int dump(struct group_s *g, struct config_s *cfg)
 {
-    if (!g) return -1;
+    if (!g || !cfg) return -1;
     int i;
     for (i = 0; i < g->roots.size; i++) {
-        if (root.dump(g->roots.array[i]) != 0) return -1;
+        if (root.dump(g->roots.array[i], cfg) != 0) return -1;
     }
     return 0;
 }

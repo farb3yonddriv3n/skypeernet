@@ -38,8 +38,8 @@ int file_chunks(const char *filename, size_t nbytes,
         fc->size = nfpartenc;
         unsigned char *tagenc;
         int            ntagenc;
-        ifr(rsa_encrypt(psig->cfg.rsakey.public, (unsigned char *)aes_tag, sizeof(aes_tag),
-                       &tagenc, &ntagenc));
+        ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public, (unsigned char *)aes_tag,
+                        sizeof(aes_tag), &tagenc, &ntagenc));
         size_t nencoded;
         unsigned char *encoded = base64_encode(tagenc, ntagenc, &nencoded);
         if (!encoded) return -1;

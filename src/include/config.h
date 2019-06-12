@@ -1,15 +1,30 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-struct config_s {
+struct config_key_s {
     struct {
         RSA *public;
         RSA *private;
-    } rsakey;
+    } rsa;
     struct {
         sn public;
         sn private;
-    } key;
+    } str;
+    struct {
+        unsigned char public[SHA256HEX];
+        unsigned char private[SHA256HEX];
+    } hash;
+};
+
+struct config_s {
+    struct {
+        struct config_key_s local;
+        struct {
+            struct config_key_s *array;
+            int                  size;
+        } shared;
+        struct config_key_s *active;
+    } keys;
     struct {
         struct {
             char ip[32];
@@ -29,8 +44,11 @@ struct config_s {
             int peer_unreachable;
         } max;
     } net;
-    char download_dir[128];
-    char block_dir[128];
+    struct {
+        char download[128];
+        char block[128];
+        char keys[128];
+    } dir;
 };
 
 int config_init(struct config_s *cfg);

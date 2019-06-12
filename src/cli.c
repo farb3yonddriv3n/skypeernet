@@ -22,7 +22,7 @@ static int send_file(struct peer_s *p, char **argv, int argc)
     long int    host = strtol(argv[1], NULL, 16);
     long int    port = strtol(argv[2], NULL, 10);
     const char *file = argv[3];
-    return task.add(p, p->cfg.download_dir, (unsigned char *)file, strlen(file),
+    return task.add(p, p->cfg.dir.download, (unsigned char *)file, strlen(file),
                     host, port, TASK_FILE_KEEP);
 }
 
@@ -68,6 +68,18 @@ static int cli_traffic(struct peer_s *p, char **argv, int argc)
     return 0;
 }
 
+static int cli_keyslist(struct peer_s *p, char **argv, int argc)
+{
+    if (!p) return -1;
+    printf(" | Key hash  |\n");
+    int i;
+    for (i = 0; i < 1; i++) {
+        printf(" | %.*s |\n", (int )sizeof(p->cfg.keys.active->hash.public),
+                              p->cfg.keys.active->hash.public);
+    }
+    return 0;
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -78,6 +90,7 @@ static const struct { const char *alias[8];
     { { "fs", "filesend" },           2, 3, send_file },
     { { "w",  "whoami" },             2, 0, whoami },
     { { "tf", "traffic" },            2, 0, cli_traffic },
+    { { "kl", "keyslist" },           2, 0, cli_keyslist },
 };
 
 int cli(struct peer_s *p, char *line)

@@ -41,19 +41,23 @@ static int chunk_state(struct job_s *j, struct job_chunk_s *jc,
     return 0;
 }
 
-static int add(struct list_s *jobs, struct group_s *remote,
+static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote,
                unsigned char *file, int nfile, bool *found,
-               bool *added)
+               bool *added, bool *exists)
 {
     if (!jobs || !remote || !file || !found) return -1;
     if (nfile != SHA256HEX) return -1;
+    char filename[256];
+    snprintf(filename, sizeof(filename), "%s/%.*s", cfg->dir.download, nfile, file);
+    if (os.fileexists(filename, exists));
+    if (*exists) return 0;
     *found = *added = false;
     struct job_find_s { unsigned char *file; struct job_s *found; };
     int find_job(struct list_s *l, void *uj, void *ud) {
         struct job_s      *j  = (struct job_s *)uj;
         struct job_find_s *jf = (struct job_find_s *)ud;
         if (dmemcmp(j->file.name, sizeof(j->file.name),
-                    jf->file, sizeof(j->file))) {
+                    jf->file, SHA256HEX)) {
             jf->found = j;
             return 1;
         }
@@ -63,13 +67,15 @@ static int add(struct list_s *jobs, struct group_s *remote,
     ifr(list.map(jobs, find_job, &jf));
     if (jf.found) {
         *added = true;
+        *found = true;
         return 0;
     }
     struct file_s *f = NULL;
     int            host = 0;
     unsigned short port = 0;
+    unsigned char *pubkeyhash;
     ifr(group.find(remote, file, (void **)&f,
-                   &host, &port));
+                   &host, &port, &pubkeyhash));
     if (!f) return 0;
     *found = true;
     (void )host;
@@ -79,6 +85,7 @@ static int add(struct list_s *jobs, struct group_s *remote,
     if (!j) return -1;
     memset(j, 0, sizeof(*j));
     memcpy(j->file.name, file, nfile);
+    memcpy(j->pubkeyhash, pubkeyhash, sizeof(j->pubkeyhash));
     j->file.size = f->meta.size;
     int i;
     for (i = 0; i < f->chunks.size; i++) {
@@ -99,19 +106,21 @@ static int add(struct list_s *jobs, struct group_s *remote,
     return 0;
 }
 
-static int show(struct list_s *jobs)
+static int show(struct config_s *cfg, struct list_s *jobs)
 {
     if (!jobs) return -1;
     int cb(struct list_s *l, void *uj, void *ud) {
         struct job_s *j  = (struct job_s *)uj;
-        printf("| %.*s | %10dkB | %5ld | %d/%d/%d/%d |\n",
+        bool found;
+        ifr(rsa_find(cfg, j->pubkeyhash, &found));
+        printf("| %.*s | %10dkB | %5ld | %d/%d/%d/%d | %s |\n",
                (int)sizeof(j->file.name), j->file.name,
                (int)(j->file.size / 1024), j->chunks.size, j->counter.none,
                j->counter.receiving, j->counter.notfound,
-               j->counter.done);
+               j->counter.done, found ? "Yes" : "No");
         return 0;
     }
-    printf("| File | Size | Chunks | Counter |\n");
+    printf("| File | Size | Chunks | Counter| Decryptable |\n");
     return list.map(jobs, cb, NULL);
 }
 
@@ -121,8 +130,9 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
     if (!dfs || !j) return -1;
     struct peer_s *p = dfs->peer;
     struct file_s *f = NULL;
+    unsigned char *pubkeyhash;
     ifr(group.find(dfs->blocks.remote, j->file.name, (void **)&f,
-                   &jc->net.host, &jc->net.port));
+                   &jc->net.host, &jc->net.port, &pubkeyhash));
     if (!f) {
         ifr(chunk_state(j, jc, JOBCHUNK_NOTFOUND));
         return 0;
@@ -186,8 +196,9 @@ static int finalize(struct group_s *remote, unsigned char *file,
     struct file_s *f    = NULL;
     int            host = 0;
     unsigned short port = 0;
+    unsigned char *pubkeyhash;
     ifr(group.find(remote, file, (void **)&f,
-                   &host, &port));
+                   &host, &port, &pubkeyhash));
     if (!f) return -1;
 
     char dst[256], chunkpath[256];
@@ -208,7 +219,8 @@ static int finalize(struct group_s *remote, unsigned char *file,
                                            &ntag);
         unsigned char *tagdec;
         size_t         ntagdec;
-        ifr(rsa_decrypt(psig->cfg.rsakey.private, tag, ntag, &tagdec, &ntagdec));
+        ifr(rsa_decrypt(psig->cfg.keys.active->rsa.private, tag, ntag,
+                        &tagdec, &ntagdec));
         unsigned char decrypted[CHUNK_SIZE];
         int dc = aes_decrypt(buffer, n, aes_aad, sizeof(aes_aad), tagdec,
                              aes_key, aes_iv, decrypted);
@@ -253,7 +265,7 @@ static int update(const char *downloaddir, struct list_s *jobs,
     if (cf.foundj->counter.done == cf.foundj->chunks.size) {
         printf("Job done: %.*s\n", (int)sizeof(cf.foundj->file.name),
                                    cf.foundj->file.name);
-        ifr(list.del(jobs, cf.foundj));
+        //ifr(list.del(jobs, cf.foundj));
     }
     return 0;
 }

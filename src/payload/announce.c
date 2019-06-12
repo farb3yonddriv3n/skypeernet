@@ -6,7 +6,8 @@ int announce_pwp(struct data_s *d, void *userdata)
     if (!p || !d) return -1;
     if (data.write.integer(d, ADDR_IP(p->net.self.addr))            != 0) return -1;
     if (data.write.shortint(d, ADDR_PORT(p->net.self.addr))         != 0) return -1;
-    if (data.write.raw(d, p->cfg.key.public.s, p->cfg.key.public.n) != 0) return -1;
+    if (data.write.raw(d, p->cfg.keys.local.str.public.s,
+                       p->cfg.keys.local.str.public.n) != 0) return -1;
     return 0;
 }
 
@@ -28,7 +29,8 @@ int announce_twt(struct data_s *d, void *userdata)
     if (!t || !d) return -1;
     if (data.write.integer(d, ADDR_IP(t->net.remote.addr))    != 0) return -1;
     if (data.write.shortint(d, ADDR_PORT(t->net.remote.addr)) != 0) return -1;
-    if (data.write.raw(d, t->cfg.key.public.s, t->cfg.key.public.n) != 0) return -1;
+    if (data.write.raw(d, t->cfg.keys.local.str.public.s,
+                       t->cfg.keys.local.str.public.n) != 0) return -1;
     return 0;
 }
 
@@ -48,7 +50,7 @@ int announce_size(int *sz, void *userdata)
 {
     if (!sz || !userdata) return -1;
     struct peer_s *p = (struct peer_s *)userdata;
-    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT + p->cfg.key.public.n;
+    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT + p->cfg.keys.local.str.public.n;
     return 0;
 }
 
