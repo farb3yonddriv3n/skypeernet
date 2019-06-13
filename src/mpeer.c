@@ -58,7 +58,6 @@ static int dfileask(struct peer_s *p, int host,
                   &localhost, &localport, &pubkeyhash));
     if (!f) return 0;
     int i;
-    printf("file ask size %d\n", f->chunks.size);
     for (i = 0; i < f->chunks.size; i++) {
         if (dmemcmp(f->chunks.array[i].hash.content,
                     sizeof(f->chunks.array[i].hash.content),
@@ -71,8 +70,10 @@ static int dfileask(struct peer_s *p, int host,
             ifr(os.filepart(zfilename, i * CHUNK_SIZE,
                             f->chunks.array[i].size, &tmp, &ntmp));
             unsigned char tmpenc[CHUNK_SIZE];
-            int ntmpenc = aes_encrypt(tmp, ntmp, aes_aad, strlen(aes_aad), aes_key,
-                                      aes_iv, tmpenc, aes_tag);
+            unsigned char tag[AES_TAG_SIZE];
+            int ntmpenc = aes_encrypt((unsigned char *)tmp, ntmp, p->cfg.aes.key,
+                                      sizeof(p->cfg.aes.key), p->cfg.aes.key,
+                                      p->cfg.aes.key, tmpenc, tag);
             if (ntmpenc < 1) return -1;
             char chunkfile[256];
             snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.dir.download,
@@ -259,7 +260,7 @@ static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
     if (!dfs || !argv) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool finalized;
-    ifr(job.finalize(dfs->blocks.remote, h,
+    ifr(job.finalize(&dfs->peer->cfg, dfs->blocks.remote, h,
                      strlen((const char *)h), &finalized));
     if (finalized) {
         printf ("Job finalized\n");

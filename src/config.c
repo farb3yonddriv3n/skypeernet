@@ -47,6 +47,9 @@ int config_init(struct config_s *cfg)
         if (rsa_generate() != 0) return -1;
         if (rsa_load(cfg) != 0) return -1;
     }
+    SHA256((unsigned char *)cfg->keys.local.str.private.s,
+           cfg->keys.local.str.private.n,
+           cfg->aes.key);
     return 0;
 }
 

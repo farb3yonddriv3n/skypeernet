@@ -69,9 +69,9 @@ int rsa_load(struct config_s *cfg)
     ret = read_key(PEM_read_RSAPrivateKey, &cfg->keys.local.rsa.private,
                    fpriv, &cfg->keys.local.str.private);
     if (ret != 0) return ret;
-    sha256hex(cfg->keys.local.str.public.s, cfg->keys.local.str.public.n,
+    sha256hex((unsigned char *)cfg->keys.local.str.public.s, cfg->keys.local.str.public.n,
               cfg->keys.local.hash.public);
-    sha256hex(cfg->keys.local.str.private.s, cfg->keys.local.str.private.n,
+    sha256hex((unsigned char *)cfg->keys.local.str.private.s, cfg->keys.local.str.private.n,
               cfg->keys.local.hash.private);
     cfg->keys.active = &cfg->keys.local;
     return 0;

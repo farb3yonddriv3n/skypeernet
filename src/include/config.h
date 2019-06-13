@@ -26,6 +26,9 @@ struct config_s {
         struct config_key_s *active;
     } keys;
     struct {
+        unsigned char key[SHA256_DIGEST_LENGTH];
+    } aes;
+    struct {
         struct {
             char ip[32];
             unsigned short port;

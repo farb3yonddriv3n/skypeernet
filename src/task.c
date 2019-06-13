@@ -95,7 +95,6 @@ static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
     snprintf(t->file.fullpath, sizeof(t->file.fullpath), "%s/%.*s",
                                                          blockdir,
                                                          nfilename, filename);
-    printf("task fullpath %s\n", t->file.fullpath);
     ifr(os.filesize(t->file.fullpath, &t->file.size));
     ifr(os.fileparts(t->file.fullpath, p->cfg.net.max.task_buffer, &t->parts));
     ifr(list.add(&p->tasks.list, t, task.clean));

@@ -1,15 +1,10 @@
 #include <common.h>
 
-const unsigned char aes_key[] = "01234567890123456789012345678901";
-const unsigned char aes_iv[] = "0123456789012345";
-const unsigned char aes_aad[] = "Some AAD data";
-unsigned char aes_tag[16];
-
 static void handleErrors(void)
 {
     unsigned long errCode;
-    printf("An error occurred\n");
-    while(errCode = ERR_get_error()) {
+    printf("AES error occurred\n");
+    while((errCode = ERR_get_error())) {
         char *err = ERR_error_string(errCode, NULL);
         printf("%s\n", err);
     }

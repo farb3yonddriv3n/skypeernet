@@ -28,18 +28,20 @@ int file_chunks(const char *filename, size_t nbytes,
         fc->part = i;
         unsigned char *fpart;
         size_t         nfpart;
-        if (os.filepart(filename, i * CHUNK_SIZE, fc->size, (char *)&fpart,
+        if (os.filepart(filename, i * CHUNK_SIZE, fc->size, (char **)&fpart,
                         &nfpart) != 0) return -1;
         unsigned char fpartenc[CHUNK_SIZE];
-        int nfpartenc = aes_encrypt(fpart, nfpart, aes_aad, sizeof(aes_aad),
-                                    (unsigned char *)aes_key, aes_iv,
-                                    fpartenc, aes_tag);
+        unsigned char tag[AES_TAG_SIZE];
+        int nfpartenc = aes_encrypt(fpart, nfpart, psig->cfg.aes.key,
+                                    sizeof(psig->cfg.aes.key),
+                                    psig->cfg.aes.key, psig->cfg.aes.key,
+                                    fpartenc, tag);
         if (nfpartenc < 1) return -1;
         fc->size = nfpartenc;
         unsigned char *tagenc;
         int            ntagenc;
-        ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public, (unsigned char *)aes_tag,
-                        sizeof(aes_tag), &tagenc, &ntagenc));
+        ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public, (unsigned char *)tag,
+                        sizeof(tag), &tagenc, &ntagenc));
         size_t nencoded;
         unsigned char *encoded = base64_encode(tagenc, ntagenc, &nencoded);
         if (!encoded) return -1;

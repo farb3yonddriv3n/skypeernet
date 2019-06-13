@@ -187,7 +187,7 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
     assert(list.map(&dfs->jobs, cb, dfs) == 0);
 }
 
-static int finalize(struct group_s *remote, unsigned char *file,
+static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized)
 {
     if (!remote || !file || !finalized) return -1;
@@ -214,18 +214,19 @@ static int finalize(struct group_s *remote, unsigned char *file,
         int n = eioie_fread(&buffer, cn);
         if (n <= 0) return -1;
         size_t ntag;
-        unsigned char *tag = base64_decode(f->chunks.array[i].tag,
+        unsigned char *tag = base64_decode((unsigned char *)f->chunks.array[i].tag,
                                            strlen(f->chunks.array[i].tag),
                                            &ntag);
         unsigned char *tagdec;
-        size_t         ntagdec;
+        int            ntagdec;
         ifr(rsa_decrypt(psig->cfg.keys.active->rsa.private, tag, ntag,
                         &tagdec, &ntagdec));
         unsigned char decrypted[CHUNK_SIZE];
-        int dc = aes_decrypt(buffer, n, aes_aad, sizeof(aes_aad), tagdec,
-                             aes_key, aes_iv, decrypted);
+        int dc = aes_decrypt((unsigned char *)buffer, n, cfg->aes.key,
+                             sizeof(cfg->aes.key), tagdec, cfg->aes.key,
+                             cfg->aes.key, decrypted);
         if (dc < 1) return -1;
-        ifr(eioie_fwrite(dst, "a", decrypted, dc));
+        ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
         free(buffer);
     }
     *finalized = true;
