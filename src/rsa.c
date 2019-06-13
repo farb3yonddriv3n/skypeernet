@@ -54,36 +54,37 @@ static int read_key(RSA *func(FILE *pfile, RSA **x, pem_password_cb *cb, void *u
     key->n = eioie_fread(&key->s, fkey);
     if (key->n == -1) return -1;
     *rsakey = func(pfile, rsakey, NULL, NULL);
+    if (!(*rsakey)) return -1;
     fclose(pfile);
+    return 0;
+}
+
+int rsa_loadkey(RSA *(*func)(FILE *pfile, RSA **x, pem_password_cb *cb, void *u),
+                const char *key, RSA **ctx,
+                sn *str, unsigned char *hash)
+{
+    int ret;
+    sn_initz(fpriv, (char *)key);
+    ret = read_key(func, ctx, fpriv, str);
+    if (ret != 0) return ret;
+    sha256hex((unsigned char *)str->s, str->n, hash);
     return 0;
 }
 
 int rsa_load(struct config_s *cfg)
 {
     if (!cfg) return -1;
-    sn_initz(fpub,  KEY_PUB);
-    sn_initz(fpriv, KEY_PRIV);
-    int ret = read_key(PEM_read_RSAPublicKey, &cfg->keys.local.rsa.public,
-                       fpub, &cfg->keys.local.str.public);
-    if (ret != 0) return ret;
-    ret = read_key(PEM_read_RSAPrivateKey, &cfg->keys.local.rsa.private,
-                   fpriv, &cfg->keys.local.str.private);
-    if (ret != 0) return ret;
-    sha256hex((unsigned char *)cfg->keys.local.str.public.s, cfg->keys.local.str.public.n,
-              cfg->keys.local.hash.public);
-    sha256hex((unsigned char *)cfg->keys.local.str.private.s, cfg->keys.local.str.private.n,
-              cfg->keys.local.hash.private);
-    cfg->keys.active = &cfg->keys.local;
-    return 0;
-}
-
-int rsa_find(struct config_s *cfg, unsigned char *keyhash,
-             bool *found)
-{
-    if (!cfg || !found) return -1;
-    if (dmemcmp(cfg->keys.local.hash.public, sizeof(cfg->keys.local.hash.public),
-                keyhash, SHA256HEX)) *found = true;
-    else                             *found = false;
+    if (rsa_loadkey(PEM_read_RSAPrivateKey, KEY_PRIV,
+                    &cfg->keys.local.rsa.private,
+                    &cfg->keys.local.str.private,
+                    cfg->keys.local.hash.private) != 0) return -1;
+    if (rsa_loadkey(PEM_read_RSAPublicKey, KEY_PUB,
+                    &cfg->keys.local.rsa.public,
+                    &cfg->keys.local.str.public,
+                    cfg->keys.local.hash.public) != 0) return -1;
+    SHA256((unsigned char *)cfg->keys.local.str.private.s,
+           cfg->keys.local.str.private.n,
+           cfg->keys.local.aes.key);
     return 0;
 }
 

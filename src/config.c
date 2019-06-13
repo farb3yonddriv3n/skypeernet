@@ -1,5 +1,36 @@
 #include <common.h>
 
+int config_keyexists(struct config_s *cfg, unsigned char *sharedname,
+                     struct config_key_s **exists)
+{
+    if (!cfg || !sharedname || !exists) return -1;
+    *exists = NULL;
+    int i;
+    for (i = 0; i < cfg->keys.shared.size; i++) {
+        if (memcmp(cfg->keys.shared.array[i].sharedname, sharedname, SHA256HEX) == 0) {
+            *exists = &cfg->keys.shared.array[i];
+            return 0;
+        }
+    }
+    if (dmemcmp(sharedname, SHA256HEX,
+                cfg->keys.local.hash.public,
+                sizeof(cfg->keys.local.hash.public)))
+        *exists = &cfg->keys.local;
+    return 0;
+}
+
+int config_keysdump(struct config_s *cfg)
+{
+    int i;
+    printf(" | My key |\n");
+    printf(" | %.*s |\n", SHA256HEX, cfg->keys.local.hash.public);
+    printf(" | Shared keys |\n");
+    for (i = 0; i < cfg->keys.shared.size; i++) {
+        printf(" | %.*s |\n", SHA256HEX, cfg->keys.shared.array[i].sharedname);
+    }
+    return 0;
+}
+
 int config_init(struct config_s *cfg)
 {
     json_object *obj;
@@ -47,9 +78,30 @@ int config_init(struct config_s *cfg)
         if (rsa_generate() != 0) return -1;
         if (rsa_load(cfg) != 0) return -1;
     }
-    SHA256((unsigned char *)cfg->keys.local.str.private.s,
-           cfg->keys.local.str.private.n,
-           cfg->aes.key);
+
+    int importkey(struct config_s *cfg, const char *fullpath,
+                  const char *filename) {
+        if (!cfg || !fullpath || !filename) return -1;
+        printf("importing shared key %s\n", fullpath);
+        struct config_key_s *exists;
+        ifr(config_keyexists(cfg, (unsigned char *)filename, &exists));
+        if (exists) return 0;
+        cfg->keys.shared.array = realloc(cfg->keys.shared.array,
+                                         ++cfg->keys.shared.size * sizeof(struct config_key_s));
+        if (!cfg->keys.shared.array) return -1;
+        struct config_key_s *cfgk = &cfg->keys.shared.array[cfg->keys.shared.size - 1];
+        memset(cfgk, 0, sizeof(*cfgk));
+        memcpy(cfgk->sharedname, filename, SHA256HEX);
+        ifr(rsa_loadkey(PEM_read_RSAPrivateKey, fullpath,
+                        &cfgk->rsa.private,
+                        &cfgk->str.private,
+                        cfgk->hash.private));
+        SHA256((unsigned char *)cfgk->str.private.s,
+               cfgk->str.private.n,
+               cfgk->aes.key);
+        return 0;
+    }
+    ifr(os.readkeys(cfg, importkey));
     return 0;
 }
 

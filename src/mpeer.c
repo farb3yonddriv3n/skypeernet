@@ -71,9 +71,11 @@ static int dfileask(struct peer_s *p, int host,
                             f->chunks.array[i].size, &tmp, &ntmp));
             unsigned char tmpenc[CHUNK_SIZE];
             unsigned char tag[AES_TAG_SIZE];
-            int ntmpenc = aes_encrypt((unsigned char *)tmp, ntmp, p->cfg.aes.key,
-                                      sizeof(p->cfg.aes.key), p->cfg.aes.key,
-                                      p->cfg.aes.key, tmpenc, tag);
+            int ntmpenc = aes_encrypt((unsigned char *)tmp, ntmp,
+                                      p->cfg.keys.local.aes.key,
+                                      sizeof(p->cfg.keys.local.aes.key),
+                                      p->cfg.keys.local.aes.key,
+                                      p->cfg.keys.local.aes.key, tmpenc, tag);
             if (ntmpenc < 1) return -1;
             char chunkfile[256];
             snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.dir.download,
@@ -262,16 +264,21 @@ static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
     bool finalized;
     ifr(job.finalize(&dfs->peer->cfg, dfs->blocks.remote, h,
                      strlen((const char *)h), &finalized));
-    if (finalized) {
-        printf ("Job finalized\n");
-        return  0;
-    } else           return -1;
+    if (finalized) printf ("Job %s finalized\n", h);
+    else           printf ("Unable to finalize job %s\n", h);
+    return  0;
 }
 
 static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
     return job.show(&dfs->peer->cfg, &dfs->jobs);
+}
+
+static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs) return -1;
+    return config_keysdump(&dfs->peer->cfg);
 }
 
 static const struct { const char *alias[8];
@@ -286,6 +293,7 @@ static const struct { const char *alias[8];
     { { "ja", "jobadd" }, 2, 1, dfs_job_add },
     { { "js", "jobshow" }, 2, 0, dfs_job_show },
     { { "jf", "jobfinalize" }, 2, 1, dfs_job_finalize },
+    { { "kd", "keysdump" }, 2, 0, dfs_keysdump },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)

@@ -32,9 +32,10 @@ int file_chunks(const char *filename, size_t nbytes,
                         &nfpart) != 0) return -1;
         unsigned char fpartenc[CHUNK_SIZE];
         unsigned char tag[AES_TAG_SIZE];
-        int nfpartenc = aes_encrypt(fpart, nfpart, psig->cfg.aes.key,
-                                    sizeof(psig->cfg.aes.key),
-                                    psig->cfg.aes.key, psig->cfg.aes.key,
+        int nfpartenc = aes_encrypt(fpart, nfpart, psig->cfg.keys.local.aes.key,
+                                    sizeof(psig->cfg.keys.local.aes.key),
+                                    psig->cfg.keys.local.aes.key,
+                                    psig->cfg.keys.local.aes.key,
                                     fpartenc, tag);
         if (nfpartenc < 1) return -1;
         fc->size = nfpartenc;

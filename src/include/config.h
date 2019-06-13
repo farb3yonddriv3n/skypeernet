@@ -2,6 +2,7 @@
 #define CONFIG_H_
 
 struct config_key_s {
+    unsigned char sharedname[SHA256HEX];
     struct {
         RSA *public;
         RSA *private;
@@ -14,6 +15,9 @@ struct config_key_s {
         unsigned char public[SHA256HEX];
         unsigned char private[SHA256HEX];
     } hash;
+    struct {
+        unsigned char key[SHA256_DIGEST_LENGTH];
+    } aes;
 };
 
 struct config_s {
@@ -23,11 +27,7 @@ struct config_s {
             struct config_key_s *array;
             int                  size;
         } shared;
-        struct config_key_s *active;
     } keys;
-    struct {
-        unsigned char key[SHA256_DIGEST_LENGTH];
-    } aes;
     struct {
         struct {
             char ip[32];
@@ -56,5 +56,8 @@ struct config_s {
 
 int config_init(struct config_s *cfg);
 void config_free(struct config_s *cfg);
+int config_keysdump(struct config_s *cfg);
+int config_keyexists(struct config_s *cfg, unsigned char *sharedname,
+                     struct config_key_s **exists);
 
 #endif

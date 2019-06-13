@@ -189,6 +189,27 @@ static int blockfile(struct config_s *cfg, unsigned char *bfile,
     return 0;
 }
 
+static int readkeys(struct config_s *cfg,
+                    int (*cb)(struct config_s *cfg, const char *fullpath,
+                              const char *filename))
+{
+    if (!cfg || !cb) return -1;
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir(cfg->dir.keys)) == NULL) return -1;
+    while ((ent = readdir(dir)) != NULL) {
+        char fname[128];
+        int found = sscanf(ent->d_name, "%s.priv", fname);
+        if (found != 1 || strlen(ent->d_name) < SHA256HEX) continue;
+        printf("found %d %s\n", found, ent->d_name);
+        char fullpath[512];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", cfg->dir.keys, ent->d_name);
+        ifr(cb(cfg, fullpath, fname));
+    }
+    closedir(dir);
+    return 0;
+}
+
 static int filejoin(struct config_s *cfg, const char *fname,
                     char *fullpath, int nfullpath,
                     char *filename, int nfilename,
@@ -231,7 +252,7 @@ static int filejoin(struct config_s *cfg, const char *fname,
     return 0;
 }
 
-static int dldir(struct config_s *cfg)
+static int makedirs(struct config_s *cfg)
 {
     if (!cfg) return -1;
     struct stat st = {0};
@@ -243,7 +264,7 @@ static int dldir(struct config_s *cfg)
         if (mkdir(cfg->dir.download, 0700) != 0) return -1;
     }
     memset(&st, 0, sizeof(st));
-    if (stat(cfg->dir.download, &st) == -1) {
+    if (stat(cfg->dir.keys, &st) == -1) {
         if (mkdir(cfg->dir.keys, 0700) != 0) return -1;
     }
     char partsdir[256];
@@ -313,9 +334,10 @@ const struct module_os_s os = {
     .partexists    = partexists,
     .blockname     = blockname,
     .blockfile     = blockfile,
-    .dldir         = dldir,
+    .makedirs      = makedirs,
     .loadjsonfile  = load_json_file,
     .loadjson      = load_json,
     .gettimems     = gettimems,
     .getpartsdir   = getpartsdir,
+    .readkeys      = readkeys,
 };

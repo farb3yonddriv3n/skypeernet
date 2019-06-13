@@ -239,8 +239,8 @@ static int validate(const struct root_s *r, bool *valid)
 static int dump(struct root_s *r, struct config_s *cfg)
 {
     if (!r || !cfg) return -1;
-    bool found;
-    ifr(rsa_find(cfg, r->pubkeyhash, &found));
+    struct config_key_s *found;
+    ifr(config_keyexists(cfg, r->pubkeyhash, &found));
     printf("Peer: %x:%d Decryptable: %s\n",
             r->net.host, r->net.port,
             found ? "Yes" : "No");

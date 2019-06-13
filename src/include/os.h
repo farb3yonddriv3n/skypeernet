@@ -26,6 +26,9 @@ struct module_os_s {
     int (*loadjsonfile)(json_object **obj, const char *filename);
     int (*gettimems)(double *result);
     const char *(*getpartsdir)();
+    int (*readkeys)(struct config_s *cfg,
+                    int (*cb)(struct config_s *cfg, const char *fullpath,
+                              const char *filename));
 };
 
 const struct module_os_s os;

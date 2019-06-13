@@ -111,8 +111,8 @@ static int show(struct config_s *cfg, struct list_s *jobs)
     if (!jobs) return -1;
     int cb(struct list_s *l, void *uj, void *ud) {
         struct job_s *j  = (struct job_s *)uj;
-        bool found;
-        ifr(rsa_find(cfg, j->pubkeyhash, &found));
+        struct confg_key_s *found;
+        ifr(config_keyexists(cfg, j->pubkeyhash, &found));
         printf("| %.*s | %10dkB | %5ld | %d/%d/%d/%d | %s |\n",
                (int)sizeof(j->file.name), j->file.name,
                (int)(j->file.size / 1024), j->chunks.size, j->counter.none,
@@ -202,11 +202,11 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
     if (!f) return -1;
 
     char dst[256], chunkpath[256];
-    snprintf(dst, sizeof(dst), "%s/%.*s", "downloads", SHA256HEX, file);
+    snprintf(dst, sizeof(dst), "%s/%.*s", cfg->dir.download, SHA256HEX, file);
     remove(dst);
     int i;
     for (i = 0; i < f->chunks.size; i++) {
-        snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s", "downloads",
+        snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s", cfg->dir.download,
                                                           (int)sizeof(f->chunks.array[i].hash.content),
                                                           f->chunks.array[i].hash.content);
         char *buffer;
@@ -219,12 +219,15 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
                                            &ntag);
         unsigned char *tagdec;
         int            ntagdec;
-        ifr(rsa_decrypt(psig->cfg.keys.active->rsa.private, tag, ntag,
+        struct config_key_s *key;
+        ifr(config_keyexists(cfg, pubkeyhash, &key));
+        if (!key) return 0;
+        ifr(rsa_decrypt(key->rsa.private, tag, ntag,
                         &tagdec, &ntagdec));
         unsigned char decrypted[CHUNK_SIZE];
-        int dc = aes_decrypt((unsigned char *)buffer, n, cfg->aes.key,
-                             sizeof(cfg->aes.key), tagdec, cfg->aes.key,
-                             cfg->aes.key, decrypted);
+        int dc = aes_decrypt((unsigned char *)buffer, n, key->aes.key,
+                             sizeof(key->aes.key), tagdec, key->aes.key,
+                             key->aes.key, decrypted);
         if (dc < 1) return -1;
         ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
         free(buffer);
