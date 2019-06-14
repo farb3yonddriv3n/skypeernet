@@ -72,6 +72,10 @@ int config_init(struct config_s *cfg)
     snprintf(cfg->dir.keys, sizeof(cfg->dir.keys), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
+    json_object_object_get_ex(obj, "finalized_directory", &tmp);
+    snprintf(cfg->dir.finalized, sizeof(cfg->dir.finalized), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
     json_object_put(obj);
     if (!cfg) return -1;
     if (rsa_load(cfg) != 0) {

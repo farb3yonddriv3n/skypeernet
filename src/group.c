@@ -19,14 +19,12 @@ static int init(struct group_s **g)
 }
 
 static int find(struct group_s *g, unsigned char *h, void **found,
-                int *host, unsigned short *port,
-                unsigned char **pubkeyhash)
+                int *host, unsigned short *port)
 {
     if (!g || !h || !found) return -1;
     int i;
     for (i = 0; i < g->roots.size; i++) {
-        if (root.find(g->roots.array[i], h, found, host, port,
-                      pubkeyhash) != 0) return -1;
+        if (root.find(g->roots.array[i], h, found, host, port) != 0) return -1;
         if (*found) break;
     }
     return 0;

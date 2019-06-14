@@ -20,6 +20,7 @@ struct file_chunk_s {
 
 struct file_s {
     unsigned char hash[SHA256HEX];
+    unsigned char pubkeyhash[SHA256HEX];
     struct {
         char          name[128];
         size_t        size;
@@ -27,11 +28,6 @@ struct file_s {
         char          type[32];
         unsigned char hash[SHA256HEX];
     } meta;
-    /*
-    struct {
-        unsigned char hash[SHA256HEX];
-    } content;
-    */
     struct {
         struct file_chunk_s *array;
         size_t               size;
@@ -45,6 +41,7 @@ struct file_s {
         char private_key[1024];
     } encrypted;
 
+    struct transaction_s *parent;
     unsigned int flags;
 };
 

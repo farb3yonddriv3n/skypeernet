@@ -5,7 +5,6 @@
 
 struct root_s {
     unsigned char hash[SHA256HEX];
-    unsigned char pubkeyhash[SHA256HEX];
     struct {
         struct block_s **array;
         size_t           size;
@@ -27,8 +26,7 @@ struct module_root_s {
     int (*merge)(struct root_s *dst, struct root_s *src,
                  bool *merged);
     int (*find)(struct root_s *r, unsigned char *h, void **found,
-                int *host, unsigned short *port,
-                unsigned char **pubkeyhash);
+                int *host, unsigned short *port);
     int (*dump)(struct root_s *r, struct config_s *cfg);
     int (*clean)(struct root_s *r);
     struct {
@@ -52,7 +50,6 @@ struct module_root_s {
     struct {
         int (*set)(struct root_s *r, int host, unsigned short port);
     } net;
-    int (*set)(struct root_s *r, unsigned char *pubkeyhash);
 };
 
 enum root_merge_e {

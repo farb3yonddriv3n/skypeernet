@@ -73,9 +73,8 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
     struct file_s *f = NULL;
     int            host = 0;
     unsigned short port = 0;
-    unsigned char *pubkeyhash;
     ifr(group.find(remote, file, (void **)&f,
-                   &host, &port, &pubkeyhash));
+                   &host, &port));
     if (!f) return 0;
     *found = true;
     (void )host;
@@ -85,7 +84,7 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
     if (!j) return -1;
     memset(j, 0, sizeof(*j));
     memcpy(j->file.name, file, nfile);
-    memcpy(j->pubkeyhash, pubkeyhash, sizeof(j->pubkeyhash));
+    memcpy(j->pubkeyhash, f->pubkeyhash, sizeof(j->pubkeyhash));
     j->file.size = f->meta.size;
     int i;
     for (i = 0; i < f->chunks.size; i++) {
@@ -111,7 +110,7 @@ static int show(struct config_s *cfg, struct list_s *jobs)
     if (!jobs) return -1;
     int cb(struct list_s *l, void *uj, void *ud) {
         struct job_s *j  = (struct job_s *)uj;
-        struct confg_key_s *found;
+        struct config_key_s *found;
         ifr(config_keyexists(cfg, j->pubkeyhash, &found));
         printf("| %.*s | %10dkB | %5ld | %d/%d/%d/%d | %s |\n",
                (int)sizeof(j->file.name), j->file.name,
@@ -130,9 +129,8 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
     if (!dfs || !j) return -1;
     struct peer_s *p = dfs->peer;
     struct file_s *f = NULL;
-    unsigned char *pubkeyhash;
     ifr(group.find(dfs->blocks.remote, j->file.name, (void **)&f,
-                   &jc->net.host, &jc->net.port, &pubkeyhash));
+                   &jc->net.host, &jc->net.port));
     if (!f) {
         ifr(chunk_state(j, jc, JOBCHUNK_NOTFOUND));
         return 0;
@@ -196,13 +194,12 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
     struct file_s *f    = NULL;
     int            host = 0;
     unsigned short port = 0;
-    unsigned char *pubkeyhash;
     ifr(group.find(remote, file, (void **)&f,
-                   &host, &port, &pubkeyhash));
+                   &host, &port));
     if (!f) return -1;
 
     char dst[256], chunkpath[256];
-    snprintf(dst, sizeof(dst), "%s/%.*s", cfg->dir.download, SHA256HEX, file);
+    snprintf(dst, sizeof(dst), "%s/%.*s", cfg->dir.finalized, SHA256HEX, file);
     remove(dst);
     int i;
     for (i = 0; i < f->chunks.size; i++) {
@@ -220,7 +217,7 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
         unsigned char *tagdec;
         int            ntagdec;
         struct config_key_s *key;
-        ifr(config_keyexists(cfg, pubkeyhash, &key));
+        ifr(config_keyexists(cfg, f->pubkeyhash, &key));
         if (!key) return 0;
         ifr(rsa_decrypt(key->rsa.private, tag, ntag,
                         &tagdec, &ntagdec));

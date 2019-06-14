@@ -25,8 +25,6 @@ struct transaction_s {
         /*
         struct file_s        update;
         struct file_vouch_s  vouch;
-        struct file_seed_s   seed;
-        struct file_access_s access;
         */
     } action;
 };

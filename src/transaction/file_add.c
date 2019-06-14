@@ -37,12 +37,14 @@ static int hash_meta(struct transaction_s *t,
 
 static int hash(unsigned char *hash_cmeta,
                 unsigned char *hash_chunks,
+                unsigned char *pubkeyhash,
                 unsigned char *dst_hash)
 {
     char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "%.*s%.*s",
+    snprintf(buffer, sizeof(buffer), "%.*s%.*s%.*s",
              SHA256HEX, hash_cmeta,
-             SHA256HEX, hash_chunks);
+             SHA256HEX, hash_chunks,
+             SHA256HEX, pubkeyhash);
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
     return 0;
 }
@@ -70,12 +72,15 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     ret = hash_chunks(t, t->action.add.chunks.hash);
     if (ret != 0) return -1;
 
+    memcpy(t->action.add.pubkeyhash, psig->cfg.keys.local.hash.public,
+           sizeof(psig->cfg.keys.local.hash.public));
     hash(t->action.add.meta.hash,
          t->action.add.chunks.hash,
+         t->action.add.pubkeyhash,
          t->action.add.hash);
 
     memcpy(dst_hash, t->action.add.hash, sizeof(t->action.add.hash));
-
+    t->action.add.parent = t;
     return 0;
 }
 
@@ -106,7 +111,7 @@ static int validate(struct transaction_s *t, unsigned char *dst_hash,
         return 0;
     }
 
-    hash(hmeta, hchunks, dst_hash);
+    hash(hmeta, hchunks, t->action.add.pubkeyhash, dst_hash);
     if (memcmp(t->action.add.hash, dst_hash, sizeof(t->action.add.hash)) != 0)
         *valid = false;
 
@@ -145,6 +150,7 @@ static int load(struct transaction_s *t, json_object *tobj)
     BIND_INT64(f->meta.size,         "size", obj, fmeta);
 
     BIND_STR(f->hash, "hash", obj, fadd);
+    BIND_STR(f->pubkeyhash, "pubkeyhash", obj, fadd);
 
     json_object *fchunks;
     json_object_object_get_ex(fadd, "chunks", &fchunks);
@@ -172,7 +178,7 @@ static int load(struct transaction_s *t, json_object *tobj)
             BIND_STR(f->chunks.array[i].hash.content, "content", obj, chash);
         }
     }
-
+    f->parent = t;
     return 0;
 }
 
@@ -183,6 +189,8 @@ static int save(struct transaction_s *t, json_object **parent)
     *parent = json_object_new_object();
     json_object *fhash = json_object_new_string_len((const char *)f->hash, sizeof(f->hash));
     json_object_object_add(*parent, "hash", fhash);
+    json_object *pkhash = json_object_new_string_len((const char *)f->pubkeyhash, sizeof(f->pubkeyhash));
+    json_object_object_add(*parent, "pubkeyhash", pkhash);
 
     json_object *meta = json_object_new_object();
     json_object_object_add(*parent, "meta", meta);
@@ -231,8 +239,12 @@ static int save(struct transaction_s *t, json_object **parent)
 static int dump(struct transaction_s *t)
 {
     struct file_s *f = &t->action.add;
-    printf(" | %s | %9ldkB |\n", f->meta.name,
-                                 f->meta.size / 1024);
+    struct config_key_s *exists;
+    ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
+                         &exists));
+    printf(" | %s | %9ldkB | %3s |\n", f->meta.name,
+                                       f->meta.size / 1024,
+                                       exists ? "Yes" : "No");
     return 0;
 }
 

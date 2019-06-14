@@ -16,8 +16,7 @@ struct module_group_s {
     int (*validate)(struct group_s *g, bool *valid);
     int (*dump)(struct group_s *g, struct config_s *cfg);
     int (*find)(struct group_s *g, unsigned char *h, void **found,
-                int *host, unsigned short *port,
-                unsigned char **pubkeyhash);
+                int *host, unsigned short *port);
     int (*clean)(struct group_s *g);
     struct {
         int (*add)(struct group_s *g, struct root_s *r);

@@ -39,11 +39,7 @@ static int load_object(struct root_s **r, const json_object *obj)
     if (!r || !obj) return -1;
 
     if (root.init(r) != 0) return -1;
-    json_object *blocks, *pubkeyhash;
-    json_object_object_get_ex(obj, "pubkeyhash", &pubkeyhash);
-    if (json_object_get_string_len(pubkeyhash) == sizeof((*r)->pubkeyhash))
-        memcpy((*r)->pubkeyhash, json_object_get_string(pubkeyhash),
-               json_object_get_string_len(pubkeyhash));
+    json_object *blocks;
     json_object_object_get_ex(obj, "blocks", &blocks);
     if (json_object_get_type(blocks) == json_type_array) {
         array_list *blocks_array = json_object_get_array(blocks);
@@ -172,9 +168,6 @@ static int save_object(const struct root_s *r, json_object **robj)
 {
     if (!r || !robj) return -1;
     *robj = json_object_new_object();
-    json_object *pubkeyhash = json_object_new_string_len((const char *)r->pubkeyhash,
-                                                         sizeof(r->pubkeyhash));
-    json_object_object_add(*robj, "pubkeyhash", pubkeyhash);
     json_object *blocks = json_object_new_array();
     json_object_object_add(*robj, "blocks", blocks);
     int i;
@@ -239,11 +232,7 @@ static int validate(const struct root_s *r, bool *valid)
 static int dump(struct root_s *r, struct config_s *cfg)
 {
     if (!r || !cfg) return -1;
-    struct config_key_s *found;
-    ifr(config_keyexists(cfg, r->pubkeyhash, &found));
-    printf("Peer: %x:%d Decryptable: %s\n",
-            r->net.host, r->net.port,
-            found ? "Yes" : "No");
+    printf("Peer: %x:%d\n", r->net.host, r->net.port);
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         struct block_s *b = r->blocks.array[i];
@@ -253,8 +242,7 @@ static int dump(struct root_s *r, struct config_s *cfg)
 }
 
 static int find(struct root_s *r, unsigned char *h, void **found,
-                int *host, unsigned short *port,
-                unsigned char **pubkeyhash)
+                int *host, unsigned short *port)
 {
     if (!r || !h || !found) return -1;
     int i;
@@ -263,7 +251,6 @@ static int find(struct root_s *r, unsigned char *h, void **found,
         if (*found && r->net.host != *host && r->net.port != *port) {
             *host       = r->net.host;
             *port       = r->net.port;
-            *pubkeyhash = r->pubkeyhash;
             break;
         } else *found = NULL;
     }
@@ -291,13 +278,6 @@ static int net_set(struct root_s *r, int host, unsigned short port)
     return 0;
 }
 
-static int set(struct root_s *r, unsigned char *pubkeyhash)
-{
-    if (!r || !pubkeyhash) return -1;
-    memcpy(r->pubkeyhash, pubkeyhash, sizeof(r->pubkeyhash));
-    return 0;
-}
-
 const struct module_root_s root = {
     .init             = init,
     .compare          = compare,
@@ -319,5 +299,4 @@ const struct module_root_s root = {
     .data.save.file   = save_json_file,
     .data.save.object = save_object,
     .net.set          = net_set,
-    .set              = set,
 };

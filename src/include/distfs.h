@@ -17,5 +17,6 @@ struct distfs_s {
 
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc);
 int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc);
+int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc);
 
 #endif

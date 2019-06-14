@@ -52,16 +52,16 @@ static int dfileask(struct peer_s *p, int host,
     struct file_s *f = NULL;
     int            localhost = -1;
     unsigned short localport = -1;
-    unsigned char *pubkeyhash;
     if (!dfs->blocks.local) return 0;
     ifr(root.find(dfs->blocks.local, filename, (void **)&f,
-                  &localhost, &localport, &pubkeyhash));
+                  &localhost, &localport));
     if (!f) return 0;
     int i;
     for (i = 0; i < f->chunks.size; i++) {
         if (dmemcmp(f->chunks.array[i].hash.content,
                     sizeof(f->chunks.array[i].hash.content),
                     chunk, sizeof(chunk))) {
+            /*
             char    *tmp;
             uint64_t ntmp;
             char zfilename[256];
@@ -77,13 +77,15 @@ static int dfileask(struct peer_s *p, int host,
                                       p->cfg.keys.local.aes.key,
                                       p->cfg.keys.local.aes.key, tmpenc, tag);
             if (ntmpenc < 1) return -1;
+            */
             char chunkfile[256];
             snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.dir.download,
                                                               (int )sizeof(chunk), chunk);
-            ifr(os.filewrite(chunkfile, "wb", (char *)tmpenc, ntmpenc));
-            free(tmp);
+            bool exists;
+            ifr(os.fileexists(chunkfile, &exists));
+            if (!exists) return -1;
             return task.add(p, p->cfg.dir.download, chunk, sizeof(chunk),
-                            host, port, TASK_FILE_DELETE);
+                            host, port, TASK_FILE_KEEP);
         }
     }
     return 0;
@@ -193,8 +195,6 @@ static void *mine(void *data)
     size_t size;
     if (root.blocks.size(dfs->blocks.local, &size) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
-    if (root.set(dfs->blocks.local, dfs->peer->cfg.keys.local.hash.public) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
     unsigned char *prev_block;
     if (size == 0) prev_block = DISTFS_BASE_ROOT_HASH;
     else           prev_block = dfs->blocks.local->hash;
@@ -286,7 +286,8 @@ static const struct { const char *alias[8];
                       int         argc;
                       int         (*cb)(struct distfs_s *dfs, char **argv, int argc);
                     } cmds[] = {
-    { { "t",  "tadd"  }, 2, 2, dfs_transaction_add  },
+    { { "ta", "tadd"  }, 2, 1, dfs_transaction_add  },
+    { { "ts", "tshare"  }, 2, 1, dfs_transaction_share  },
     { { "tl", "tlist" }, 2, 0, dfs_transaction_list },
     { { "bm", "bmine" }, 2, 0, dfs_block_mine },
     { { "lf", "listfiles" }, 2, 0, dfs_list_files },

@@ -51,6 +51,7 @@ struct config_s {
         char download[128];
         char block[128];
         char keys[128];
+        char finalized[128];
     } dir;
 };
 

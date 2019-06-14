@@ -48,6 +48,10 @@ int file_chunks(const char *filename, size_t nbytes,
         if (!encoded) return -1;
         snprintf(fc->tag, sizeof(fc->tag), "%.*s", (int)nencoded, encoded);
         sha256hex(fpartenc, nfpartenc, fc->hash.content);
+        char cfilename[256];
+        snprintf(cfilename, sizeof(cfilename), "%s/%.*s", psig->cfg.dir.download,
+                                                          SHA256HEX, fc->hash.content);
+        ifr(os.filewrite(cfilename, "wb", (char *)fpartenc, nfpartenc));
         free(fpart);
         char buffer[1024];
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
