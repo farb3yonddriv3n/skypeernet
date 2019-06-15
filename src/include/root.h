@@ -12,6 +12,7 @@ struct root_s {
     struct {
         int            host;
         unsigned short port;
+        unsigned char  filename[SHA256HEX];
     } net;
 };
 
@@ -48,7 +49,8 @@ struct module_root_s {
         } save;
     } data;
     struct {
-        int (*set)(struct root_s *r, int host, unsigned short port);
+        int (*set)(struct root_s *r, int host, unsigned short port,
+                   unsigned char *filename);
     } net;
 };
 

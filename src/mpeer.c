@@ -23,18 +23,19 @@ static int message(struct peer_s *p, int host,
     if (!p || !msg) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
-    if (dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len) &&
-        strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
-        bool exists;
-        char blockfile[256];
-        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
-                                                          (int )sizeof(dfs->blocks.file),
-                                                          dfs->blocks.file);
-        ifr(os.fileexists(blockfile, &exists));
-        if (exists) return task.add(p, p->cfg.dir.block, dfs->blocks.file,
-                                    sizeof(dfs->blocks.file),
-                                    host, port, TASK_FILE_KEEP);
-    }
+    if (len < MSG_HELLO_SIZE) return 0;
+    if (!(dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, MSG_HELLO_SIZE) &&
+        strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0))
+        return 0;
+    char blockfile[256];
+    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
+            (int )sizeof(dfs->blocks.file),
+            dfs->blocks.file);
+    bool exists;
+    ifr(os.fileexists(blockfile, &exists));
+    if (exists) return task.add(p, p->cfg.dir.block, dfs->blocks.file,
+                                sizeof(dfs->blocks.file),
+                                host, port, TASK_FILE_KEEP);
     return 0;
 }
 
@@ -61,23 +62,6 @@ static int dfileask(struct peer_s *p, int host,
         if (dmemcmp(f->chunks.array[i].hash.content,
                     sizeof(f->chunks.array[i].hash.content),
                     chunk, sizeof(chunk))) {
-            /*
-            char    *tmp;
-            uint64_t ntmp;
-            char zfilename[256];
-            snprintf(zfilename, sizeof(zfilename), "%s/%.*s", p->cfg.dir.download,
-                                                              SHA256HEX, filename);
-            ifr(os.filepart(zfilename, i * CHUNK_SIZE,
-                            f->chunks.array[i].size, &tmp, &ntmp));
-            unsigned char tmpenc[CHUNK_SIZE];
-            unsigned char tag[AES_TAG_SIZE];
-            int ntmpenc = aes_encrypt((unsigned char *)tmp, ntmp,
-                                      p->cfg.keys.local.aes.key,
-                                      sizeof(p->cfg.keys.local.aes.key),
-                                      p->cfg.keys.local.aes.key,
-                                      p->cfg.keys.local.aes.key, tmpenc, tag);
-            if (ntmpenc < 1) return -1;
-            */
             char chunkfile[256];
             snprintf(chunkfile, sizeof(chunkfile), "%s/%.*s", p->cfg.dir.download,
                                                               (int )sizeof(chunk), chunk);
@@ -97,16 +81,28 @@ static int dfile(struct peer_s *p, int host,
                  char *fullpath, int nfullpath,
                  char *filename, int nfilename)
 {
-    struct root_s *r;
+    struct root_s *src;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     size_t size;
     ifr(os.filesize(fullpath, &size));
-    if (size != CHUNK_SIZE && root.data.load.file(&r, fullpath) == 0) {
-        ifr(root.net.set(r, host, port));
-        ifr(group.roots.add(dfs->blocks.remote, r));
+    if (size != CHUNK_SIZE && root.data.load.file(&src, fullpath) == 0) {
+        char fpubkeyhash[128];
+        snprintf(fpubkeyhash, sizeof(fpubkeyhash), "%.*s", SHA256HEX, pubkeyhash);
         char blockname[256];
         ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, pubkeyhash));
-        ifr(os.filemove(fullpath, blockname));
+        struct root_s *dst;
+        ifr(group.find.root(dfs->blocks.remote, pubkeyhash, &dst));
+        if (dst) {
+            bool merged;
+            ifr(root.merge(dst, src, &merged));
+            if (merged) {
+                ifr(root.data.save.file(dst, blockname));
+            }
+        } else {
+            ifr(group.roots.add(dfs->blocks.remote, src));
+            ifr(os.filemove(fullpath, blockname));
+            ifr(root.net.set(src, host, port, pubkeyhash));
+        }
     } else {
         ifr(job.update(p->cfg.dir.download, &dfs->jobs,
                        filename));
@@ -333,6 +329,25 @@ static int clean(struct peer_s *p, void *data)
     return 0;
 }
 
+static int blocks_load(struct distfs_s *dfs)
+{
+    if (!dfs) return -1;
+    int cb(void *udfs, const char *filename, const char *fullpath) {
+        if (!udfs || !fullpath) return -1;
+        struct distfs_s *dfs = (struct distfs_s *)udfs;
+        struct root_s *r;
+        unsigned char filehash[SHA256HEX];
+        if (strlen(filename) != SHA256HEX) return -1;
+        memcpy(filehash, filename, SHA256HEX);
+        ifr(root.data.load.file(&r, fullpath));
+        ifr(root.net.set(r, 0, 0, filehash));
+        ifr(group.roots.add(dfs->blocks.remote, r));
+        return 0;
+    }
+    ifr(os.blocksremote(&dfs->peer->cfg, (void *)dfs, cb));
+    return 0;
+}
+
 static int init(struct peer_s *p, struct distfs_s *dfs)
 {
     if (!p || !dfs) return -1;
@@ -358,6 +373,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     } else {
         ifr(root.init(&dfs->blocks.local));
     }
+    ifr(blocks_load(dfs));
     return 0;
 }
 

@@ -71,10 +71,10 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
         return 0;
     }
     struct file_s *f = NULL;
-    int            host = 0;
-    unsigned short port = 0;
-    ifr(group.find(remote, file, (void **)&f,
-                   &host, &port));
+    int            host = -1;
+    unsigned short port = -1;
+    ifr(group.find.transaction(remote, file, (void **)&f,
+                               &host, &port));
     if (!f) return 0;
     *found = true;
     (void )host;
@@ -129,8 +129,8 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
     if (!dfs || !j) return -1;
     struct peer_s *p = dfs->peer;
     struct file_s *f = NULL;
-    ifr(group.find(dfs->blocks.remote, j->file.name, (void **)&f,
-                   &jc->net.host, &jc->net.port));
+    ifr(group.find.transaction(dfs->blocks.remote, j->file.name, (void **)&f,
+                               &jc->net.host, &jc->net.port));
     if (!f) {
         ifr(chunk_state(j, jc, JOBCHUNK_NOTFOUND));
         return 0;
@@ -194,8 +194,8 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
     struct file_s *f    = NULL;
     int            host = 0;
     unsigned short port = 0;
-    ifr(group.find(remote, file, (void **)&f,
-                   &host, &port));
+    ifr(group.find.transaction(remote, file, (void **)&f,
+                               &host, &port));
     if (!f) return -1;
 
     char dst[256], chunkpath[256];

@@ -232,7 +232,9 @@ static int validate(const struct root_s *r, bool *valid)
 static int dump(struct root_s *r, struct config_s *cfg)
 {
     if (!r || !cfg) return -1;
-    printf("Peer: %x:%d\n", r->net.host, r->net.port);
+    printf("Block filename: %.*s %x:%d\n", (int )sizeof(r->net.filename),
+                                     r->net.filename, r->net.host,
+                                     r->net.port);
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         struct block_s *b = r->blocks.array[i];
@@ -270,11 +272,13 @@ static int clean(struct root_s *r)
     return 0;
 }
 
-static int net_set(struct root_s *r, int host, unsigned short port)
+static int net_set(struct root_s *r, int host, unsigned short port,
+                   unsigned char *filename)
 {
-    if (!r) return -1;
+    if (!r || !filename) return -1;
     r->net.host = host;
     r->net.port = port;
+    memcpy(r->net.filename, filename, SHA256HEX);
     return 0;
 }
 

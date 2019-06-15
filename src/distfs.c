@@ -28,8 +28,8 @@ int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc)
     int            host = 0;
     unsigned short port = 0;
     if (strlen(argv[1]) != SHA256HEX) return -1;
-    ifr(group.find(dfs->blocks.remote, (unsigned char *)argv[1], (void **)&f,
-                   &host, &port));
+    ifr(group.find.transaction(dfs->blocks.remote, (unsigned char *)argv[1],
+                               (void **)&f, &host, &port));
     if (!f) {
         printf("Transaction's file hash %s not found\n", argv[1]);
         return 0;

@@ -21,6 +21,9 @@ struct module_os_s {
                      const char *received, unsigned char *keyhash);
     int (*blockfile)(struct config_s *cfg, unsigned char *bfile,
                      int nbfile, bool *found, char *blockpath, int nblockpath);
+    int (*blocksremote)(struct config_s *cfg, void *dfs,
+                        int (*cb)(void *dfs, const char *filename,
+                                  const char *fullpath));
     int (*makedirs)(struct config_s *cfg);
     int (*loadjson)(json_object **obj, char *content, int ncontent);
     int (*loadjsonfile)(json_object **obj, const char *filename);

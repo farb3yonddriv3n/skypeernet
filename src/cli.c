@@ -13,7 +13,9 @@ static int send_message(struct peer_s *p, char **argv, int argc)
 
 static int whoami(struct peer_s *p, char **argv, int argc)
 {
-    printf("%x:%d\n", ADDR_IP(p->net.self.addr), ADDR_PORT(p->net.self.addr));
+    printf("%x:%d %.*s\n", ADDR_IP(p->net.self.addr), ADDR_PORT(p->net.self.addr),
+                           (int )sizeof(p->cfg.keys.local.hash.public),
+                           p->cfg.keys.local.hash.public);
     return 0;
 }
 
@@ -30,14 +32,15 @@ static int peers_list(struct peer_s *p, char **argv, int argc)
 {
     int cb(struct list_s *l, void *uwp, void *ud) {
         struct world_peer_s *wp = (struct world_peer_s *)uwp;
-        printf(" %8x | %5d | %4d | %11d\n",
+        printf(" %8x | %5d | %4d | %11d | %.*s |\n",
                wp->host,
                wp->port,
                wp->type,
-               wp->unreachable);
+               wp->unreachable,
+               (int )sizeof(wp->pubkeyhash), wp->pubkeyhash);
         return 0;
     }
-    printf("     Peer |  Port | Type | Unreachable \n");
+    printf("     Peer |  Port | Type | Unreachable |                                            Pubkeyhash |\n");
     return list.map(&p->peers, cb, NULL);
 }
 

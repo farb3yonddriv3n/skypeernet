@@ -18,8 +18,27 @@ static int init(struct group_s **g)
     return 0;
 }
 
-static int find(struct group_s *g, unsigned char *h, void **found,
-                int *host, unsigned short *port)
+static int find_root(struct group_s *g,
+                     unsigned char *h,
+                     struct root_s **found)
+{
+    int i;
+    for (i = 0; i < g->roots.size; i++) {
+        if (dmemcmp(h, SHA256HEX,
+                    g->roots.array[i]->net.filename,
+                    sizeof(g->roots.array[i]->net.filename))) {
+            *found = g->roots.array[i];
+            break;
+        }
+    }
+    return 0;
+}
+
+static int find_transaction(struct group_s *g,
+                            unsigned char *h,
+                            void **found,
+                            int *host,
+                            unsigned short *port)
 {
     if (!g || !h || !found) return -1;
     int i;
@@ -151,14 +170,14 @@ static int roots_add(struct group_s *g, struct root_s *r)
 }
 
 const struct module_group_s group = {
-    .init      = init,
-    .compare   = compare,
-    //.receive = receive,
-    .validate  = validate,
-    .dump      = dump,
-    .find      = find,
-    .clean     = clean,
-    .roots.add = roots_add,
-    .db.save   = db_save,
-    .db.load   = db_load,
+    .init             = init,
+    .compare          = compare,
+    .validate         = validate,
+    .dump             = dump,
+    .find.transaction = find_transaction,
+    .find.root        = find_root,
+    .clean            = clean,
+    .roots.add        = roots_add,
+    .db.save          = db_save,
+    .db.load          = db_load,
 };

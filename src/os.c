@@ -34,7 +34,10 @@ static int fileexists(const char *filename, bool *exists)
     FILE *pfile;
     pfile = fopen(filename, "r");
     *exists = false;
-    if (pfile) *exists = true;
+    if (pfile) {
+        *exists = true;
+        fclose(pfile);
+    }
     return 0;
 }
 
@@ -164,6 +167,26 @@ static int filejoin_clean(void *fname)
 {
     if (!fname) return -1;
     free(fname);
+    return 0;
+}
+
+static int blocksremote(struct config_s *cfg, void *dfs,
+                        int (*cb)(void *dfs, const char *filename,
+                                  const char *fullpath))
+{
+    if (!cfg || !cb) return -1;
+    char blocksdir[256];
+    snprintf(blocksdir, sizeof(blocksdir), "%s/%s", cfg->dir.download, dirs[1]);
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir(blocksdir)) == NULL) return -1;
+    while ((ent = readdir(dir)) != NULL) {
+        if (strlen(ent->d_name) != SHA256HEX) continue;
+        char fullpath[512];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", blocksdir, ent->d_name);
+        if (cb(dfs, ent->d_name, fullpath) != 0) return -1;
+    }
+    closedir(dir);
     return 0;
 }
 
@@ -338,6 +361,7 @@ const struct module_os_s os = {
     .partexists    = partexists,
     .blockname     = blockname,
     .blockfile     = blockfile,
+    .blocksremote  = blocksremote,
     .makedirs      = makedirs,
     .loadjsonfile  = load_json_file,
     .loadjson      = load_json,
