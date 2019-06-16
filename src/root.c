@@ -232,9 +232,8 @@ static int validate(const struct root_s *r, bool *valid)
 static int dump(struct root_s *r, struct config_s *cfg)
 {
     if (!r || !cfg) return -1;
-    printf("Block filename: %.*s %x:%d\n", (int )sizeof(r->net.filename),
-                                     r->net.filename, r->net.host,
-                                     r->net.port);
+    printf("Block filename: %.*s\n", (int )sizeof(r->pubkeyhash),
+                                     r->pubkeyhash);
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         struct block_s *b = r->blocks.array[i];
@@ -243,18 +242,13 @@ static int dump(struct root_s *r, struct config_s *cfg)
     return 0;
 }
 
-static int find(struct root_s *r, unsigned char *h, void **found,
-                int *host, unsigned short *port)
+static int find(struct root_s *r, unsigned char *h, void **found)
 {
     if (!r || !h || !found) return -1;
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         if (block.find(r->blocks.array[i], h, found) != 0) return -1;
-        if (*found && r->net.host != *host && r->net.port != *port) {
-            *host       = r->net.host;
-            *port       = r->net.port;
-            break;
-        } else *found = NULL;
+        if (*found) break;
     }
     return 0;
 }
@@ -272,13 +266,10 @@ static int clean(struct root_s *r)
     return 0;
 }
 
-static int net_set(struct root_s *r, int host, unsigned short port,
-                   unsigned char *filename)
+static int net_set(struct root_s *r, unsigned char *pubkeyhash)
 {
-    if (!r || !filename) return -1;
-    r->net.host = host;
-    r->net.port = port;
-    memcpy(r->net.filename, filename, SHA256HEX);
+    if (!r || !pubkeyhash) return -1;
+    memcpy(r->pubkeyhash, pubkeyhash, SHA256HEX);
     return 0;
 }
 

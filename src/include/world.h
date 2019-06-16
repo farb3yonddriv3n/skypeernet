@@ -24,6 +24,7 @@ struct module_world_s {
         void (*check)(struct ev_loop *loop, struct ev_timer *timer, int revents);
         int (*isreachable)(struct peer_s *p, int host, unsigned short port,
                            bool *reachable);
+        int (*findpubkeyhash)(struct list_s *l, void *existing, void *uwp);
     } peer;
 };
 

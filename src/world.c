@@ -1,5 +1,17 @@
 #include <common.h>
 
+static int peer_findpubkeyhash(struct list_s *l, void *existing, void *ud)
+{
+    struct world_peer_s *ex = (struct world_peer_s *)existing;
+    struct world_peer_s *wp = (struct world_peer_s *)ud;
+    if (dmemcmp(ex->pubkeyhash, sizeof(ex->pubkeyhash),
+                wp->pubkeyhash, sizeof(wp->pubkeyhash))) {
+        wp->found = ex;
+        return 1;
+    }
+    return 0;
+}
+
 static int peer_isreachable(struct peer_s *p, int host, unsigned short port,
                             bool *reachable)
 {
@@ -51,9 +63,16 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
     ev_timer_again(p->ev.loop, &p->ev.peers_reachable);
 }
 
+struct peer_root_s {
+    const char    *transaction_name;
+    unsigned char *pubkeyhash;
+    struct file_s *file;
+};
+
 const struct module_world_s world = {
-    .peer.reachable   = peer_reachable,
-    .peer.unreachable = peer_unreachable,
-    .peer.check       = peer_check,
-    .peer.isreachable = peer_isreachable,
+    .peer.reachable      = peer_reachable,
+    .peer.unreachable    = peer_unreachable,
+    .peer.check          = peer_check,
+    .peer.isreachable    = peer_isreachable,
+    .peer.findpubkeyhash = peer_findpubkeyhash,
 };

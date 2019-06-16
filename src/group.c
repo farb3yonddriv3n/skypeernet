@@ -25,8 +25,8 @@ static int find_root(struct group_s *g,
     int i;
     for (i = 0; i < g->roots.size; i++) {
         if (dmemcmp(h, SHA256HEX,
-                    g->roots.array[i]->net.filename,
-                    sizeof(g->roots.array[i]->net.filename))) {
+                    g->roots.array[i]->pubkeyhash,
+                    sizeof(g->roots.array[i]->pubkeyhash))) {
             *found = g->roots.array[i];
             break;
         }
@@ -37,14 +37,21 @@ static int find_root(struct group_s *g,
 static int find_transaction(struct group_s *g,
                             unsigned char *h,
                             void **found,
-                            int *host,
-                            unsigned short *port)
+                            void *data,
+                            int (*cb)(unsigned char *pubkeyhash,
+                                      void *data))
 {
     if (!g || !h || !found) return -1;
     int i;
     for (i = 0; i < g->roots.size; i++) {
-        if (root.find(g->roots.array[i], h, found, host, port) != 0) return -1;
-        if (*found) break;
+        *found = NULL;
+        if (root.find(g->roots.array[i], h, found) != 0) return -1;
+        if (!(*found)) continue;
+        if (cb) {
+            int ret = cb(g->roots.array[i]->pubkeyhash, data);
+            if (ret == -1) return ret;
+            if (ret ==  1) break;
+        } else break;
     }
     return 0;
 }

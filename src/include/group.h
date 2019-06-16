@@ -19,10 +19,11 @@ struct module_group_s {
         int (*root)(struct group_s *g, unsigned char *h,
                     struct root_s **found);
         int (*transaction)(struct group_s *g,
-                            unsigned char *h,
-                            void **found,
-                            int *host,
-                            unsigned short *port);
+                           unsigned char *h,
+                           void **found,
+                           void *data,
+                           int (*cb)(unsigned char *pubkeyhash,
+                                     void *data));
     } find;
     int (*clean)(struct group_s *g);
     struct {

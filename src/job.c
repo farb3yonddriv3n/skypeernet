@@ -71,14 +71,9 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
         return 0;
     }
     struct file_s *f = NULL;
-    int            host = -1;
-    unsigned short port = -1;
-    ifr(group.find.transaction(remote, file, (void **)&f,
-                               &host, &port));
+    ifr(group.find.transaction(remote, file, (void **)&f, NULL, NULL));
     if (!f) return 0;
     *found = true;
-    (void )host;
-    (void )port;
 
     struct job_s *j = malloc(sizeof(*j));
     if (!j) return -1;
@@ -123,18 +118,35 @@ static int show(struct config_s *cfg, struct list_s *jobs)
     return list.map(jobs, cb, NULL);
 }
 
+static int chunk_find(struct distfs_s *dfs, unsigned char *filename,
+                      int *host, unsigned short *port)
+{
+    int cb(unsigned char *pubkeyhash, void *data) {
+        struct distfs_s    *dfs = (struct distfs_s *)data;
+        struct world_peer_s wp  = { .found = NULL };
+        memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
+        ifr(list.map(&dfs->peer->peers, world.peer.findpubkeyhash, &wp));
+        if (wp.found && wp.found->unreachable == 0) {
+            *host = wp.found->host;
+            *port = wp.found->port;
+            return 1;
+        }
+        return 0;
+    }
+    struct file_s *f = NULL;
+    return group.find.transaction(dfs->blocks.remote, filename,
+                                  (void **)&f, dfs, cb);
+}
+
 static int chunk_start(struct distfs_s *dfs, struct job_s *j,
                        struct job_chunk_s *jc)
 {
     if (!dfs || !j) return -1;
     struct peer_s *p = dfs->peer;
-    struct file_s *f = NULL;
-    ifr(group.find.transaction(dfs->blocks.remote, j->file.name, (void **)&f,
-                               &jc->net.host, &jc->net.port));
-    if (!f) {
-        ifr(chunk_state(j, jc, JOBCHUNK_NOTFOUND));
-        return 0;
-    }
+    ifr(chunk_find(dfs, j->file.name, &jc->net.host,
+                   &jc->net.port));
+    if (jc->net.host == 0 && jc->net.port == 0)
+        return chunk_state(j, jc, JOBCHUNK_NOTFOUND);
     ifr(chunk_state(j, jc, JOBCHUNK_RECEIVING));
     ifr(os.gettimems(&jc->updated));
     p->send_buffer.type            = BUFFER_FILEASK;
@@ -171,6 +183,7 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
                 case JOBCHUNK_NONE: {
                     ifr(chunk_start(dfs, j, &j->chunks.array[i]));
                     } break;
+                case JOBCHUNK_NOTFOUND:
                 case JOBCHUNK_RECEIVING: {
                     if ((timems - MAX_JOB_CHUNK_IDLE) > j->chunks.array[i].updated) {
                         ifr(chunk_restart(dfs, j, &j->chunks.array[i]));
@@ -192,10 +205,8 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
     if (nfile != SHA256HEX) return -1;
     *finalized = false;
     struct file_s *f    = NULL;
-    int            host = 0;
-    unsigned short port = 0;
     ifr(group.find.transaction(remote, file, (void **)&f,
-                               &host, &port));
+                               NULL, NULL));
     if (!f) return -1;
 
     char dst[256], chunkpath[256];

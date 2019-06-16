@@ -51,11 +51,8 @@ static int dfileask(struct peer_s *p, int host,
     if (sn_read((void *)chunk,    sizeof(chunk),    &buffer) != 0) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     struct file_s *f = NULL;
-    int            localhost = -1;
-    unsigned short localport = -1;
     if (!dfs->blocks.local) return 0;
-    ifr(root.find(dfs->blocks.local, filename, (void **)&f,
-                  &localhost, &localport));
+    ifr(root.find(dfs->blocks.local, filename, (void **)&f));
     if (!f) return 0;
     int i;
     for (i = 0; i < f->chunks.size; i++) {
@@ -90,7 +87,7 @@ static int dfile(struct peer_s *p, int host,
         snprintf(fpubkeyhash, sizeof(fpubkeyhash), "%.*s", SHA256HEX, pubkeyhash);
         char blockname[256];
         ifr(os.blockname(&p->cfg, blockname, sizeof(blockname), fullpath, pubkeyhash));
-        struct root_s *dst;
+        struct root_s *dst = NULL;
         ifr(group.find.root(dfs->blocks.remote, pubkeyhash, &dst));
         if (dst) {
             bool merged;
@@ -101,7 +98,7 @@ static int dfile(struct peer_s *p, int host,
         } else {
             ifr(group.roots.add(dfs->blocks.remote, src));
             ifr(os.filemove(fullpath, blockname));
-            ifr(root.net.set(src, host, port, pubkeyhash));
+            ifr(root.net.set(src, pubkeyhash));
         }
     } else {
         ifr(job.update(p->cfg.dir.download, &dfs->jobs,
@@ -340,7 +337,7 @@ static int blocks_load(struct distfs_s *dfs)
         if (strlen(filename) != SHA256HEX) return -1;
         memcpy(filehash, filename, SHA256HEX);
         ifr(root.data.load.file(&r, fullpath));
-        ifr(root.net.set(r, 0, 0, filehash));
+        ifr(root.net.set(r, filehash));
         ifr(group.roots.add(dfs->blocks.remote, r));
         return 0;
     }

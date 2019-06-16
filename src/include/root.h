@@ -9,11 +9,7 @@ struct root_s {
         struct block_s **array;
         size_t           size;
     } blocks;
-    struct {
-        int            host;
-        unsigned short port;
-        unsigned char  filename[SHA256HEX];
-    } net;
+    unsigned char pubkeyhash[SHA256HEX];
 };
 
 struct module_root_s {
@@ -26,8 +22,7 @@ struct module_root_s {
                     struct root_diff_s *diff);
     int (*merge)(struct root_s *dst, struct root_s *src,
                  bool *merged);
-    int (*find)(struct root_s *r, unsigned char *h, void **found,
-                int *host, unsigned short *port);
+    int (*find)(struct root_s *r, unsigned char *h, void **found);
     int (*dump)(struct root_s *r, struct config_s *cfg);
     int (*clean)(struct root_s *r);
     struct {
@@ -49,8 +44,7 @@ struct module_root_s {
         } save;
     } data;
     struct {
-        int (*set)(struct root_s *r, int host, unsigned short port,
-                   unsigned char *filename);
+        int (*set)(struct root_s *r, unsigned char *pubkeyhash);
     } net;
 };
 
