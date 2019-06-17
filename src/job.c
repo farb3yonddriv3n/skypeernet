@@ -232,6 +232,7 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
         if (!key) return 0;
         ifr(rsa_decrypt(key->rsa.private, tag, ntag,
                         &tagdec, &ntagdec));
+        free(tag);
         unsigned char decrypted[CHUNK_SIZE];
         int dc = aes_decrypt((unsigned char *)buffer, n, key->aes.key,
                              sizeof(key->aes.key), tagdec, key->aes.key,

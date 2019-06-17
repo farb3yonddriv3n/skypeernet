@@ -111,6 +111,15 @@ int config_init(struct config_s *cfg)
 
 void config_free(struct config_s *cfg)
 {
+    if (!cfg) return;
+    if (cfg->keys.shared.array) {
+        int i;
+        for (i = 0; i < cfg->keys.shared.size; i++) {
+            RSA_free(cfg->keys.shared.array[i].rsa.private);
+            sn_free(cfg->keys.shared.array[i].str.private);
+        }
+        free(cfg->keys.shared.array);
+    }
     RSA_free(cfg->keys.local.rsa.public);
     RSA_free(cfg->keys.local.rsa.private);
     sn_free(cfg->keys.local.str.public);

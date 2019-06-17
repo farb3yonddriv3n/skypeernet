@@ -95,7 +95,10 @@ int cli(struct peer_s *p, char *line)
         for (j = 0; j < cmds[i].nalias; j++) {
             if (strcmp(cmds[i].alias[j], argv[0]) == 0 &&
                 cmds[i].argc == (argc - 1)) {
-                if (cmds[i].cb(p, argv, argc) != 0) return -1;
+                if (cmds[i].cb(p, argv, argc) != 0) {
+                    free(argv);
+                    return -1;
+                }
                 found = true;
                 break;
             }
