@@ -34,7 +34,9 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     if (!valid) return;
     if (payload.recv(p) != 0) {
         backtrace.show();
-        abort();
+        syslog(LOG_ERR, "Request from peer %x:%d failed",
+                        ADDR_IP(p->net.remote.addr),
+                        ADDR_PORT(p->net.remote.addr));
     }
 }
 
@@ -70,7 +72,6 @@ static int init_peer(struct peer_s *p)
     psig = p;
     p->type = INSTANCE_PEER;
     if (config_init(&p->cfg) != 0) return -1;
-    if (os.makedirs(&p->cfg) != 0) return -1;
     if ((p->net.sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         return -1;
     int nb = 1;

@@ -154,7 +154,7 @@ static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
     struct packet_s *p = malloc(sizeof(*p));
     if (!p) return -1;
     memcpy(p, received, sizeof(*p));
-    if (list.add(&c->packets.all, p, packet.clean) != 0) return -1;
+    ifr(list.add(&c->packets.all, p, packet.clean));
     c->packets.received.idx = realloc(c->packets.received.idx,
                                       ++(c->packets.received.size) * sizeof(int));
     if (!c->packets.received.idx) return -1;
@@ -170,11 +170,10 @@ static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
         }
         memcpy(avs->s + p->header.offset,
                p->buffer.payload, p->header.length);
-        if (list.del(l, p) != 0) return -1;
+        ifr(list.del(l, p));
         return 0;
     }
-    if (list.map(&c->packets.all, avcb,
-                 &c->data) != 0) return -1;
+    ifr(list.map(&c->packets.all, avcb, &c->data));
     *available = c;
     //ifr(seal_add(&rb->sealed, received));
     return 0;

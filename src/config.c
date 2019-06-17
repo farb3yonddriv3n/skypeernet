@@ -82,11 +82,11 @@ int config_init(struct config_s *cfg)
         if (rsa_generate() != 0) return -1;
         if (rsa_load(cfg) != 0) return -1;
     }
-
+    if (os.makedirs(cfg) != 0) return -1;
     int importkey(struct config_s *cfg, const char *fullpath,
                   const char *filename) {
         if (!cfg || !fullpath || !filename) return -1;
-        printf("importing shared key %s\n", fullpath);
+        printf("Importing shared key %s\n", fullpath);
         struct config_key_s *exists;
         ifr(config_keyexists(cfg, (unsigned char *)filename, &exists));
         if (exists) return 0;

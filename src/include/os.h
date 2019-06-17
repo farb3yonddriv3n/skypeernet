@@ -15,6 +15,7 @@ struct module_os_s {
                     bool *finalized);
     int (*fileexists)(const char *filename, bool *exists);
     int (*filemove)(const char *src, const char *dst);
+    int (*filereadable)(const char *fname, bool *hr);
     int (*partexists)(struct config_s *cfg, const char *startswith,
                       bool *exists);
     int (*blockname)(struct config_s *cfg, char *blockname, int nblockname,

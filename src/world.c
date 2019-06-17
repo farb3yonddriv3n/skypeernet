@@ -5,7 +5,8 @@ static int peer_findpubkeyhash(struct list_s *l, void *existing, void *ud)
     struct world_peer_s *ex = (struct world_peer_s *)existing;
     struct world_peer_s *wp = (struct world_peer_s *)ud;
     if (dmemcmp(ex->pubkeyhash, sizeof(ex->pubkeyhash),
-                wp->pubkeyhash, sizeof(wp->pubkeyhash))) {
+                wp->pubkeyhash, sizeof(wp->pubkeyhash)) &&
+        ex->unreachable == 0) {
         wp->found = ex;
         return 1;
     }

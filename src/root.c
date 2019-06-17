@@ -232,8 +232,8 @@ static int validate(const struct root_s *r, bool *valid)
 static int dump(struct root_s *r, struct config_s *cfg)
 {
     if (!r || !cfg) return -1;
-    printf("Block filename: %.*s\n", (int )sizeof(r->pubkeyhash),
-                                     r->pubkeyhash);
+    printf("Root pubkeyhash: %.*s\n", (int )sizeof(r->pubkeyhash),
+                                      r->pubkeyhash);
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         struct block_s *b = r->blocks.array[i];

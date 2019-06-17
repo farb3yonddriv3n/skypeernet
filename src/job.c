@@ -48,7 +48,7 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
     if (!jobs || !remote || !file || !found) return -1;
     if (nfile != SHA256HEX) return -1;
     char filename[256];
-    snprintf(filename, sizeof(filename), "%s/%.*s", cfg->dir.download, nfile, file);
+    snprintf(filename, sizeof(filename), "%s/%.*s", cfg->dir.finalized, nfile, file);
     if (os.fileexists(filename, exists));
     if (*exists) return 0;
     *found = *added = false;
@@ -126,7 +126,7 @@ static int chunk_find(struct distfs_s *dfs, unsigned char *filename,
         struct world_peer_s wp  = { .found = NULL };
         memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
         ifr(list.map(&dfs->peer->peers, world.peer.findpubkeyhash, &wp));
-        if (wp.found && wp.found->unreachable == 0) {
+        if (wp.found) {
             *host = wp.found->host;
             *port = wp.found->port;
             return 1;

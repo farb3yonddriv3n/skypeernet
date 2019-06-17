@@ -224,12 +224,30 @@ static int readkeys(struct config_s *cfg,
         char fname[128];
         int found = sscanf(ent->d_name, "%s.priv", fname);
         if (found != 1 || strlen(ent->d_name) < SHA256HEX) continue;
-        printf("found %d %s\n", found, ent->d_name);
         char fullpath[512];
         snprintf(fullpath, sizeof(fullpath), "%s/%s", cfg->dir.keys, ent->d_name);
         ifr(cb(cfg, fullpath, fname));
     }
     closedir(dir);
+    return 0;
+}
+
+static int filereadable(const char *fname, bool *hr)
+{
+    if (!fname) return -1;
+    sn_initz(fn, (char *)fname);
+    char *content;
+    int n = eioie_fread(&content, fn);
+    if (n <= 1) return -1;
+    *hr = true;
+    int i;
+    for (i = 0; i < n; i++) {
+        if (content[i] < 32 || content[i] > 126) {
+            *hr = false;
+            break;
+        }
+    }
+    free(content);
     return 0;
 }
 
@@ -358,6 +376,7 @@ const struct module_os_s os = {
     .filejoin      = filejoin,
     .fileexists    = fileexists,
     .filemove      = filemove,
+    .filereadable  = filereadable,
     .partexists    = partexists,
     .blockname     = blockname,
     .blockfile     = blockfile,

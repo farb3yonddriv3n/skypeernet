@@ -20,7 +20,7 @@ static int nb_clean(void *unb)
 {
     if (!unb) return -1;
     struct nb_s *nb = (struct nb_s *)unb;
-    if (task.update(nb->peer) != 0) return -1;
+    ifr(task.update(nb->peer));
     free(nb);
     return 0;
 }
@@ -36,13 +36,13 @@ static int ack(struct net_send_s *ns, int idx)
                 ifr(world.peer.reachable(nb->peer,
                                          ADDR_IP(nb->remote.addr),
                                          ADDR_PORT(nb->remote.addr)));
-            if (list.del(l, nb) != 0) return -1;
+            ifr(list.del(l, nb));
             return 1;
         }
         return 0;
     }
     if (!ns) return -1;
-    if (list.map(&ns->nbl, cb, &idx) != 0) return -1;
+    ifr(list.map(&ns->nbl, cb, &idx));
     return 0;
 }
 
@@ -91,7 +91,7 @@ static int dispatch(struct list_s *l)
         bool suspend;
         ifr(traffic.update.send(p, nb->buffer.offset, &suspend));
         if (suspend) return 1;
-        if (item(l, nb, nb->pidx) != 0) return -1;
+        ifr(item(l, nb, nb->pidx));
         return 0;
     }
     return list.map(l, cb, NULL);

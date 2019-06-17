@@ -16,6 +16,25 @@ static const struct { enum distfs_cmd_e cmd;
     { DISTFS_HELLO, hello_write, NULL },
 };
 
+static int block_send(struct peer_s *p, struct distfs_s *dfs,
+                      int host, unsigned short port)
+{
+    if (!p || !dfs) return -1;
+    char blockfile[256];
+    if (strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) < 1) return 0;
+    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
+            (int )sizeof(dfs->blocks.file),
+            dfs->blocks.file);
+    bool exists;
+    ifr(os.fileexists(blockfile, &exists));
+    if (exists) {
+        ifr(task.add(p, p->cfg.dir.block, dfs->blocks.file,
+                     sizeof(dfs->blocks.file),
+                     host, port, TASK_FILE_KEEP));
+    }
+    return 0;
+}
+
 static int message(struct peer_s *p, int host,
                    unsigned short port,
                    char *msg, int len)
@@ -23,19 +42,11 @@ static int message(struct peer_s *p, int host,
     if (!p || !msg) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
-    if (len < MSG_HELLO_SIZE) return 0;
-    if (!(dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, MSG_HELLO_SIZE) &&
+    if (!(dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len) &&
         strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0))
         return 0;
-    char blockfile[256];
-    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
-            (int )sizeof(dfs->blocks.file),
-            dfs->blocks.file);
-    bool exists;
-    ifr(os.fileexists(blockfile, &exists));
-    if (exists) return task.add(p, p->cfg.dir.block, dfs->blocks.file,
-                                sizeof(dfs->blocks.file),
-                                host, port, TASK_FILE_KEEP);
+    syslog(LOG_INFO, "Peer %x:%d asked for blockfile", host, port);
+    ifr(block_send(p, dfs, host, port));
     return 0;
 }
 
@@ -82,7 +93,9 @@ static int dfile(struct peer_s *p, int host,
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     size_t size;
     ifr(os.filesize(fullpath, &size));
-    if (size != CHUNK_SIZE && root.data.load.file(&src, fullpath) == 0) {
+    bool humanreadable;
+    ifr(os.filereadable(fullpath, &humanreadable));
+    if (humanreadable && root.data.load.file(&src, fullpath) == 0) {
         char fpubkeyhash[128];
         snprintf(fpubkeyhash, sizeof(fpubkeyhash), "%.*s", SHA256HEX, pubkeyhash);
         char blockname[256];
@@ -92,13 +105,20 @@ static int dfile(struct peer_s *p, int host,
         if (dst) {
             bool merged;
             ifr(root.merge(dst, src, &merged));
+            ifr(root.clean(src));
             if (merged) {
                 ifr(root.data.save.file(dst, blockname));
-            }
+                syslog(LOG_INFO, "Remote block %s from %x:%d successfully merged",
+                                 blockname, host, port);
+            } else
+                syslog(LOG_INFO, "Remote block %s from %x:%d cannot be merged",
+                                 blockname, host, port);
         } else {
             ifr(group.roots.add(dfs->blocks.remote, src));
             ifr(os.filemove(fullpath, blockname));
             ifr(root.net.set(src, pubkeyhash));
+            syslog(LOG_INFO, "Remote block %s from %x:%d imported",
+                             blockname, host, port);
         }
     } else {
         ifr(job.update(p->cfg.dir.download, &dfs->jobs,
@@ -224,8 +244,14 @@ static int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc)
 
 static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
 {
-    if (!dfs) return -1;
-    ifr(group.dump(dfs->blocks.remote, &dfs->peer->cfg));
+    if (!dfs || !argv) return -1;
+    if (strcmp(argv[1], "remote") == 0 ||
+        strcmp(argv[1], "r") == 0) {
+        ifr(group.dump(dfs->blocks.remote, &dfs->peer->cfg));
+    } else if (strcmp(argv[1], "local") == 0 ||
+               strcmp(argv[1], "l") == 0) {
+        ifr(root.dump(dfs->blocks.local, &dfs->peer->cfg));
+    } else return -1;
     return 0;
 }
 
@@ -274,6 +300,35 @@ static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc)
     return config_keysdump(&dfs->peer->cfg);
 }
 
+static int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs || !argv) return -1;
+    enum block_action_e { BLOCK_ACTION_NONE, BLOCK_ACTION_UPDATE,
+                          BLOCK_ACTION_ADVERTISE };
+    struct block_action_s { struct distfs_s *dfs; int counter; int action; };
+    int cb(struct list_s *l, void *up, void *ud) {
+        struct world_peer_s   *wp = (struct world_peer_s *)up;
+        struct block_action_s *ba = (struct block_action_s *)ud;
+        if (wp->unreachable != 0 || wp->type != WORLD_PEER_PEER) return 0;
+        if (ba->action == BLOCK_ACTION_ADVERTISE) {
+            ifr(block_send(ba->dfs->peer, ba->dfs,
+                           wp->host, wp->port));
+        } else if (ba->action == BLOCK_ACTION_UPDATE) {
+            ifr(hello_write(ba->dfs,
+                            wp->host, wp->port));
+        } else return -1;
+        ba->counter++;
+        return 0;
+    }
+    struct block_action_s ba = { .dfs = dfs, .counter = 0 };
+    if (strcmp(argv[1], "u")      == 0) ba.action = BLOCK_ACTION_UPDATE;
+    else if (strcmp(argv[1], "a") == 0) ba.action = BLOCK_ACTION_ADVERTISE;
+    else                                ba.action = BLOCK_ACTION_NONE;
+    ifr(list.map(&dfs->peer->peers, cb, &ba));
+    printf("Block action %d to %d peers\n", ba.action, ba.counter);
+    return 0;
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -283,7 +338,8 @@ static const struct { const char *alias[8];
     { { "ts", "tshare"  }, 2, 1, dfs_transaction_share  },
     { { "tl", "tlist" }, 2, 0, dfs_transaction_list },
     { { "bm", "bmine" }, 2, 0, dfs_block_mine },
-    { { "lf", "listfiles" }, 2, 0, dfs_list_files },
+    { { "ba", "blocksaction" }, 2, 1, dfs_block_xet },
+    { { "lf", "listfiles" }, 2, 1, dfs_list_files },
     { { "ja", "jobadd" }, 2, 1, dfs_job_add },
     { { "js", "jobshow" }, 2, 0, dfs_job_show },
     { { "jf", "jobfinalize" }, 2, 1, dfs_job_finalize },
@@ -366,6 +422,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     if (os.blockfile(&p->cfg, dfs->blocks.file, sizeof(dfs->blocks.file),
                      &exists, blockpath, sizeof(blockpath)) != 0) return -1;
     if (exists) {
+        printf("Loading block file %s\n", blockpath);
         ifr(root.data.load.file(&dfs->blocks.local, blockpath));
     } else {
         ifr(root.init(&dfs->blocks.local));

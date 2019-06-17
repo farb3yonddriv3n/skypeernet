@@ -13,15 +13,15 @@ static int resume(struct peer_s *p)
                         p->cfg.net.max.task_buffer, &buffer, &size) != 0) return -1;
         p->send_buffer.type = BUFFER_FILE;
         sn_setr(p->send_buffer.u.file.bin, buffer, size);
-        if (payload.send(p, COMMAND_FILE, t->host, t->port, t->idx,
-                         t->parts, t->file.name) != 0) return -1;
+        ifr(payload.send(p, COMMAND_FILE, t->host, t->port, t->idx,
+                         t->parts, t->file.name));
         if ((++t->file.iter) * p->cfg.net.max.task_buffer >= t->file.size)
             if (list.del(l, t) != 0) return -1;
         if (buffer) free(buffer);
         return 1;
     }
     if (!p) return -1;
-    if (list.map(&p->tasks.list, cb, p) != 0) return -1;
+    ifr(list.map(&p->tasks.list, cb, p));
     return 0;
 }
 
@@ -29,8 +29,8 @@ static int update(struct peer_s *p)
 {
     if (!p) return -1;
     int send_sz, task_sz;
-    if (list.size(&p->send.nbl,  &send_sz) != 0) return -1;
-    if (list.size(&p->tasks.list, &task_sz) != 0) return -1;
+    ifr(list.size(&p->send.nbl,  &send_sz));
+    ifr(list.size(&p->tasks.list, &task_sz));
     if (send_sz <= p->cfg.net.max.send_queue && task_sz != 0) return resume(p);
     return 0;
 }
