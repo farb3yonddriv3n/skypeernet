@@ -242,9 +242,17 @@ static int dump(struct transaction_s *t)
     struct config_key_s *exists;
     ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
                          &exists));
-    printf(" | %s | %9ldkB | %3s |\n", f->meta.name,
-                                       f->meta.size / 1024,
-                                       exists ? "Yes" : "No");
+    char fullpath[512];
+    snprintf(fullpath, sizeof(fullpath), "%s/%s",
+                                         psig->cfg.dir.finalized,
+                                         f->meta.name);
+    bool fsexists;
+    ifr(os.fileexists(fullpath, &fsexists));
+    printf(" | \33[1;32m%s\33[m | %9ldkB | %3s | %3s |\n",
+           f->meta.name,
+           f->meta.size / 1024,
+           exists ? "Yes" : "No",
+           fsexists ? "Yes" : "No");
     return 0;
 }
 

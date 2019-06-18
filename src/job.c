@@ -107,7 +107,7 @@ static int show(struct config_s *cfg, struct list_s *jobs)
         struct job_s *j  = (struct job_s *)uj;
         struct config_key_s *found;
         ifr(config_keyexists(cfg, j->pubkeyhash, &found));
-        printf("| %.*s | %10dkB | %5ld | %d/%d/%d/%d | %s |\n",
+        printf("| \33[1;32m%.*s\33[m | %10dkB | %5ld | %d/%d/%d/%d | %s |\n",
                (int)sizeof(j->file.name), j->file.name,
                (int)(j->file.size / 1024), j->chunks.size, j->counter.none,
                j->counter.receiving, j->counter.notfound,
