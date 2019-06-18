@@ -7,7 +7,8 @@ static int transaction_clean(void *t)
 
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc)
 {
-    if (!dfs || !argv) return -1;
+    if (!dfs || !argv || argc < 2) return -1;
+    if (strlen(argv[1]) > 128) return -1;
     struct peer_s *p = dfs->peer;
     struct transaction_s *t;
     struct transaction_param_s param;

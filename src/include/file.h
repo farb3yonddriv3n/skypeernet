@@ -25,7 +25,6 @@ struct file_s {
         char          name[128];
         size_t        size;
         char          description[1024];
-        char          type[32];
         unsigned char hash[SHA256HEX];
     } meta;
     struct {
