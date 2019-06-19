@@ -69,18 +69,13 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
              "%.*s",
              (int )sizeof(t->action.add.chunks.hash),
              t->action.add.chunks.hash);
-    unsigned char *descenc;
-    int            ndescenc;
-    ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public,
-                    (unsigned char *)param->action.add.name,
-                    strlen(param->action.add.name),
-                    &descenc, &ndescenc));
-    size_t nencoded;
-    unsigned char *encoded = base64_encode(descenc, ndescenc, &nencoded);
-    free(descenc);
+    size_t         nencoded;
+    unsigned char *encoded;
+    ifr(encx(&encoded, &nencoded, (unsigned char *)param->action.add.name,
+             strlen(param->action.add.name), NULL));
     snprintf(t->action.add.meta.description,
              (int )sizeof(t->action.add.meta.description),
-             "%.*s", (int )nencoded, encoded);
+             "%.*s", nencoded, encoded);
     free(encoded);
     char filename[256];
     snprintf(filename, sizeof(filename), "finalized/%s", t->action.add.meta.name);
@@ -253,31 +248,25 @@ static int save(struct transaction_s *t, json_object **parent)
 static int dump(struct transaction_s *t)
 {
     struct file_s *f = &t->action.add;
-    struct config_key_s *exists;
+    struct config_key_s *key;
     ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
-                         &exists));
+                         &key));
     char fullpath[512];
     snprintf(fullpath, sizeof(fullpath), "%s/%s",
                                          psig->cfg.dir.finalized,
                                          f->meta.name);
-    int ndesc = 0;
-    unsigned char *desc = NULL;
-    if (exists) {
-        size_t ndecoded;
-        unsigned char *decoded = base64_decode((unsigned char *)f->meta.description,
-                                               strlen(f->meta.description),
-                                               &ndecoded);
-        ifr(rsa_decrypt(exists->rsa.private,
-                        decoded, ndecoded, &desc,
-                        &ndesc));
-        free(decoded);
+    int            ndesc = 0;
+    unsigned char *desc  = NULL;
+    if (key) {
+        ifr(decx(&desc, &ndesc, (unsigned char *)f->meta.description,
+                 strlen(f->meta.description), key));
     }
     bool fsexists;
     ifr(os.fileexists(fullpath, &fsexists));
     printf(" | \33[1;32m%s\33[m | %9ldkB | %3s | %3s | %.*s |\n",
            f->meta.name,
            f->meta.size / 1024,
-           exists ? "Yes" : "No",
+           key ? "Yes" : "No",
            fsexists ? "Yes" : "No",
            ndesc, desc);
     if (desc) free(desc);

@@ -23,6 +23,12 @@ int eioie_fwrite(const char *fname, const char *mode, char *content, int nconten
 int eioie_fread(char **dst, sn fname);
 void bin2hexstr(char *dst, size_t dstlen,
                 char *src, size_t srclen);
+int encx(unsigned char **dst, size_t *ndst,
+         unsigned char *src, int nsrc, int *k);
+struct config_key_s;
+int decx(unsigned char **dst, int *ndst,
+         unsigned char *src, int nsrc,
+         struct config_key_s *key);
 
 inline static void sha256hex(const unsigned char *src, const int srclen,
                              unsigned char *hex)

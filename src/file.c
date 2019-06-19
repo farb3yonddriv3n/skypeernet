@@ -39,14 +39,12 @@ int file_chunks(const char *filename, size_t nbytes,
                                     fpartenc, tag);
         if (nfpartenc < 1) return -1;
         fc->size = nfpartenc;
-        unsigned char *tagenc;
-        int            ntagenc;
-        ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public, (unsigned char *)tag,
-                        sizeof(tag), &tagenc, &ntagenc));
-        size_t nencoded;
-        unsigned char *encoded = base64_encode(tagenc, ntagenc, &nencoded);
+        size_t         nencoded;
+        unsigned char *encoded = NULL;
+        ifr(encx(&encoded, &nencoded, tag, sizeof(tag), &nfpartenc));
         if (!encoded) return -1;
         snprintf(fc->tag, sizeof(fc->tag), "%.*s", (int)nencoded, encoded);
+        free(encoded);
         sha256hex(fpartenc, nfpartenc, fc->hash.content);
         char cfilename[256];
         snprintf(cfilename, sizeof(cfilename), "%s/%.*s", psig->cfg.dir.download,

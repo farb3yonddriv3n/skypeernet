@@ -1,5 +1,32 @@
 #include <common.h>
 
+int encx(unsigned char **dst, size_t *ndst,
+         unsigned char *src, int nsrc,
+         int *k)
+{
+    if (!dst || !ndst || !src) return -1;
+    unsigned char *encrypted;
+    int            nencrypted;
+    ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public, src,
+                    nsrc, &encrypted, &nencrypted));
+    *dst = base64_encode(encrypted, nencrypted, ndst);
+    if (encrypted) free(encrypted);
+    return 0;
+}
+
+int decx(unsigned char **dst, int *ndst,
+         unsigned char *src, int nsrc,
+         struct config_key_s *key)
+{
+    if (!dst || !ndst || !src || !key) return -1;
+    size_t         ndecoded;
+    unsigned char *decoded = base64_decode(src, nsrc, &ndecoded);
+    ifr(rsa_decrypt(key->rsa.private, decoded, ndecoded,
+                    dst, ndst));
+    if (decoded) free(decoded);
+    return 0;
+}
+
 int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent)
 {
     FILE *pfile;

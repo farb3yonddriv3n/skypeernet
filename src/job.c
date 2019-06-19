@@ -221,22 +221,20 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
         sn_initz(cn, chunkpath);
         int n = eioie_fread(&buffer, cn);
         if (n <= 0) return -1;
-        size_t ntag;
-        unsigned char *tag = base64_decode((unsigned char *)f->chunks.array[i].tag,
-                                           strlen(f->chunks.array[i].tag),
-                                           &ntag);
-        unsigned char *tagdec;
-        int            ntagdec;
         struct config_key_s *key;
         ifr(config_keyexists(cfg, f->pubkeyhash, &key));
         if (!key) return 0;
-        ifr(rsa_decrypt(key->rsa.private, tag, ntag,
-                        &tagdec, &ntagdec));
-        free(tag);
+        unsigned char *tagdec;
+        int            ntagdec;
+        ifr(decx(&tagdec, &ntagdec,
+            (unsigned char *)f->chunks.array[i].tag,
+            strlen(f->chunks.array[i].tag),
+            key));
         unsigned char decrypted[CHUNK_SIZE];
         int dc = aes_decrypt((unsigned char *)buffer, n, key->aes.key,
                              sizeof(key->aes.key), tagdec, key->aes.key,
                              key->aes.key, decrypted);
+        free(tagdec);
         if (dc < 1) return -1;
         ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
         free(buffer);
