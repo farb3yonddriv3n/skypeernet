@@ -1,0 +1,19 @@
+language: c
+
+sudo: true
+
+before_install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq cmake libssl-dev libev-dev libreadline-dev libjson-c-dev
+
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+
+compiler:
+    - gcc
+
+script:
+    - cmake .
+    - make
