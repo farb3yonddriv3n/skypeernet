@@ -11,6 +11,8 @@ enum buffer_e {
     BUFFER_FILE,
     BUFFER_FILEASK,
     BUFFER_TRACKER_ANNOUNCE_PEER,
+    BUFFER_AUTH,
+    BUFFER_AUTH_REPLY,
 };
 
 struct send_buffer_s {
@@ -33,6 +35,9 @@ struct send_buffer_s {
             unsigned short port;
             sn *key;
         } tracker_peer;
+        struct {
+            sn str;
+        } auth;
     } u;
 };
 
@@ -109,6 +114,12 @@ struct peer_s {
                           struct world_peer_s *wp);
             int (*cli)(struct peer_s *p, char **argv,
                        int argc);
+            int (*auth)(struct peer_s *p, int host,
+                        unsigned short port,
+                        char *msg, int len);
+            int (*authrpl)(struct peer_s *p, int host,
+                           unsigned short port,
+                           char *msg, int len);
         } cb;
         void *data;
     } user;

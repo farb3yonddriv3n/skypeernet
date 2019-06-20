@@ -44,7 +44,7 @@ int file_read(struct peer_s *p)
     struct world_peer_s wp = { .host = ADDR_IP(p->net.remote.addr),
                                .port = ADDR_PORT(p->net.remote.addr),
                                .found = NULL };
-    ifr(list.map(&p->peers, peer_find, &wp));
+    ifr(list.map(&p->peers, world.peer.find, &wp));
     if (!wp.found) return -1;
     if (finalized && p->user.cb.file) {
         ifr(p->user.cb.file(p,

@@ -34,15 +34,16 @@ static int peers_list(struct peer_s *p, char **argv, int argc)
 {
     int cb(struct list_s *l, void *uwp, void *ud) {
         struct world_peer_s *wp = (struct world_peer_s *)uwp;
-        printf(" | %8x | %5d | %4d | %11d | \33[1;31m%.*s\33[m |\n",
+        printf(" | %8x | %5d | %4d | %11d |    %d | \33[1;31m%.*s\33[m |\n",
                wp->host,
                wp->port,
                wp->type,
                wp->unreachable,
+               wp->authed,
                (int )sizeof(wp->pubkeyhash), wp->pubkeyhash);
         return 0;
     }
-    printf(" |     Peer |  Port | Type | Unreachable | %54sPubkeyhash |\n", " ");
+    printf(" |     Peer |  Port | Type | Unreachable | Auth | %54sPubkeyhash |\n", " ");
     return list.map(&p->peers, cb, NULL);
 }
 

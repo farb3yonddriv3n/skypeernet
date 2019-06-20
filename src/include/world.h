@@ -13,8 +13,10 @@ struct world_peer_s {
     unsigned short       port;
     struct world_peer_s *found;
     unsigned int         unreachable;
-    sn                   key;
+    sn                   pubkey;
     unsigned char        pubkeyhash[SHA256HEX];
+    unsigned char        authstr[SHA256HEX];
+    bool                 authed;
 };
 
 struct module_world_s {
@@ -25,6 +27,10 @@ struct module_world_s {
         int (*isreachable)(struct peer_s *p, int host, unsigned short port,
                            bool *reachable);
         int (*findpubkeyhash)(struct list_s *l, void *existing, void *uwp);
+        int (*findauthstr)(struct list_s *l, void *existing, void *uwp);
+        int (*find)(struct list_s *l, void *existing, void *uwp);
+        int (*broadcast)(struct peer_s *p, struct world_peer_s *wp);
+        int (*auth)(struct peer_s *p, struct world_peer_s *wp);
     } peer;
 };
 

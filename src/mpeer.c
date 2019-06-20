@@ -50,6 +50,22 @@ static int message(struct peer_s *p, int host,
     return 0;
 }
 
+static int dfs_auth(struct peer_s *p, int host,
+                    unsigned short port,
+                    char *data, int len)
+{
+    if (!p || !data) return -1;
+    unsigned char *dec;
+    int            ndec;
+    ifr(rsa_decrypt(p->cfg.keys.local.rsa.private, (unsigned char *)data, len,
+                    &dec, &ndec));
+    p->send_buffer.type = BUFFER_AUTH_REPLY;
+    sn_setr(p->send_buffer.u.auth.str, (char *)dec, ndec);
+    return payload.send(p, COMMAND_AUTH_REPLY,
+                        host, port, 0, 0,
+                        NULL);
+}
+
 static int dfileask(struct peer_s *p, int host,
                     unsigned short port,
                     char *data, int len)
@@ -209,7 +225,7 @@ static void *mine(void *data)
     if (root.blocks.size(dfs->blocks.local, &size) != 0)
         return mine_thread_fail(__FILE__, __LINE__);
     unsigned char *prev_block;
-    if (size == 0) prev_block = DISTFS_BASE_ROOT_HASH;
+    if (size == 0) prev_block = (unsigned char *)DISTFS_BASE_ROOT_HASH;
     else           prev_block = dfs->blocks.local->hash;
     struct block_s *b;
     if (block.init(&b, prev_block) != 0)
@@ -411,6 +427,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->user.cb.fileask = dfileask;
     p->user.cb.online  = online;
     p->user.cb.cli     = dfs_cli;
+    p->user.cb.auth    = dfs_auth;
     p->user.data       = dfs;
     dfs->peer          = p;
     ifr(group.init(&dfs->blocks.remote));

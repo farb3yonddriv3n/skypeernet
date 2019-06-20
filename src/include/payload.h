@@ -14,7 +14,6 @@ struct module_payload_s {
     int (*recv)(struct peer_s *p);
 };
 
-int peer_find(struct list_s *l, void *existing, void *uwp);
 int announce_peer_write_peer(struct data_s *d, void *userdata);
 int announce_twp(struct data_s *d, void *userdata);
 int announce_twt(struct data_s *d, void *userdata);
@@ -44,6 +43,14 @@ int fileask_size(int *sz, void *userdata);
 int ping_write(struct data_s *d, void *userdata);
 int ping_size(int *sz, void *userdata);
 int ping_read(struct peer_s *p);
+
+int auth_write(struct data_s *d, void *userdata);
+int auth_read(struct peer_s *p);
+int auth_size(int *sz, void *userdata);
+
+int authrpl_write(struct data_s *d, void *userdata);
+int authrpl_read(struct peer_s *p);
+int authrpl_size(int *sz, void *userdata);
 
 extern const struct module_payload_s payload;
 

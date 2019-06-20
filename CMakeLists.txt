@@ -48,6 +48,8 @@ src/utils.c
 src/world.c
 src/payload/ack.c
 src/payload/announce.c
+src/payload/auth.c
+src/payload/auth_reply.c
 src/payload/fileask.c
 src/payload/file.c
 src/payload/message.c

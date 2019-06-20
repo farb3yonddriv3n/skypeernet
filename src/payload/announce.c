@@ -40,9 +40,9 @@ static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
     if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
     if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
     int keysize = nsrc - sizeof(wp->host) - sizeof(wp->port);
-    sn_bytes_init_new(wp->key, keysize);
-    if (sn_read((void *)wp->key.s, keysize, &bf) != 0) return -1;
-    sha256hex((unsigned char *)wp->key.s, keysize, wp->pubkeyhash);
+    sn_bytes_init_new(wp->pubkey, keysize);
+    if (sn_read((void *)wp->pubkey.s, keysize, &bf) != 0) return -1;
+    sha256hex((unsigned char *)wp->pubkey.s, keysize, wp->pubkeyhash);
     return 0;
 }
 
@@ -54,52 +54,11 @@ int announce_size(int *sz, void *userdata)
     return 0;
 }
 
-static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
-{
-    if (!p || !wp) return -1;
-    if (p->type != INSTANCE_TRACKER) return -1;
-    int cb(struct list_s *l, void *existing, void *uwp) {
-        struct world_peer_s *ex = (struct world_peer_s *)existing;
-        struct world_peer_s *wp = (struct world_peer_s *)uwp;
-        if (wp->host == ex->host &&
-            wp->port == ex->port) {
-            return 0;
-        }
-        int item(int dst, unsigned short dstport,
-                 int src, unsigned short srcport,
-                 sn *key) {
-            p->send_buffer.type = BUFFER_TRACKER_ANNOUNCE_PEER;
-            p->send_buffer.u.tracker_peer.key  = key;
-            p->send_buffer.u.tracker_peer.host = src;
-            p->send_buffer.u.tracker_peer.port = srcport;
-            if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_PEER,
-                             dst, dstport, 0, 0, NULL) != 0) return -1;
-            return 0;
-        }
-        ifr(item(wp->host, wp->port, ex->host, ex->port, &ex->key));
-        ifr(item(ex->host, ex->port, wp->host, wp->port, &wp->key));
-        return 0;
-    }
-    ifr(list.map(&p->peers, cb, wp));
-    return 0;
-}
-
-int peer_find(struct list_s *l, void *existing, void *uwp) {
-    struct world_peer_s *ex = (struct world_peer_s *)existing;
-    struct world_peer_s *wp = (struct world_peer_s *)uwp;
-    if (wp->host == ex->host &&
-        wp->port == ex->port) {
-        wp->found = ex;
-        return 1;
-    }
-    return 0;
-}
-
 static int wp_clean(void *uwp)
 {
     if (!uwp) return -1;
     struct world_peer_s *wp = (struct world_peer_s *)uwp;
-    if (wp->key.s) free(wp->key.s);
+    if (wp->pubkey.s) free(wp->pubkey.s);
     free(wp);
     return 0;
 }
@@ -110,7 +69,7 @@ static int peer_add(struct peer_s *p, struct world_peer_s *wp,
     if (!p || !wp) return -1;
     wp->found = NULL;
     *added = false;
-    ifr(list.map(&p->peers, peer_find, wp));
+    ifr(list.map(&p->peers, world.peer.find, wp));
     if (wp->found) return wp_clean(wp);
     ifr(list.add(&p->peers, wp, wp_clean));
     *added = true;
@@ -164,10 +123,10 @@ int announce_prp(struct peer_s *p)
     wp->type = WORLD_PEER_PEER;
     wp->host = ADDR_IP(p->net.remote.addr);
     wp->port = ADDR_PORT(p->net.remote.addr);
-    if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_TRACKER,
-                     wp->host, wp->port, 0, 0, NULL) != 0) return -1;
     bool added;
     ifr(peer_add(p, wp, &added));
-    if (added) return peer_broadcast(p, wp);
+    if (added) {
+        ifr(world.peer.auth(p, wp));
+    }
     return 0;
 }

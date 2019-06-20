@@ -106,6 +106,7 @@ static int filewrite(const char *fname, const char *mode,
 
 static int gettimems(double *result)
 {
+    if (!result) return -1;
     long   ms;
     time_t s;
     struct timespec spec;
@@ -118,6 +119,7 @@ static int gettimems(double *result)
 
 static int gettime(char *buffer, size_t nbuffer)
 {
+    if (!buffer) return -1;
     double result;
     if (gettimems(&result) != 0) return -1;
     snprintf(buffer, nbuffer, "%lf", result);

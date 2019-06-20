@@ -14,6 +14,8 @@ enum command_e {
     COMMAND_MESSAGE,
     COMMAND_FILE,
     COMMAND_FILEASK,
+    COMMAND_AUTH,
+    COMMAND_AUTH_REPLY,
     COMMAND_PING,
 };
 

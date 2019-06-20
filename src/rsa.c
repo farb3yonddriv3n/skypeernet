@@ -60,12 +60,12 @@ static int read_key(RSA *func(FILE *pfile, RSA **x, pem_password_cb *cb, void *u
 }
 
 int rsa_loadkey(RSA *(*func)(FILE *pfile, RSA **x, pem_password_cb *cb, void *u),
-                const char *key, RSA **ctx,
+                const char *keyfile, RSA **ctx,
                 sn *str, unsigned char *hash)
 {
     int ret;
-    sn_initz(fpriv, (char *)key);
-    ret = read_key(func, ctx, fpriv, str);
+    sn_initz(fkeyfile, (char *)keyfile);
+    ret = read_key(func, ctx, fkeyfile, str);
     if (ret != 0) return ret;
     sha256hex((unsigned char *)str->s, str->n, hash);
     return 0;
