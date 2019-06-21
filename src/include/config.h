@@ -36,7 +36,6 @@ struct config_s {
         struct {
             double retry;
             double peers_reachable;
-            int    resend;
         } interval;
         struct {
             int task_buffer;
