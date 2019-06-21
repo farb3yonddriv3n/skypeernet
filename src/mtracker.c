@@ -8,7 +8,6 @@ static int dfs_auth_reply(struct peer_s *p, int host,
     struct world_peer_s wp = { .found = NULL };
     if (len != sizeof(wp.authstr)) return -1;
     memcpy(wp.authstr, data, len);
-    printf("received reply %.*s from peer %x:%d\n", len, data, host, port);
     ifr(list.map(&p->peers, world.peer.findauthstr, &wp));
     if (wp.found && wp.found->authed != true) {
         wp.found->authed = true;

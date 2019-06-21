@@ -145,6 +145,13 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
     struct peer_s *p = dfs->peer;
     ifr(chunk_find(dfs, j->file.name, &jc->net.host,
                    &jc->net.port));
+    char chunkpath[256];
+    snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s", p->cfg.dir.download,
+                                                      (int )sizeof(jc->chunk),
+                                                      jc->chunk);
+    bool exists;
+    if (os.fileexists(chunkpath, &exists));
+    if (exists) return chunk_state(j, jc, JOBCHUNK_DONE);
     if (jc->net.host == 0 && jc->net.port == 0)
         return chunk_state(j, jc, JOBCHUNK_NOTFOUND);
     ifr(chunk_state(j, jc, JOBCHUNK_RECEIVING));
