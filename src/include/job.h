@@ -51,6 +51,10 @@ struct module_job_s {
     int (*finalize)(struct config_s *cfg, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized);
     int (*show)(struct config_s *cfg, struct list_s *jobs);
+    struct {
+        int (*save)(struct distfs_s *dfs);
+        int (*load)(struct distfs_s *dfs);
+    } data;
 };
 
 extern const struct module_job_s job;

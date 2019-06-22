@@ -40,7 +40,7 @@ static int load_object(struct root_s **r, const json_object *obj)
 
     if (root.init(r) != 0) return -1;
     json_object *blocks;
-    json_object_object_get_ex(obj, "blocks", &blocks);
+    json_object_object_get_ex((json_object *)obj, "blocks", &blocks);
     if (json_object_get_type(blocks) == json_type_array) {
         array_list *blocks_array = json_object_get_array(blocks);
         int i;

@@ -138,27 +138,17 @@ static int load(struct block_s **b, const json_object *bobj)
     if (mallocz(b) != 0) return -1;
 
     json_object *bhash;
-    json_object_object_get_ex(bobj, "hash", &bhash);
-
-#define BIND_STR(m_dst, m_name, m_src, m_obj)\
-        json_object_object_get_ex(m_obj, m_name, &m_src);\
-        if (json_object_get_string_len(m_src) == sizeof((*b)->m_dst))\
-            memcpy((*b)->m_dst, json_object_get_string(m_src),\
-                   json_object_get_string_len(m_src));
-
-#define BIND_INT(m_dst, m_name, m_src, m_obj)\
-        json_object_object_get_ex(m_obj, m_name, &m_src);\
-        (*b)->m_dst = json_object_get_int64(m_src);
+    json_object_object_get_ex((json_object *)bobj, "hash", &bhash);
 
     json_object *obj;
-    BIND_STR(hash.prev,        "prev",        obj, bhash);
-    BIND_STR(hash.pow,         "pow",         obj, bhash);
-    BIND_STR(hash.transactions,"transactions",obj, bhash);
-    BIND_INT(hash.nounce,      "nounce",      obj, bhash);
-    BIND_INT(index,            "index",       obj, bobj);
+    BIND_STR((*b)->hash.prev,        "prev",        obj, bhash);
+    BIND_STR((*b)->hash.pow,         "pow",         obj, bhash);
+    BIND_STR((*b)->hash.transactions,"transactions",obj, bhash);
+    BIND_INT((*b)->hash.nounce,      "nounce",      obj, bhash);
+    BIND_INT((*b)->index,            "index",       obj, (json_object *)bobj);
 
     json_object *transactions;
-    json_object_object_get_ex(bobj, "transactions", &transactions);
+    json_object_object_get_ex((json_object *)bobj, "transactions", &transactions);
     if (json_object_get_type(transactions) == json_type_array) {
         array_list *transactions_array = json_object_get_array(transactions);
         int i;

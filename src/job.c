@@ -1,6 +1,7 @@
 #include <common.h>
 
 #define MAX_JOB_CHUNK_IDLE 10.0f
+#define JOBS_TMP_FILE      ".jobs.tmp"
 
 static int clean(void *uj)
 {
@@ -288,20 +289,122 @@ static int update(const char *downloaddir, struct list_s *jobs,
     return 0;
 }
 
-static int import()
+static int data_load(struct distfs_s *dfs)
 {
+    json_object *obj;
+    bool exists;
+    ifr(os.fileexists(JOBS_TMP_FILE, &exists));
+    if (!exists) return 0;
+    ifr(os.loadjsonfile(&obj, JOBS_TMP_FILE));
+    json_object *jobs;
+    json_object_object_get_ex(obj, "jobs", &jobs);
+    ifr(list.init(&dfs->jobs));
+    if (json_object_get_type(jobs) == json_type_array) {
+        array_list *jobs_array = json_object_get_array(jobs);
+        int i, k;
+        for (i = 0; i < array_list_length(jobs_array); i++) {
+            struct job_s *j = malloc(sizeof(*j));
+            if (!j) return -1;
+            memset(j, 0, sizeof(*j));
+            json_object *job_item = array_list_get_idx(jobs_array, i);
+            json_object *tmp;
+            BIND_STR(j->file.name,   "filename",   tmp, job_item);
+            BIND_INT64(j->file.size, "filesize",   tmp, job_item);
+            BIND_STR(j->pubkeyhash,  "pubkeyhash", tmp, job_item);
+            json_object *chunks;
+            json_object_object_get_ex(job_item, "chunks", &chunks);
+            if (json_object_get_type(chunks) == json_type_array) {
+                array_list *chunks_array = json_object_get_array(chunks);
+                for (k = 0; k < array_list_length(chunks_array); k++) {
+                    int idx = j->chunks.size;
+                    j->chunks.array = realloc(j->chunks.array, ++j->chunks.size *
+                                              sizeof(*j->chunks.array));
+                    if (!j->chunks.array) return -1;
+                    memset(&j->chunks.array[idx], 0, sizeof(j->chunks.array[idx]));
+                    json_object *chunk = array_list_get_idx(chunks_array, k);
+                    json_object *tmp;
+                    BIND_STR(j->chunks.array[idx].chunk,      "chunk",   tmp, chunk);
+                    BIND_INT64(j->chunks.array[idx].size,     "size",    tmp, chunk);
+                    BIND_INT(j->chunks.array[idx].state,      "state",   tmp, chunk);
+                    BIND_DOUBLE(j->chunks.array[idx].updated, "updated", tmp, chunk);
+                    BIND_INT(j->chunks.array[idx].net.host,   "host",    tmp, chunk);
+                    BIND_INT(j->chunks.array[idx].net.port,   "port",    tmp, chunk);
+                }
+            }
+            BIND_INT(j->counter.none,      "counter_none",      tmp, job_item);
+            BIND_INT(j->counter.receiving, "counter_receiving", tmp, job_item);
+            BIND_INT(j->counter.notfound,  "counter_notfound",  tmp, job_item);
+            BIND_INT(j->counter.done,      "counter_done",      tmp, job_item);
+            ifr(list.add(&dfs->jobs, j, clean));
+        }
+    }
+    json_object_put(obj);
     return 0;
 }
 
-static int export()
+static int data_save(struct distfs_s *dfs)
 {
+    if (!dfs) return -1;
+    int cb(struct list_s *l, void *je, void *ud) {
+        struct job_s       *j    = (struct job_s *)je;
+        struct json_object *jobs = (struct json_object *)ud;
+
+        json_object *jobj = json_object_new_object();
+        json_object *filename = json_object_new_string_len((const char *)j->file.name,
+                                                           sizeof(j->file.name));
+        json_object_object_add(jobj, "filename", filename);
+        json_object *filesize = json_object_new_int64(j->file.size);
+        json_object_object_add(jobj, "filesize", filesize);
+        json_object *pubkeyhash = json_object_new_string_len((const char *)j->pubkeyhash,
+                                                             sizeof(j->pubkeyhash));
+        json_object_object_add(jobj, "pubkeyhash", pubkeyhash);
+        json_object *chunks = json_object_new_array();
+        json_object_object_add(jobj, "chunks", chunks);
+        int i;
+        for (i = 0; i < j->chunks.size; i++) {
+            json_object *chunk = json_object_new_object();
+            json_object_array_add(chunks, chunk);
+            json_object *chunkname = json_object_new_string_len((const char *)j->chunks.array[i].chunk,
+                                                                 sizeof(j->chunks.array[i].chunk));
+            json_object_object_add(chunk, "chunk", chunkname);
+            json_object *chunksize = json_object_new_int64(j->chunks.array[i].size);
+            json_object_object_add(chunk, "size", chunksize);
+            json_object *chunkstate = json_object_new_int(j->chunks.array[i].state);
+            json_object_object_add(chunk, "state", chunkstate);
+            json_object *chunkupdated = json_object_new_double(j->chunks.array[i].updated);
+            json_object_object_add(chunk, "updated", chunkupdated);
+            json_object *chunkhost = json_object_new_int(j->chunks.array[i].net.host);
+            json_object_object_add(chunk, "host", chunkhost);
+            json_object *chunkport = json_object_new_int(j->chunks.array[i].net.port);
+            json_object_object_add(chunk, "port", chunkport);
+        }
+        json_object *counter_none = json_object_new_int(j->counter.none);
+        json_object_object_add(jobj, "counter_none", counter_none);
+        json_object *counter_receiving = json_object_new_int(j->counter.receiving);
+        json_object_object_add(jobj, "counter_receiving", counter_receiving);
+        json_object *counter_notfound = json_object_new_int(j->counter.notfound);
+        json_object_object_add(jobj, "counter_notfound", counter_notfound);
+        json_object *counter_done = json_object_new_int(j->counter.done);
+        json_object_object_add(jobj, "counter_done", counter_done);
+        json_object_array_add(jobs, jobj);
+        return 0;
+    }
+    json_object *r    = json_object_new_object();
+    json_object *jobs = json_object_new_array();
+    json_object_object_add(r, "jobs", jobs);
+    ifr(list.map(&dfs->jobs, cb, jobs));
+    const char *json = json_object_to_json_string(r);
+    ifr(eioie_fwrite(JOBS_TMP_FILE, "w", (char *)json, strlen(json)));
+    json_object_put(r);
     return 0;
 }
 
 const struct module_job_s job = {
-    .add      = add,
-    .update   = update,
-    .resume   = resume,
-    .finalize = finalize,
-    .show     = show,
+    .add       = add,
+    .update    = update,
+    .resume    = resume,
+    .finalize  = finalize,
+    .show      = show,
+    .data.save = data_save,
+    .data.load = data_load,
 };

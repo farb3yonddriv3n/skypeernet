@@ -129,26 +129,16 @@ static int load(struct transaction_s **t, json_object *tobj)
 {
     if (mallocz(t) != 0) return -1;
 
-#define BIND_STR(m_dst, m_name, m_src, m_obj)\
-        json_object_object_get_ex(m_obj, m_name, &m_src);\
-        if (json_object_get_string_len(m_src) == sizeof((*t)->m_dst))\
-            memcpy((*t)->m_dst, json_object_get_string(m_src),\
-                   json_object_get_string_len(m_src));
-
-#define BIND_INT(m_dst, m_name, m_src, m_obj)\
-        json_object_object_get_ex(m_obj, m_name, &m_src);\
-        (*t)->m_dst = json_object_get_int(m_src);
-
     json_object *obj;
-    BIND_INT(version,   "version",   obj, tobj);
-    BIND_INT(timestamp, "timestamp", obj, tobj);
-    BIND_STR(hash,      "hash",      obj, tobj);
+    BIND_INT((*t)->version,   "version",   obj, tobj);
+    BIND_INT((*t)->timestamp, "timestamp", obj, tobj);
+    BIND_STR((*t)->hash,      "hash",      obj, tobj);
 
     json_object *blockhash;
     json_object_object_get_ex(tobj, "blockhash", &blockhash);
 
-    BIND_STR(blockhash.prev,    "prev",    obj, blockhash);
-    BIND_STR(blockhash.current, "current", obj, blockhash);
+    BIND_STR((*t)->blockhash.prev,    "prev",    obj, blockhash);
+    BIND_STR((*t)->blockhash.current, "current", obj, blockhash);
 
     struct transaction_param_s param = { .action.load.obj = tobj };
     return process(PROCESS_IMPORT, *t, &param, NULL);

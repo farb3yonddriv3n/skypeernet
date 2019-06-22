@@ -75,7 +75,7 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
              strlen(param->action.add.name), NULL));
     snprintf(t->action.add.meta.description,
              (int )sizeof(t->action.add.meta.description),
-             "%.*s", nencoded, encoded);
+             "%.*s", (int )nencoded, encoded);
     free(encoded);
     char filename[256];
     snprintf(filename, sizeof(filename), "finalized/%s", t->action.add.meta.name);
@@ -135,22 +135,6 @@ static int load(struct transaction_s *t, json_object *tobj)
     struct file_s *f = &t->action.add;
     json_object *fadd;
     json_object_object_get_ex(tobj, "fileadd", &fadd);
-
-#define BIND_STR(m_dst, m_name, m_src, m_obj)\
-        assert(json_object_object_get_ex(m_obj, m_name, &m_src) == true);\
-        if (json_object_get_string_len(m_src) == sizeof(m_dst))\
-            memcpy(m_dst, json_object_get_string(m_src),\
-                   json_object_get_string_len(m_src));
-
-#define BIND_STRLEN(m_dst, m_name, m_src, m_obj)\
-        json_object_object_get_ex(m_obj, m_name, &m_src);\
-        if (json_object_get_string_len(m_src) < sizeof(m_dst))\
-            memcpy(m_dst, json_object_get_string(m_src),\
-                   json_object_get_string_len(m_src));
-
-#define BIND_INT64(m_dst, m_name, m_src, m_obj)\
-        json_object_object_get_ex(m_obj, m_name, &m_src);\
-        m_dst = json_object_get_int64(m_src);
 
     json_object *obj;
     json_object *fmeta;

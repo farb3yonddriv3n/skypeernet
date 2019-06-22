@@ -394,6 +394,7 @@ static int clean(struct peer_s *p, void *data)
     ifr(group.clean(dfs->blocks.remote));
     ifr(root.clean(dfs->blocks.local));
     ifr(list.clean(&dfs->transactions));
+    ifr(job.data.save(dfs));
     ifr(list.clean(&dfs->jobs));
     return 0;
 }
@@ -445,6 +446,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
         ifr(root.init(&dfs->blocks.local));
     }
     ifr(blocks_load(dfs));
+    ifr(job.data.load(dfs));
     return 0;
 }
 
