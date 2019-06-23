@@ -203,7 +203,8 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
         }
         return 0;
     }
-    assert(list.map(&dfs->jobs, cb, dfs) == 0);
+    if (list.map(&dfs->jobs, cb, dfs) != 0)
+        syslog(LOG_ERR, "Resuming jobs failed");
 }
 
 static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char *file,
@@ -238,7 +239,8 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
             (unsigned char *)f->chunks.array[i].tag,
             strlen(f->chunks.array[i].tag),
             key));
-        unsigned char decrypted[CHUNK_SIZE];
+        unsigned char *decrypted = malloc(f->chunks.array[i].size);
+        if (!decrypted) return -1;
         int dc = aes_decrypt((unsigned char *)buffer, n, key->aes.key,
                              sizeof(key->aes.key), tagdec, key->aes.key,
                              key->aes.key, decrypted);
@@ -246,6 +248,7 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
         if (dc < 1) return -1;
         ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
         free(buffer);
+        free(decrypted);
     }
     *finalized = true;
     return 0;

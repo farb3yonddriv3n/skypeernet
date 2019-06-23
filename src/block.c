@@ -149,11 +149,11 @@ static int load(struct block_s **b, const json_object *bobj)
     json_object *bhash;
     json_object_object_get_ex((json_object *)bobj, "hash", &bhash);
 
-    json_object *obj;
+    json_object *obj = NULL;
     BIND_STR((*b)->hash.prev,        "prev",        obj, bhash);
     BIND_STR((*b)->hash.pow,         "pow",         obj, bhash);
     BIND_STR((*b)->hash.transactions,"transactions",obj, bhash);
-    BIND_INT((*b)->hash.nonce,      "nonce",      obj, bhash);
+    BIND_INT((*b)->hash.nonce,       "nonce",       obj, bhash);
     BIND_INT((*b)->index,            "index",       obj, (json_object *)bobj);
 
     json_object *transactions;

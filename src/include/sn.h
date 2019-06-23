@@ -89,9 +89,10 @@
  */
 /*
 #define sn_bytes_append(m_var, m_src)\
-    assert((m_var.offset + m_src.n) <= m_var.n);\
-    memcpy(m_var.s + m_var.offset, m_src.s, m_src.n);\
-    m_var.offset += m_src.n;
+    if ((m_var.offset + m_src.n) <= m_var.n) {\
+        memcpy(m_var.s + m_var.offset, m_src.s, m_src.n);\
+        m_var.offset += m_src.n;\
+    }
 */
 
 /*

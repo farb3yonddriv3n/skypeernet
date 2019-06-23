@@ -143,7 +143,8 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
                             wp->host,
                             wp->port, 0, 0, NULL);
     }
-    assert(list.map(&p->peers, cb, p) == 0);
+    if (list.map(&p->peers, cb, p) != 0)
+        syslog(LOG_ERR, "Peers check failed");
     ev_timer_again(p->ev.loop, &p->ev.peers_reachable);
 }
 

@@ -6,8 +6,6 @@
 #define FILE_DELETED     FLAG(2) // considered to be deleted
 #define FILE_ENCRYPTED   FLAG(3) // file chunks are encrypted
 
-#define CHUNK_SIZE (500 * 1024) // 512kB
-
 struct file_chunk_s {
     size_t size;
     int    part;

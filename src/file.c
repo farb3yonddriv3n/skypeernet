@@ -17,20 +17,22 @@ int file_chunks(const char *filename, size_t nbytes,
     int i;
     *chunks  = NULL;
     *nchunks = 0;
-    for (i = 0; (i * CHUNK_SIZE) < nbytes; i++) {
+    size_t chunk_size = psig->cfg.net.max.chunk_size;
+    for (i = 0; (i * chunk_size) < nbytes; i++) {
         *chunks = realloc(*chunks, sizeof(**chunks) * (i + 1));
         if (*chunks == NULL) return -1;
         struct file_chunk_s *fc = &((*chunks)[i]);
-        fc->size = (nbytes < CHUNK_SIZE) ? nbytes :
-                   (((i + 1) * CHUNK_SIZE) > nbytes ?
-                   nbytes - (i * CHUNK_SIZE) :
-                   CHUNK_SIZE);
+        fc->size = (nbytes < chunk_size) ? nbytes :
+                   (((i + 1) * chunk_size) > nbytes ?
+                   nbytes - (i * chunk_size) :
+                   chunk_size);
         fc->part = i;
         unsigned char *fpart;
         size_t         nfpart;
-        if (os.filepart(filename, i * CHUNK_SIZE, fc->size, (char **)&fpart,
+        if (os.filepart(filename, i * chunk_size, fc->size, (char **)&fpart,
                         &nfpart) != 0) return -1;
-        unsigned char fpartenc[CHUNK_SIZE];
+        unsigned char *fpartenc = malloc(chunk_size);
+        if (!fpartenc) return -1;
         unsigned char tag[AES_TAG_SIZE];
         int nfpartenc = aes_encrypt(fpart, nfpart, psig->cfg.keys.local.aes.key,
                                     sizeof(psig->cfg.keys.local.aes.key),
@@ -51,6 +53,7 @@ int file_chunks(const char *filename, size_t nbytes,
                                                           SHA256HEX, fc->hash.content);
         ifr(os.filewrite(cfilename, "wb", (char *)fpartenc, nfpartenc));
         free(fpart);
+        free(fpartenc);
         char buffer[1024];
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
                  fc->size, fc->part,

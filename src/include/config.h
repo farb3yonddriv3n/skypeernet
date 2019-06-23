@@ -44,6 +44,7 @@ struct config_s {
             int upload;
             int download;
             int peer_unreachable;
+            int chunk_size;
         } max;
     } net;
     struct {

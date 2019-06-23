@@ -20,7 +20,7 @@
     (m_nsrc == m_ndst && memcmp(m_src, m_dst, m_ndst) == 0)
 
 #define BIND_STR(m_dst, m_name, m_src, m_obj)\
-        assert(json_object_object_get_ex(m_obj, m_name, &m_src) == true);\
+        json_object_object_get_ex(m_obj, m_name, &m_src);\
         if (json_object_get_string_len(m_src) == sizeof(m_dst))\
             memcpy(m_dst, json_object_get_string(m_src),\
                    json_object_get_string_len(m_src));
