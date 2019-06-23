@@ -11,7 +11,7 @@ enum transaction_e {
 
 struct transaction_s {
     int                version;
-    unsigned int       timestamp;
+    double             timestamp;
     unsigned char      hash[SHA256HEX];
     enum transaction_e type;
 

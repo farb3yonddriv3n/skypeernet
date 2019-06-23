@@ -9,7 +9,7 @@ struct block_s {
     struct {
         unsigned char prev[SHA256HEX];
         unsigned char transactions[SHA256HEX];
-        uint64_t      nounce;
+        uint64_t      nonce;
         unsigned char pow[SHA256HEX];
     } hash;
 

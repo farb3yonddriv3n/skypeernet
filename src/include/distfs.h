@@ -13,6 +13,10 @@ struct distfs_s {
     struct {
         struct ev_timer jobs;
     } ev;
+    struct {
+        pthread_mutex_t mutex;
+        bool            state;
+    } mining;
 };
 
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc);

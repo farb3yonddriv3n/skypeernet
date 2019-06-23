@@ -1,5 +1,7 @@
 #include <common.h>
 
+static char miningtarget[6];
+
 static int mallocz(struct block_s **b)
 {
     *b = malloc(sizeof(**b));
@@ -16,26 +18,26 @@ static int init(struct block_s **b, unsigned char *prev_hash)
 }
 
 static void hash_calc(char *buffer, const int nbuffer, unsigned char *pow,
-                      const uint64_t nounce, unsigned char *prev_hash,
+                      const uint64_t nonce, unsigned char *prev_hash,
                       unsigned char *transactions)
 {
     snprintf(buffer, nbuffer, "%.*s%.*s%ld",
              SHA256HEX, transactions,
              SHA256HEX, prev_hash,
-             nounce);
+             nonce);
     sha256hex((unsigned char *)buffer, strlen(buffer), pow);
 }
 
 static int mine(struct block_s *b)
 {
+    int i;
     char buffer[1024];
-    char target[2];
-    memset(target, '0', sizeof(target));
-    for (b->hash.nounce = 0; /* void */; b->hash.nounce++) {
+    memset(miningtarget, '0', sizeof(miningtarget));
+    for (b->hash.nonce = 0, i = 0; /* void */; b->hash.nonce++, i++) {
         hash_calc(buffer, sizeof(buffer), b->hash.pow,
-                  b->hash.nounce, b->hash.prev,
+                  b->hash.nonce, b->hash.prev,
                   b->hash.transactions);
-        if (memcmp(b->hash.pow, target, sizeof(target)) == 0) break;
+        if (memcmp(b->hash.pow, miningtarget, sizeof(miningtarget)) == 0) break;
     }
     return 0;
 }
@@ -56,12 +58,19 @@ static int validate(struct block_s *b, bool *valid)
     unsigned char md[SHA256HEX];
     *valid = true;
 
-    hash_calc(buffer, sizeof(buffer), md, b->hash.nounce,
+    memset(miningtarget, '0', sizeof(miningtarget));
+    if (memcmp(miningtarget, b->hash.pow, sizeof(miningtarget)) != 0) {
+        *valid = false;
+        return 0;
+    }
+    hash_calc(buffer, sizeof(buffer), md, b->hash.nonce,
               b->hash.prev, b->hash.transactions);
     if (memcmp(md, b->hash.pow, SHA256HEX) != 0) {
         *valid = false;
         return 0;
     }
+
+    if (b->transactions.size > 1) return -1;
 
     size_t i;
     unsigned char *prev = b->hash.prev;
@@ -144,7 +153,7 @@ static int load(struct block_s **b, const json_object *bobj)
     BIND_STR((*b)->hash.prev,        "prev",        obj, bhash);
     BIND_STR((*b)->hash.pow,         "pow",         obj, bhash);
     BIND_STR((*b)->hash.transactions,"transactions",obj, bhash);
-    BIND_INT((*b)->hash.nounce,      "nounce",      obj, bhash);
+    BIND_INT((*b)->hash.nonce,      "nonce",      obj, bhash);
     BIND_INT((*b)->index,            "index",       obj, (json_object *)bobj);
 
     json_object *transactions;
@@ -180,8 +189,8 @@ static int save(const struct block_s *b, json_object **blockobj)
     json_object *thash = json_object_new_string_len((const char *)b->hash.transactions,
                                                     sizeof(b->hash.transactions));
     json_object_object_add(hash, "transactions", thash);
-    json_object *nounce = json_object_new_int64(b->hash.nounce);
-    json_object_object_add(hash, "nounce", nounce);
+    json_object *nonce = json_object_new_int64(b->hash.nonce);
+    json_object_object_add(hash, "nonce", nonce);
 
     int i;
     json_object *transactions = json_object_new_array();

@@ -181,12 +181,13 @@ static int online(struct peer_s *p, struct world_peer_s *wp)
     return distfs_command_send(p->user.data, DISTFS_HELLO, wp->host, wp->port);
 }
 
-static bool mining = false;
-
-static void *mine_thread_fail(const char *file, const int line)
+static void *mine_thread_fail(struct distfs_s *dfs, const char *file,
+                              const int line)
 {
     syslog(LOG_ERR, "Error at %s:%d", file, line);
-    mining = false;
+    pthread_mutex_lock(&dfs->mining.mutex);
+    dfs->mining.state = false;
+    pthread_mutex_unlock(&dfs->mining.mutex);
     return NULL;
 }
 
@@ -210,10 +211,9 @@ static int mine_block_file(struct distfs_s *dfs)
 
 static void *mine(void *data)
 {
-    if (!data)
-        return mine_thread_fail(__FILE__, __LINE__);
-    struct distfs_s *dfs = data;
-    // TODO: copy transactions and clean
+    struct distfs_s *dfs = (struct distfs_s *)data;
+    if (!dfs)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     int cb(struct list_s *l, void *ut, void *ud) {
         struct transaction_s *t = (struct transaction_s *)ut;
         struct block_s       *b = (struct block_s *)ud;
@@ -223,37 +223,50 @@ static void *mine(void *data)
     }
     size_t size;
     if (root.blocks.size(dfs->blocks.local, &size) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     unsigned char *prev_block;
     if (size == 0) prev_block = (unsigned char *)DISTFS_BASE_ROOT_HASH;
     else           prev_block = dfs->blocks.local->hash;
     struct block_s *b;
     if (block.init(&b, prev_block) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (list.map(&dfs->transactions, cb, b) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (block.transactions.lock(b) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    double start;
+    if (os.gettimems(&start) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (block.mine(b) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    double end;
+    if (os.gettimems(&end) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (root.blocks.add(dfs->blocks.local, b) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (mine_block_file(dfs) != 0)
-    //if (root.data.save.file(dfs->blocks.local, BLOCK_FILE) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (list.clean(&dfs->transactions) != 0)
-        return mine_thread_fail(__FILE__, __LINE__);
-    mining = false;
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    pthread_mutex_lock(&dfs->mining.mutex);
+    dfs->mining.state = false;
+    pthread_mutex_unlock(&dfs->mining.mutex);
+    printf("Mining finished. It took %f seconds\n", end - start);
     return NULL;
 }
 
 static int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc)
 {
     int size;
+    ifr(pthread_mutex_lock(&dfs->mining.mutex));
     ifr(list.size(&dfs->transactions, &size));
-    if (size < 1 || mining) return 0;
+    if (size < 1 || dfs->mining.state) {
+        ifr(pthread_mutex_unlock(&dfs->mining.mutex));
+        return 0;
+    }
     pthread_t m;
-    mining = true;
+    dfs->mining.state = true;
+    ifr(pthread_mutex_unlock(&dfs->mining.mutex));
     if (pthread_create(&m, NULL, mine, dfs) != 0) return -1;
     return 0;
 }
@@ -447,6 +460,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     }
     ifr(blocks_load(dfs));
     ifr(job.data.load(dfs));
+    ifr(pthread_mutex_init(&dfs->mining.mutex, NULL));
     return 0;
 }
 

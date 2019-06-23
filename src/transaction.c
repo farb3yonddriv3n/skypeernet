@@ -54,7 +54,7 @@ static void hash_calc(struct transaction_s *t, unsigned char *sub_hash,
                       unsigned char *dst_hash)
 {
     char buffer[2048];
-    snprintf(buffer, sizeof(buffer), "%d%d%d%.*s",
+    snprintf(buffer, sizeof(buffer), "%d%f%d%.*s",
              t->version,
              t->timestamp,
              t->type,
@@ -76,7 +76,7 @@ static int init(struct transaction_s **t,
     if (mallocz(t) != 0) return -1;
 
     (*t)->version   = VERSION;
-    (*t)->timestamp = 100;
+    ifr(os.gettimems(&((*t)->timestamp)));
     (*t)->type      = param->type;
 
     unsigned char sub_hash[SHA256HEX];
@@ -115,7 +115,7 @@ static unsigned char *hash(struct transaction_s *t)
 static void metadump(struct transaction_s *t)
 {
     printf("Version: %d\n",   t->version);
-    printf("Timestamp: %d\n", t->timestamp);
+    printf("Timestamp: %f\n", t->timestamp);
     printf("Hash: %.*s\n",    (int)sizeof(t->hash), t->hash);
     printf("Type: %d\n",      t->type);
 }
@@ -130,9 +130,10 @@ static int load(struct transaction_s **t, json_object *tobj)
     if (mallocz(t) != 0) return -1;
 
     json_object *obj;
-    BIND_INT((*t)->version,   "version",   obj, tobj);
-    BIND_INT((*t)->timestamp, "timestamp", obj, tobj);
-    BIND_STR((*t)->hash,      "hash",      obj, tobj);
+    BIND_INT((*t)->version,      "version",   obj, tobj);
+    BIND_DOUBLE((*t)->timestamp, "timestamp", obj, tobj);
+    BIND_STR((*t)->hash,         "hash",      obj, tobj);
+    BIND_INT((*t)->type,         "type",      obj, tobj);
 
     json_object *blockhash;
     json_object_object_get_ex(tobj, "blockhash", &blockhash);
@@ -150,7 +151,7 @@ static int save(struct transaction_s *t, json_object **tobj)
     json_object *version = json_object_new_int(t->version);
     json_object_object_add(*tobj, "version", version);
 
-    json_object *timestamp = json_object_new_int(t->timestamp);
+    json_object *timestamp = json_object_new_double(t->timestamp);
     json_object_object_add(*tobj, "timestamp", timestamp);
 
     json_object *thash = json_object_new_string_len((const char *)t->hash,

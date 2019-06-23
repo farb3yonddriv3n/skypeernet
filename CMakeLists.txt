@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.9)
 
 project(peer C)
 project(tracker C)
+project(validate C)
 
 if(NOT UNIX)
     message(FATAL_ERROR "Only *nix like systems are supported.")
@@ -9,7 +10,7 @@ endif()
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE debug)
+    set(CMAKE_BUILD_TYPE release)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=gnu11")
@@ -62,31 +63,37 @@ add_library(skypeernetobj OBJECT ${srcs})
 
 add_executable(peer $<TARGET_OBJECTS:skypeernetobj> src/mpeer.c)
 add_executable(tracker $<TARGET_OBJECTS:skypeernetobj> src/mtracker.c)
+add_executable(validate $<TARGET_OBJECTS:skypeernetobj> tools/validate/main.c)
 
 include_directories(src/include)
 
 target_link_libraries(peer m)
 target_link_libraries(tracker m)
+target_link_libraries(validate m)
+
+find_package(Threads REQUIRED)
+target_link_libraries(peer ${CMAKE_THREAD_LIBS_INIT})
 
 find_package(OpenSSL REQUIRED)
 target_link_libraries(peer ${OPENSSL_LIBRARIES})
 target_link_libraries(tracker ${OPENSSL_LIBRARIES})
+target_link_libraries(validate ${OPENSSL_LIBRARIES})
 include_directories(${OPENSSL_INCLUDE_DIR})
 
 include(libev.cmake)
 include_directories(${LIBEV_INCLUDE_DIR})
 target_link_libraries(peer ${LIBEV_LIBRARY})
 target_link_libraries(tracker ${LIBEV_LIBRARY})
+target_link_libraries(validate ${LIBEV_LIBRARY})
 
 include(json-c.cmake)
 include_directories(${JSON-C_INCLUDE_DIR})
 target_link_libraries(peer ${JSON-C_LIBRARY})
 target_link_libraries(tracker ${JSON-C_LIBRARY})
+target_link_libraries(validate ${JSON-C_LIBRARY})
 
 include(readline.cmake)
 include_directories(${Readline_INCLUDE_DIR})
 target_link_libraries(peer ${Readline_LIBRARY})
 target_link_libraries(tracker ${Readline_LIBRARY})
-
-find_package(Threads REQUIRED)
-target_link_libraries(peer ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(validate ${Readline_LIBRARY})
