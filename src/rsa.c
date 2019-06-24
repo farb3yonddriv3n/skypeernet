@@ -1,10 +1,6 @@
 #include <common.h>
 
-#define KEY_LENGTH  2048
-#define PUB_EXP     3
-#define PRINT_KEYS
-#define WRITE_TO_FILE
-
+#define KEY_BITS 2048
 #define KEY_PRIV ".priv.key"
 #define KEY_PUB  ".pub.key"
 
@@ -94,7 +90,17 @@ int rsa_generate()
     int  pub_len;
     char *pri_key;
     char *pub_key;
-    RSA *keypair = RSA_generate_key(KEY_LENGTH, PUB_EXP, NULL, NULL);
+    BIGNUM *bn;
+    bn = BN_new();
+    BN_set_word(bn, RSA_F4);
+    RSA *keypair = RSA_new();
+    if (!keypair) return -1;
+    printf("Generating %d bits RSA key\n", KEY_BITS);
+    if (RSA_generate_key_ex(keypair, KEY_BITS, bn, NULL) != 1)
+        return -1;
+    printf("Generated\n");
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_set1_RSA(pkey, keypair);
 
     BIO *pri = BIO_new(BIO_s_mem());
     BIO *pub = BIO_new(BIO_s_mem());
@@ -120,6 +126,8 @@ int rsa_generate()
     ret = eioie_fwrite(KEY_PUB, "w", pub_key, pub_len);
     if (ret != 0) return -1;
 
+    BN_free(bn);
+    EVP_PKEY_free(pkey);
     RSA_free(keypair);
     BIO_free_all(pub);
     BIO_free_all(pri);
