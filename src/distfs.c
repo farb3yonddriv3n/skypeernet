@@ -1,10 +1,5 @@
 #include <common.h>
 
-static int transaction_clean(void *t)
-{
-    return transaction.clean((struct transaction_s *)t);
-}
-
 static int transaction_locked(struct distfs_s *dfs, bool *locked)
 {
     if (!dfs) return -1;
@@ -22,7 +17,7 @@ int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc)
     if (strlen(argv[1]) > 128) return -1;
     int size;
     ifr(list.size(&dfs->transactions, &size));
-    if (size > 1) {
+    if (size > 0) {
         printf("Exactly one transaction allowed per block.\n");
         return 0;
     }
@@ -39,12 +34,18 @@ int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc)
                                                   argv[1]);
     param.action.add.pathname = pathname;
     ifr(transaction.init(&t, &param));
-    return list.add(&dfs->transactions, t, NULL);
+    return list.add(&dfs->transactions, t, transaction.clean);
 }
 
 int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs || !argv) return -1;
+    int size;
+    ifr(list.size(&dfs->transactions, &size));
+    if (size > 0) {
+        printf("Exactly one transaction allowed per block.\n");
+        return 0;
+    }
     bool locked;
     ifr(transaction_locked(dfs, &locked));
     if (locked) return 0;
@@ -60,6 +61,7 @@ int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc)
     ifr(transaction.data.save(f->parent, &obj));
     struct transaction_s *t;
     ifr(transaction.data.load(&t, obj));
+    json_object_put(obj);
     return list.add(&dfs->transactions, t, NULL);
 }
 

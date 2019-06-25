@@ -188,8 +188,9 @@ static int find(struct transaction_s *t, unsigned char *h,
     return process(PROCESS_FIND, t, &param, NULL);
 }
 
-static int clean(struct transaction_s *t)
+static int clean(void *tu)
 {
+    struct transaction_s *t = (struct transaction_s *)tu;
     if (!t) return -1;
     if (process(PROCESS_CLEAN, t, NULL, NULL) != 0) return -1;
     free(t);

@@ -37,7 +37,6 @@ static int blocks_append(struct root_s *r, const json_object *blockobj)
 static int load_object(struct root_s **r, const json_object *obj)
 {
     if (!r || !obj) return -1;
-
     if (root.init(r) != 0) return -1;
     json_object *blocks;
     json_object_object_get_ex((json_object *)obj, "blocks", &blocks);

@@ -31,7 +31,7 @@ int file_chunks(const char *filename, size_t nbytes,
         size_t         nfpart;
         if (os.filepart(filename, i * chunk_size, fc->size, (char **)&fpart,
                         &nfpart) != 0) return -1;
-        unsigned char *fpartenc = malloc(chunk_size);
+        unsigned char *fpartenc = malloc(fc->size);
         if (!fpartenc) return -1;
         unsigned char tag[AES_TAG_SIZE];
         int nfpartenc = aes_encrypt(fpart, nfpart, psig->cfg.keys.local.aes.key,

@@ -61,9 +61,11 @@ static int dfs_auth(struct peer_s *p, int host,
                     &dec, &ndec));
     p->send_buffer.type = BUFFER_AUTH_REPLY;
     sn_setr(p->send_buffer.u.auth.str, (char *)dec, ndec);
-    return payload.send(p, COMMAND_AUTH_REPLY,
-                        host, port, 0, 0,
-                        NULL);
+    ifr(payload.send(p, COMMAND_AUTH_REPLY,
+                     host, port, 0, 0,
+                     NULL));
+    free(dec);
+    return 0;
 }
 
 static int dfileask(struct peer_s *p, int host,
@@ -218,7 +220,12 @@ static void *mine(void *data)
         struct transaction_s *t = (struct transaction_s *)ut;
         struct block_s       *b = (struct block_s *)ud;
         if (!l || !ut || !ud) return -1;
-        ifr(block.transactions.add(b, t));
+        json_object *obj;
+        ifr(transaction.data.save(t, &obj));
+        struct transaction_s *tl;
+        ifr(transaction.data.load(&tl, obj));
+        ifr(block.transactions.add(b, tl));
+        json_object_put(obj);
         return 0;
     }
     size_t size;
@@ -231,6 +238,8 @@ static void *mine(void *data)
     if (block.init(&b, prev_block) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (list.map(&dfs->transactions, cb, b) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (list.clean(&dfs->transactions) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (block.transactions.lock(b) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
@@ -245,8 +254,6 @@ static void *mine(void *data)
     if (root.blocks.add(dfs->blocks.local, b) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
     if (mine_block_file(dfs) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (list.clean(&dfs->transactions) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
     pthread_mutex_lock(&dfs->mining.mutex);
     dfs->mining.state = false;

@@ -70,7 +70,10 @@ static int validate(struct block_s *b, bool *valid)
         return 0;
     }
 
-    if (b->transactions.size > 1) return -1;
+    if (b->transactions.size > 1) {
+        *valid = false;
+        return 0;
+    }
 
     size_t i;
     unsigned char *prev = b->hash.prev;

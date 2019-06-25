@@ -26,6 +26,9 @@ static int peer_auth(struct peer_s *p, struct world_peer_s *wp)
     sn_setr(p->send_buffer.u.auth.str, (char *)authstr, nauthstr);
     ifr(payload.send(p, COMMAND_AUTH,
                      wp->host, wp->port, 0, 0, NULL));
+    free(authstr);
+    RSA_free(tmpkey);
+    sn_free(strkey);
     return 0;
 }
 

@@ -61,7 +61,7 @@ struct module_transaction_s {
     unsigned char *(*hash)(struct transaction_s *t);
     int (*find)(struct transaction_s *t, unsigned char *h,
                 void **found);
-    int (*clean)(struct transaction_s *t);
+    int (*clean)(void *tu);
     struct {
         int (*load)(struct transaction_s **t, json_object *tobj);
         int (*save)(struct transaction_s *t, json_object **tobj);
