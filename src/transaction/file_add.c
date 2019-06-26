@@ -253,6 +253,21 @@ static int dump(struct transaction_s *t)
            key ? "Yes" : "No",
            fsexists ? "Yes" : "No",
            ndesc, desc);
+    int i;
+    printf("\t\t >| %59sChunk | Downloaded | \n", " ");
+    for (i = 0; i < f->chunks.size; i++) {
+        char chunkpath[256];
+        snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s",
+                 psig->cfg.dir.download,
+                 (int )sizeof(f->chunks.array[i].hash.content),
+                 f->chunks.array[i].hash.content);
+        bool cexists;
+        ifr(os.fileexists(chunkpath, &cexists));
+        printf("\t\t >| %.*s |        %3s |\n",
+               (int )sizeof(f->chunks.array[i].hash.content),
+               f->chunks.array[i].hash.content,
+               cexists ? "Yes" : "No");
+    }
     if (desc) free(desc);
     return 0;
 }

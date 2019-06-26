@@ -324,6 +324,18 @@ static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
     return  0;
 }
 
+static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs || !argv) return -1;
+    unsigned char *h = (unsigned char *)argv[1];
+    bool removed;
+    ifr(job.remove(&dfs->jobs, h, strlen((const char *)h), &removed));
+    if (removed) printf ("Job %s removed\n", h);
+    else         printf ("Unable to remove job %s\n", h);
+    return  0;
+}
+
+
 static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
@@ -379,6 +391,7 @@ static const struct { const char *alias[8];
     { { "ja", "jobadd" }, 2, 1, dfs_job_add },
     { { "js", "jobshow" }, 2, 0, dfs_job_show },
     { { "jf", "jobfinalize" }, 2, 1, dfs_job_finalize },
+    { { "jr", "jobremove" }, 2, 1, dfs_job_remove },
     { { "kd", "keysdump" }, 2, 0, dfs_keysdump },
 };
 

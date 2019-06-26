@@ -51,6 +51,8 @@ struct module_job_s {
     int (*finalize)(struct config_s *cfg, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized);
     int (*show)(struct config_s *cfg, struct list_s *jobs);
+    int (*remove)(struct list_s *jobs, unsigned char *file,
+                  int nfile, bool *removed);
     struct {
         int (*save)(struct distfs_s *dfs);
         int (*load)(struct distfs_s *dfs);

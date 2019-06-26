@@ -3,6 +3,11 @@
 #define MAX_JOB_CHUNK_IDLE 10.0f
 #define JOBS_TMP_FILE      ".jobs.tmp"
 
+struct job_find_s {
+    unsigned char *file;
+    struct job_s  *found;
+};
+
 static int clean(void *uj)
 {
     if (!uj) return -1;
@@ -42,6 +47,18 @@ static int chunk_state(struct job_s *j, struct job_chunk_s *jc,
     return 0;
 }
 
+static int find_job(struct list_s *l, void *uj, void *ud)
+{
+    struct job_s      *j  = (struct job_s *)uj;
+    struct job_find_s *jf = (struct job_find_s *)ud;
+    if (dmemcmp(j->file.name, sizeof(j->file.name),
+                jf->file, SHA256HEX)) {
+        jf->found = j;
+        return 1;
+    }
+    return 0;
+}
+
 static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote,
                unsigned char *file, int nfile, bool *found,
                bool *added, bool *exists)
@@ -53,17 +70,6 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
     if (os.fileexists(filename, exists));
     if (*exists) return 0;
     *found = *added = false;
-    struct job_find_s { unsigned char *file; struct job_s *found; };
-    int find_job(struct list_s *l, void *uj, void *ud) {
-        struct job_s      *j  = (struct job_s *)uj;
-        struct job_find_s *jf = (struct job_find_s *)ud;
-        if (dmemcmp(j->file.name, sizeof(j->file.name),
-                    jf->file, SHA256HEX)) {
-            jf->found = j;
-            return 1;
-        }
-        return 0;
-    }
     struct job_find_s jf = { .file = file, .found = NULL };
     ifr(list.map(jobs, find_job, &jf));
     if (jf.found) {
@@ -207,6 +213,21 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
         syslog(LOG_ERR, "Resuming jobs failed");
 }
 
+static int job_remove(struct list_s *jobs, unsigned char *file,
+                      int nfile, bool *removed)
+{
+    if (!jobs || !file) return -1;
+    if (nfile != SHA256HEX) return -1;
+    *removed = false;
+    struct job_find_s jf = { .file = file, .found = NULL };
+    ifr(list.map(jobs, find_job, &jf));
+    if (jf.found) {
+        ifr(list.del(jobs, jf.found));
+        *removed = true;
+    }
+    return 0;
+}
+
 static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized)
 {
@@ -287,7 +308,6 @@ static int update(const char *downloaddir, struct list_s *jobs,
     if (cf.foundj->counter.done == cf.foundj->chunks.size) {
         printf("Job done: %.*s\n", (int)sizeof(cf.foundj->file.name),
                                    cf.foundj->file.name);
-        //ifr(list.del(jobs, cf.foundj));
     }
     return 0;
 }
@@ -408,6 +428,7 @@ const struct module_job_s job = {
     .resume    = resume,
     .finalize  = finalize,
     .show      = show,
+    .remove    = job_remove,
     .data.save = data_save,
     .data.load = data_load,
 };

@@ -234,7 +234,7 @@ static int dump(struct root_s *r, struct config_s *cfg)
     printf("Root pubkeyhash: \33[1;31m%.*s\33[m\n",
            (int )sizeof(r->pubkeyhash),
            r->pubkeyhash);
-    printf(" | %56sFilecode |        Size | Dec | Fin | Filename | \n", " ");
+    printf(" | %56sFilehash |        Size | Dec | Fin | Filename | \n", " ");
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         struct block_s *b = r->blocks.array[i];
