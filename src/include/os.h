@@ -33,6 +33,10 @@ struct module_os_s {
     int (*readkeys)(struct config_s *cfg,
                     int (*cb)(struct config_s *cfg, const char *fullpath,
                               const char *filename));
+    int (*pipes)(struct peer_s *p);
+    int (*pipe_open)(struct peer_s *p, const char *fullpath, unsigned int flags,
+                     int *fd, ev_io *ev, unsigned int evflags,
+                     void (*cb)(EV_P_ ev_io *w, int revents));
 };
 
 const struct module_os_s os;

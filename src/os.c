@@ -370,6 +370,37 @@ static int partexists(struct config_s *cfg, const char *startswith,
     return 0;
 }
 
+static int pipe_open(struct peer_s *p, const char *fullpath, unsigned int flags,
+                     int *fd, ev_io *ev, unsigned int evflags,
+                     void (*cb)(EV_P_ ev_io *w, int revents))
+{
+    if (!p || !fullpath || !fd || !ev || !cb) return -1;
+    *fd = open(fullpath, flags);
+    if (*fd == -1) return 0;
+    ev_io_init(ev, cb, *fd, evflags);
+    ev->data = p;
+    if (evflags == EV_READ)
+        ev_io_start(p->ev.loop, ev);
+    return 0;
+}
+
+static int pipes(struct peer_s *p)
+{
+    if (!p) return -1;
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    if (stat(p->cfg.api.pipes.write, &st) != 0)
+        mkfifo(p->cfg.api.pipes.write, 0666);
+    memset(&st, 0, sizeof(st));
+    if (stat(p->cfg.api.pipes.read, &st) != 0)
+        mkfifo(p->cfg.api.pipes.read, 0666);
+    ifr(pipe_open(p, p->cfg.api.pipes.read, O_RDONLY|O_NONBLOCK,
+                  &p->api.pipes.read, &p->api.ev.read, EV_READ,
+                  api.ev.read));
+    p->api.cb.message = api_message_write;
+    return 0;
+}
+
 const struct module_os_s os = {
     .filepart      = filepart,
     .fileparts     = fileparts,
@@ -389,4 +420,6 @@ const struct module_os_s os = {
     .gettimems     = gettimems,
     .getpartsdir   = getpartsdir,
     .readkeys      = readkeys,
+    .pipes         = pipes,
+    .pipe_open     = pipe_open,
 };

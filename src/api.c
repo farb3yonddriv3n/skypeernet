@@ -1,0 +1,185 @@
+#include <common.h>
+
+struct api_buffer_s {
+    char *buffer;
+    int   length;
+};
+
+enum api_e {
+    API_LISTPEERS,
+    API_MESSAGE,
+};
+
+struct api_command_s {
+    enum api_e cmd;
+    int (*read)(struct peer_s *p, json_object *obj);
+};
+
+static int ab_clean(void *ud)
+{
+    if (!ud) return -1;
+    struct api_buffer_s *ab = (struct api_buffer_s *)ud;
+    free(ab->buffer);
+    free(ab);
+    return 0;
+}
+
+static void api_ev_write(EV_P_ ev_io *w, int revents)
+{
+    if (!w) return;
+    struct peer_s *p = (struct peer_s *)w->data;
+    ev_io_stop(p->ev.loop, &p->api.ev.write);
+    if (revents & EV_READ) {
+        p->api.pipes.write = -1;
+        return;
+    }
+    int cb(struct list_s *l, void *ue, void *ud) {
+        struct api_buffer_s *ab   = (struct api_buffer_s *)ue;
+        int                  pipe = *(int *)ud;
+        int r = write(pipe, ab->buffer, ab->length);
+        if (r != ab->length) return -1;
+        return 0;
+    }
+    list.map(&p->api.buffer, cb, &p->api.pipes.write);
+    list.clean(&p->api.buffer);
+}
+
+static int write_reopen(struct peer_s *p, bool *success)
+{
+    if (!p || !success) return -1;
+    *success = true;
+    if (p->api.pipes.write > 2) return 0;
+    ifr(os.pipe_open(p, p->cfg.api.pipes.write, O_WRONLY|O_NONBLOCK,
+                     &p->api.pipes.write, &p->api.ev.write, EV_WRITE|EV_READ,
+                     api.ev.write));
+    if (p->api.pipes.write == -1) *success = false;
+    return 0;
+}
+
+static int api_write(struct peer_s *p, const char *json, int len)
+{
+    if (!p || !json) return -1;
+    bool success;
+    ifr(write_reopen(p, &success));
+    if (!success) return 0;
+    struct api_buffer_s *ab = malloc(sizeof(*ab));
+    if (!ab) return -1;
+    ab->buffer = malloc(len);
+    if (!ab->buffer) return -1;
+    memcpy(ab->buffer, json, len);
+    ab->length = len;
+    ifr(list.add(&p->api.buffer, ab, ab_clean));
+    ev_io_start(p->ev.loop, &p->api.ev.write);
+    return 0;
+}
+
+int api_message_write(struct peer_s *p, int host, unsigned short port,
+                      char *msg, int len)
+{
+    json_object *obj = json_object_new_object();
+    json_object *command = json_object_new_int(API_MESSAGE);
+    json_object_object_add(obj, "command", command);
+    json_object *jhost = json_object_new_int(host);
+    json_object_object_add(obj, "host", jhost);
+    json_object *jport = json_object_new_int(port);
+    json_object_object_add(obj, "port", jport);
+    json_object *message = json_object_new_string_len((const char *)msg, len);
+    json_object_object_add(obj, "message", message);
+    const char *json = json_object_to_json_string(obj);
+    return api.write(p, json, strlen(json));
+}
+
+static int api_listpeers_read(struct peer_s *p, json_object *obj)
+{
+    int cb(struct list_s *l, void *up, void *ud) {
+        struct world_peer_s *wp    = (struct world_peer_s *)up;
+        json_object         *peers = (json_object *)ud;
+        if (wp->unreachable != 0) return 0;
+        json_object *obj = json_object_new_object();
+        json_object *type = json_object_new_int(wp->type);
+        json_object *host = json_object_new_int(wp->host);
+        json_object *port = json_object_new_int(wp->port);
+        json_object_object_add(obj, "type", type);
+        json_object_object_add(obj, "host", host);
+        json_object_object_add(obj, "port", port);
+        json_object_array_add(peers, obj);
+        return 0;
+    }
+    if (!p || !obj) return -1;
+    json_object *pobj = json_object_new_object();
+    json_object *cmd = json_object_new_int(API_LISTPEERS);
+    json_object_object_add(pobj, "command", cmd);
+    json_object *peers = json_object_new_array();
+    json_object_object_add(pobj, "peers", peers);
+    ifr(list.map(&p->peers, cb, peers));
+    const char *json = json_object_to_json_string(pobj);
+    return api.write(p, json, strlen(json));
+}
+
+static int api_message_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    char msg[256];
+    char hoststr[64];
+    unsigned short port;
+    json_object *tmp;
+    BIND_STRLEN(hoststr, "host",    tmp, obj);
+    BIND_INT(port,       "port",    tmp, obj);
+    BIND_STRLEN(msg,     "message", tmp, obj);
+    long int host = strtol(hoststr, NULL, 10);
+    p->send_buffer.type = BUFFER_MESSAGE;
+    p->send_buffer.u.message.str = msg;
+    return payload.send(p, COMMAND_MESSAGE,
+                        host, port, 0, 0, NULL);
+}
+
+static struct api_command_s cmds[] = {
+    { API_LISTPEERS, api_listpeers_read },
+    { API_MESSAGE,   api_message_read   },
+};
+
+static int api_read(struct peer_s *p, const char *json, int len)
+{
+    if (!p || !json) return -1;
+    json_object *obj;
+    printf("api read\n");
+    if (os.loadjson(&obj, (char *)json, len) == -1) return -1;
+    printf("json parsed %s\n", json_object_to_json_string(obj));
+    enum api_e cmd;
+    json_object *tmp;
+    BIND_INT(cmd, "command", tmp, obj);
+    int i;
+    for (i = 0; i < COUNTOF(cmds); i++) {
+        if (cmds[i].cmd == cmd)
+            return cmds[i].read(p, obj);
+    }
+    return -1;
+}
+
+static void api_ev_read(EV_P_ ev_io *w, int revents)
+{
+    if (!w) {
+        syslog(LOG_ERR, "API read error");
+        return;
+    }
+    struct peer_s *p = w->data;
+    char buffer[512];
+    int n = read(p->api.pipes.read, buffer, sizeof(buffer));
+    if (n == 0) {
+        ev_io_stop(p->ev.loop, &p->api.ev.read);
+        if (os.pipe_open(p, p->cfg.api.pipes.read, O_RDONLY|O_NONBLOCK,
+                         &p->api.pipes.read, &p->api.ev.read, EV_READ,
+                         api.ev.read) != 0)
+            syslog(LOG_ERR, "Pipe cannot be opened for reading");
+        return;
+    }
+    if (api_read(p, buffer, n) != 0)
+        syslog(LOG_ERR, "API read error: %.*s", n, buffer);
+}
+
+const struct module_api_s api = {
+    .read     = api_read,
+    .write    = api_write,
+    .ev.read  = api_ev_read,
+    .ev.write = api_ev_write,
+};

@@ -1,6 +1,6 @@
 #include <common.h>
 
-static char miningtarget[6];
+static char miningtarget[2];
 
 static int mallocz(struct block_s **b)
 {

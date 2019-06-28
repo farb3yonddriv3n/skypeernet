@@ -28,8 +28,9 @@
 #define BIND_STRLEN(m_dst, m_name, m_src, m_obj)\
         json_object_object_get_ex(m_obj, m_name, &m_src);\
         if (json_object_get_string_len(m_src) < sizeof(m_dst))\
-            memcpy(m_dst, json_object_get_string(m_src),\
-                   json_object_get_string_len(m_src));
+            snprintf(m_dst, sizeof(m_dst), "%.*s",\
+                     json_object_get_string_len(m_src),\
+                     json_object_get_string(m_src));
 
 #define BIND_INT(m_dst, m_name, m_src, m_obj)\
         json_object_object_get_ex(m_obj, m_name, &m_src);\

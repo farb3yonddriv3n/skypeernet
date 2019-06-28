@@ -42,6 +42,7 @@ static int message(struct peer_s *p, int host,
     if (!p || !msg) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
+    ifr(p->api.cb.message(p, host, port, msg, len));
     if (!(dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len) &&
         strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0))
         return 0;
@@ -429,6 +430,7 @@ static int clean(struct peer_s *p, void *data)
     ifr(list.clean(&dfs->transactions));
     ifr(job.data.save(dfs));
     ifr(list.clean(&dfs->jobs));
+    ev_io_stop(p->ev.loop, &p->api.ev.read);
     return 0;
 }
 
@@ -481,6 +483,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     ifr(blocks_load(dfs));
     ifr(job.data.load(dfs));
     ifr(pthread_mutex_init(&dfs->mining.mutex, NULL));
+    ifr(os.pipes(dfs->peer));
     return 0;
 }
 

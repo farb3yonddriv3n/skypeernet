@@ -21,6 +21,7 @@
 #include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
@@ -60,5 +61,6 @@
 
 #include <distfs.h>
 #include <job.h>
+#include <api.h>
 
 #endif

@@ -25,6 +25,7 @@ endif()
 
 set(srcs
 src/aes.c
+src/api.c
 src/backtrace.c
 src/base64.c
 src/block.c

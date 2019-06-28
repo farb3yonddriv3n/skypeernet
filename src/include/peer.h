@@ -123,6 +123,21 @@ struct peer_s {
         } cb;
         void *data;
     } user;
+    struct {
+        struct {
+            int read;
+            int write;
+        } pipes;
+        struct {
+            int (*message)(struct peer_s *p, int host, unsigned short port,
+                           char *msg, int len);
+        } cb;
+        struct {
+            struct ev_io write;
+            struct ev_io read;
+        } ev;
+        struct list_s buffer;
+    } api;
 };
 
 struct module_peer_s {

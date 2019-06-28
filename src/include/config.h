@@ -53,6 +53,12 @@ struct config_s {
         char keys[128];
         char finalized[128];
     } dir;
+    struct {
+        struct {
+            char read[256];
+            char write[256];
+        } pipes;
+    } api;
 };
 
 int config_init(struct config_s *cfg);
