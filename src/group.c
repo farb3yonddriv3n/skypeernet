@@ -68,12 +68,17 @@ static int clean(struct group_s *g)
     return 0;
 }
 
-static int dump(struct group_s *g, struct config_s *cfg)
+static int dump(struct group_s *g, struct config_s *cfg, json_object **obj)
 {
     if (!g || !cfg) return -1;
     int i;
+    *obj = json_object_new_object();
+    json_object *roots = json_object_new_array();
+    json_object_object_add(*obj, "roots", roots);
     for (i = 0; i < g->roots.size; i++) {
-        if (root.dump(g->roots.array[i], cfg) != 0) return -1;
+        json_object *robj;
+        if (root.dump(g->roots.array[i], cfg, &robj) != 0) return -1;
+        json_object_array_add(roots, robj);
     }
     return 0;
 }
@@ -148,8 +153,23 @@ static int db_load(struct group_s *g)
     return 0;
 }
 
+static int export(struct group_s *g, void *ud,
+                  int (*cb)(json_object *obj, void *ud))
+{
+    if (!g || !cb) return -1;
+    int i;
+    for (i = 0; i < g->roots.size; i++) {
+        struct root_s *r = g->roots.array[i];
+        json_object *dst;
+        if (root.data.save.object(r, &dst) != 0) return -1;
+        ifr(cb(dst, ud));
+    }
+    return 0;
+}
+
 static int db_save(struct group_s *g)
 {
+    if (!g) return -1;
     int i;
     for (i = 0; i < g->roots.size; i++) {
         struct root_s *r = g->roots.array[i];
@@ -181,6 +201,7 @@ const struct module_group_s group = {
     .compare          = compare,
     .validate         = validate,
     .dump             = dump,
+    .export           = export,
     .find.transaction = find_transaction,
     .find.root        = find_root,
     .clean            = clean,

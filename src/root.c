@@ -228,17 +228,21 @@ static int validate(const struct root_s *r, bool *valid)
     return 0;
 }
 
-static int dump(struct root_s *r, struct config_s *cfg)
+static int dump(struct root_s *r, struct config_s *cfg, json_object **obj)
 {
     if (!r || !cfg) return -1;
-    printf("Root pubkeyhash: \33[1;31m%.*s\33[m\n",
-           (int )sizeof(r->pubkeyhash),
-           r->pubkeyhash);
-    printf(" | %56sFilehash |        Size | Dec | Fin | Filename | \n", " ");
+    *obj = json_object_new_object();
+    json_object *owner = json_object_new_string_len((const char *)r->pubkeyhash,
+                                                    sizeof(r->pubkeyhash));
+    json_object_object_add(*obj, "owner", owner);
+    json_object *blocks = json_object_new_array();
+    json_object_object_add(*obj, "blocks", blocks);
     int i;
     for (i = 0; i < r->blocks.size; i++) {
         struct block_s *b = r->blocks.array[i];
-        if (block.dump(b) != 0) return -1;
+        json_object *bobj;
+        if (block.dump(b, &bobj) != 0) return -1;
+        json_object_array_add(blocks, bobj);
     }
     return 0;
 }

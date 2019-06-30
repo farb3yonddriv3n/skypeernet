@@ -215,12 +215,17 @@ static int size(struct block_s *b, size_t *s)
     return 0;
 }
 
-static int dump(struct block_s *b)
+static int dump(struct block_s *b, json_object **obj)
 {
     if (!b) return -1;
+    *obj = json_object_new_object();
+    json_object *transactions = json_object_new_array();
+    json_object_object_add(*obj, "transactions", transactions);
     int i;
     for (i = 0; i < b->transactions.size; i++) {
-        if (transaction.dump(b->transactions.array[i]) != 0) return -1;
+        json_object *tobj;
+        if (transaction.dump(b->transactions.array[i], &tobj) != 0) return -1;
+        json_object_array_add(transactions, tobj);
     }
     return 0;
 }

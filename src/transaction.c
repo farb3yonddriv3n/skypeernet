@@ -34,7 +34,7 @@ static int process(enum transaction_process_e ptype, struct transaction_s *t,
                     return transaction_module[i].module->validate(t, dst_hash,
                                                                   param->action.validate.valid);
                 case PROCESS_DUMP:
-                    return transaction_module[i].module->dump(t);
+                    return transaction_module[i].module->dump(t, param->action.dump.obj);
                 case PROCESS_IMPORT:
                     return transaction_module[i].module->data.load(t, param->action.load.obj);
                 case PROCESS_EXPORT:
@@ -120,9 +120,10 @@ static void metadump(struct transaction_s *t)
     printf("Type: %d\n",      t->type);
 }
 
-static int dump(struct transaction_s *t)
+static int dump(struct transaction_s *t, json_object **obj)
 {
-    return process(PROCESS_DUMP, t, NULL, NULL);
+    struct transaction_param_s param = { .action.dump.obj = obj };
+    return process(PROCESS_DUMP, t, &param, NULL);
 }
 
 static int load(struct transaction_s **t, json_object *tobj)

@@ -229,7 +229,7 @@ static int save(struct transaction_s *t, json_object **parent)
     return 0;
 }
 
-static int dump(struct transaction_s *t)
+static int dump(struct transaction_s *t, json_object **obj)
 {
     struct file_s *f = &t->action.add;
     struct config_key_s *key;
@@ -247,14 +247,19 @@ static int dump(struct transaction_s *t)
     }
     bool fsexists;
     ifr(os.fileexists(fullpath, &fsexists));
-    printf(" | \33[1;32m%s\33[m | %9ldkB | %3s | %3s | %.*s |\n",
-           f->meta.name,
-           f->meta.size / 1024,
-           key ? "Yes" : "No",
-           fsexists ? "Yes" : "No",
-           ndesc, desc);
+    *obj = json_object_new_object();
+    json_object *name = json_object_new_string((const char *)f->meta.name);
+    json_object *size = json_object_new_int64(f->meta.size);
+    json_object *decryptable = json_object_new_boolean(key ? true : false);
+    json_object *downloaded = json_object_new_boolean(fsexists ? true : false);
+    json_object_object_add(*obj, "name", name);
+    json_object_object_add(*obj, "size", size);
+    json_object_object_add(*obj, "decryptable", decryptable);
+    json_object_object_add(*obj, "downloaded", downloaded);
+
+    json_object *chunks = json_object_new_array();
+    json_object_object_add(*obj, "chunks", chunks);
     int i;
-    printf("\t\t >| %59sChunk | Downloaded | \n", " ");
     for (i = 0; i < f->chunks.size; i++) {
         char chunkpath[256];
         snprintf(chunkpath, sizeof(chunkpath), "%s/%.*s",
@@ -263,10 +268,15 @@ static int dump(struct transaction_s *t)
                  f->chunks.array[i].hash.content);
         bool cexists;
         ifr(os.fileexists(chunkpath, &cexists));
-        printf("\t\t >| %.*s |        %3s |\n",
-               (int )sizeof(f->chunks.array[i].hash.content),
-               f->chunks.array[i].hash.content,
-               cexists ? "Yes" : "No");
+        json_object *chunk = json_object_new_object();
+        json_object *cname = json_object_new_string_len((const char *)f->chunks.array[i].hash.content,
+                             (int )sizeof(f->chunks.array[i].hash.content));
+        json_object *cdownloaded = json_object_new_boolean(cexists ? true : false);
+        json_object *csize = json_object_new_int64(f->chunks.array[i].size);
+        json_object_object_add(chunk, "chunk", cname);
+        json_object_object_add(chunk, "size", csize);
+        json_object_object_add(chunk, "downloaded", cdownloaded);
+        json_object_array_add(chunks, chunk);
     }
     if (desc) free(desc);
     return 0;

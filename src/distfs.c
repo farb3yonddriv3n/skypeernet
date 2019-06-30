@@ -73,7 +73,11 @@ int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc)
     if (locked) return 0;
     int cb(struct list_s *l, void *td, void *ud) {
         struct transaction_s *t = (struct transaction_s *)td;
-        return transaction.dump(t);
+        json_object *obj;
+        ifr(transaction.dump(t, &obj));
+        printf("%s\n", json_object_to_json_string(obj));
+        json_object_put(obj);
+        return 0;
     }
     return list.map(&dfs->transactions, cb, NULL);
 }

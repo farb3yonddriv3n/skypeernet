@@ -49,6 +49,9 @@ struct transaction_param_s {
             unsigned char  *hash;
             void          **found;
         } find;
+        struct {
+            json_object **obj;
+        } dump;
     } action;
 };
 
@@ -57,7 +60,7 @@ struct module_transaction_s {
                 struct transaction_param_s *param);
     int (*validate)(struct transaction_s *t, bool *valid);
     void (*metadump)(struct transaction_s *t);
-    int (*dump)(struct transaction_s *t);
+    int (*dump)(struct transaction_s *t, json_object **obj);
     unsigned char *(*hash)(struct transaction_s *t);
     int (*find)(struct transaction_s *t, unsigned char *h,
                 void **found);
@@ -74,7 +77,7 @@ struct transaction_sub_s {
                 unsigned char *dst_hash);
     int (*validate)(struct transaction_s *t, unsigned char *dst_hash,
                     bool *valid);
-    int (*dump)(struct transaction_s *t);
+    int (*dump)(struct transaction_s *t, json_object **obj);
     int (*find)(struct transaction_s *t, unsigned char *file_hash,
                 void **found);
     int (*clean)(struct transaction_s *t);

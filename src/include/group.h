@@ -14,7 +14,9 @@ struct module_group_s {
                    bool *equal);
     int (*receive)(struct group_s *g, struct transaction_s *t);
     int (*validate)(struct group_s *g, bool *valid);
-    int (*dump)(struct group_s *g, struct config_s *cfg);
+    int (*dump)(struct group_s *g, struct config_s *cfg, json_object **obj);
+    int (*export)(struct group_s *g, void *ud,
+                  int (*cb)(json_object *e, void *ud));
     struct {
         int (*root)(struct group_s *g, unsigned char *h,
                     struct root_s **found);

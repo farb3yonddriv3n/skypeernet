@@ -5,11 +5,6 @@ struct api_buffer_s {
     int   length;
 };
 
-enum api_e {
-    API_LISTPEERS,
-    API_MESSAGE,
-};
-
 struct api_command_s {
     enum api_e cmd;
     int (*read)(struct peer_s *p, json_object *obj);
@@ -56,18 +51,29 @@ static int write_reopen(struct peer_s *p, bool *success)
     return 0;
 }
 
-static int api_write(struct peer_s *p, const char *json, int len)
+static int api_write(struct peer_s *p, enum api_e cmd, json_object *payload)
 {
-    if (!p || !json) return -1;
+    if (!p || !payload) return -1;
     bool success;
     ifr(write_reopen(p, &success));
-    if (!success) return 0;
+    if (!success) {
+        json_object_put(payload);
+        return 0;
+    }
+    json_object *obj  = json_object_new_object();
+    json_object *jcmd = json_object_new_int(cmd);
+    json_object_object_add(obj, "command", jcmd);
+    json_object_object_add(obj, "payload", payload);
+    const char *json = json_object_to_json_string(obj);
+    if (!json) return -1;
+    int len = strlen(json);
     struct api_buffer_s *ab = malloc(sizeof(*ab));
     if (!ab) return -1;
     ab->buffer = malloc(len);
     if (!ab->buffer) return -1;
     memcpy(ab->buffer, json, len);
     ab->length = len;
+    json_object_put(obj);
     ifr(list.add(&p->api.buffer, ab, ab_clean));
     ev_io_start(p->ev.loop, &p->api.ev.write);
     return 0;
@@ -76,44 +82,23 @@ static int api_write(struct peer_s *p, const char *json, int len)
 int api_message_write(struct peer_s *p, int host, unsigned short port,
                       char *msg, int len)
 {
+    if (!p || !msg) return -1;
     json_object *obj = json_object_new_object();
-    json_object *command = json_object_new_int(API_MESSAGE);
-    json_object_object_add(obj, "command", command);
     json_object *jhost = json_object_new_int(host);
     json_object_object_add(obj, "host", jhost);
     json_object *jport = json_object_new_int(port);
     json_object_object_add(obj, "port", jport);
     json_object *message = json_object_new_string_len((const char *)msg, len);
     json_object_object_add(obj, "message", message);
-    const char *json = json_object_to_json_string(obj);
-    return api.write(p, json, strlen(json));
+    return api.write(p, API_MESSAGE, obj);
 }
 
 static int api_listpeers_read(struct peer_s *p, json_object *obj)
 {
-    int cb(struct list_s *l, void *up, void *ud) {
-        struct world_peer_s *wp    = (struct world_peer_s *)up;
-        json_object         *peers = (json_object *)ud;
-        if (wp->unreachable != 0) return 0;
-        json_object *obj = json_object_new_object();
-        json_object *type = json_object_new_int(wp->type);
-        json_object *host = json_object_new_int(wp->host);
-        json_object *port = json_object_new_int(wp->port);
-        json_object_object_add(obj, "type", type);
-        json_object_object_add(obj, "host", host);
-        json_object_object_add(obj, "port", port);
-        json_object_array_add(peers, obj);
-        return 0;
-    }
-    if (!p || !obj) return -1;
-    json_object *pobj = json_object_new_object();
-    json_object *cmd = json_object_new_int(API_LISTPEERS);
-    json_object_object_add(pobj, "command", cmd);
-    json_object *peers = json_object_new_array();
-    json_object_object_add(pobj, "peers", peers);
-    ifr(list.map(&p->peers, cb, peers));
-    const char *json = json_object_to_json_string(pobj);
-    return api.write(p, json, strlen(json));
+    if (!p) return -1;
+    json_object *pobj;
+    ifr(cli.peers.list(p, &pobj));
+    return api.write(p, API_LISTPEERS, pobj);
 }
 
 static int api_message_read(struct peer_s *p, json_object *obj)
@@ -133,27 +118,38 @@ static int api_message_read(struct peer_s *p, json_object *obj)
                         host, port, 0, 0, NULL);
 }
 
+static int api_listfiles_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
+    json_object *gobj;
+    group.dump(dfs->blocks.remote, &p->cfg, &gobj);
+    return api.write(p, API_LISTFILES, gobj);
+}
+
 static struct api_command_s cmds[] = {
     { API_LISTPEERS, api_listpeers_read },
     { API_MESSAGE,   api_message_read   },
+    { API_LISTFILES, api_listfiles_read },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)
 {
     if (!p || !json) return -1;
     json_object *obj;
-    printf("api read\n");
     if (os.loadjson(&obj, (char *)json, len) == -1) return -1;
-    printf("json parsed %s\n", json_object_to_json_string(obj));
     enum api_e cmd;
     json_object *tmp;
     BIND_INT(cmd, "command", tmp, obj);
-    int i;
+    int i, r = -1;
     for (i = 0; i < COUNTOF(cmds); i++) {
-        if (cmds[i].cmd == cmd)
-            return cmds[i].read(p, obj);
+        if (cmds[i].cmd == cmd) {
+            r = cmds[i].read(p, obj);
+            break;
+        }
     }
-    return -1;
+    json_object_put(obj);
+    return r;
 }
 
 static void api_ev_read(EV_P_ ev_io *w, int revents)

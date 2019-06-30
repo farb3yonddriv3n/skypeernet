@@ -2,6 +2,7 @@ import json
 
 API_LISTPEERS = 0
 API_MESSAGE   = 1
+API_LISTFILES = 2
 
 async def message(state, params):
     msg = { "command" : API_MESSAGE,
@@ -13,15 +14,23 @@ async def message(state, params):
     if len(r) != len(obj): return -1
     return 0
 
-async def peerslist(state, params):
+async def listpeers(state, params):
     msg = { "command" : API_LISTPEERS }
     obj = json.dumps(msg)
     r = await state["ftb"].write(obj)
     if len(r) != len(obj): return -1
     return 0
 
-commands = [ { "cmd" : "m", "params" : 3, "func" : message   },
-             { "cmd" : "l", "params" : 0, "func" : peerslist } ]
+async def listfiles(state, params):
+    msg = { "command" : API_LISTFILES }
+    obj = json.dumps(msg)
+    r = await state["ftb"].write(obj)
+    if len(r) != len(obj): return -1
+    return 0
+
+commands = [ { "cmd" : "m",  "params" : 3, "func" : message   },
+             { "cmd" : "l",  "params" : 0, "func" : listpeers },
+             { "cmd" : "lf", "params" : 0, "func" : listfiles } ]
 
 async def parse(state, inpt):
     params = inpt.split(" ")

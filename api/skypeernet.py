@@ -1,6 +1,6 @@
 import asyncio, json, fcntl, os, errno
 from aiofile import AIOFile, Reader, Writer
-import command
+import command, reply
 
 FIFO_BTF = '/tmp/skypeernet_write'
 FIFO_FTB = '/tmp/skypeernet_read'
@@ -8,10 +8,17 @@ FIFO_FTB = '/tmp/skypeernet_read'
 async def trecv(state):
     async with AIOFile(FIFO_BTF, 'r') as fp:
         while True:
-            msg = await fp.read(4096)
+            msg = await fp.read(128)
             if (len(msg) == 0):
                 break
-            print("msg: %s\n" % msg)
+            state["recv"] += msg
+            try:
+                obj = json.loads(state["recv"])
+                if (reply.run(state, obj) != 0):
+                    print("Command failed")
+                state["recv"] = ""
+            except:
+               continue
     await trecv(state)
 
 async def read_input(state):

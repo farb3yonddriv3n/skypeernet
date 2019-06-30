@@ -30,21 +30,47 @@ static int send_file(struct peer_s *p, char **argv, int argc)
                     host, port, TASK_FILE_KEEP);
 }
 
-static int peers_list(struct peer_s *p, char **argv, int argc)
+static int cli_peers_list(struct peer_s *p, json_object **obj)
 {
+    if (!p || !obj) return -1;
     int cb(struct list_s *l, void *uwp, void *ud) {
-        struct world_peer_s *wp = (struct world_peer_s *)uwp;
-        printf(" | %8x | %5d | %4d | %11d |    %d | \33[1;31m%.*s\33[m |\n",
-               wp->host,
-               wp->port,
-               wp->type,
-               wp->unreachable,
-               wp->authed,
-               (int )sizeof(wp->pubkeyhash), wp->pubkeyhash);
+        if (!uwp || !ud) return -1;
+        struct world_peer_s *wp    = (struct world_peer_s *)uwp;
+        json_object         *peers = (json_object *)ud;
+        json_object         *obj   = json_object_new_object();
+        char hexhost[32];
+        snprintf(hexhost, sizeof(hexhost), "%x", wp->host);
+        json_object *host = json_object_new_string(hexhost);
+        json_object_object_add(obj, "host", host);
+        json_object *port = json_object_new_int(wp->port);
+        json_object_object_add(obj, "port", port);
+        json_object *type = json_object_new_int(wp->type);
+        json_object_object_add(obj, "type", type);
+        json_object *unreachable = json_object_new_int(wp->unreachable);
+        json_object_object_add(obj, "unreachable", unreachable);
+        json_object *authed = json_object_new_int(wp->authed);
+        json_object_object_add(obj, "authed", authed);
+        json_object *pubkeyhash = json_object_new_string_len((const char *)wp->pubkeyhash,
+                                                             sizeof(wp->pubkeyhash));
+        json_object_object_add(obj, "pubkeyhash", pubkeyhash);
+        json_object_array_add(peers, obj);
         return 0;
     }
-    printf(" |     Peer |  Port | Type | Unreachable | Auth | %54sPubkeyhash |\n", " ");
-    return list.map(&p->peers, cb, NULL);
+    *obj = json_object_new_object();
+    json_object *peers = json_object_new_array();
+    json_object_object_add(*obj, "peers", peers);
+    return list.map(&p->peers, cb, peers);
+}
+
+static int peers_list(struct peer_s *p, char **argv, int argc)
+{
+    if (!p) return -1;
+    json_object *obj;
+    ifr(cli.peers.list(p, &obj));
+    const char *json = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY);
+    printf("%s\n", json);
+    json_object_put(obj);
+    return 0;
 }
 
 static int tokenize(char *line, char ***argv, int *argc)
@@ -86,7 +112,7 @@ static const struct { const char *alias[8];
     { { "tf", "traffic" },            2, 0, cli_traffic },
 };
 
-int cli(struct peer_s *p, char *line)
+static int init(struct peer_s *p, char *line)
 {
     char **argv = NULL;
     int    argc = 0;
@@ -116,3 +142,8 @@ int cli(struct peer_s *p, char *line)
     if (argv) free(argv);
     return 0;
 }
+
+const struct module_cli_s cli = {
+    .init       = init,
+    .peers.list = cli_peers_list,
+};
