@@ -112,6 +112,8 @@ struct peer_s {
                            char *msg, int len);
             int (*online)(struct peer_s *p,
                           struct world_peer_s *wp);
+            int (*offline)(struct peer_s *p,
+                           struct world_peer_s *wp);
             int (*cli)(struct peer_s *p, char **argv,
                        int argc);
             int (*auth)(struct peer_s *p, int host,
@@ -131,6 +133,8 @@ struct peer_s {
         struct {
             int (*message)(struct peer_s *p, int host, unsigned short port,
                            char *msg, int len);
+            int (*online)(struct peer_s *p, struct world_peer_s *wp);
+            int (*offline)(struct peer_s *p, struct world_peer_s *wp);
         } cb;
         struct {
             struct ev_io write;

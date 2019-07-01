@@ -107,22 +107,37 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
     return 0;
 }
 
-static int show(struct config_s *cfg, struct list_s *jobs)
+static int dump(struct config_s *cfg, struct list_s *jobs, json_object **obj)
 {
-    if (!jobs) return -1;
+    if (!cfg || !jobs || !obj) return -1;
     int cb(struct list_s *l, void *uj, void *ud) {
-        struct job_s *j  = (struct job_s *)uj;
+        struct job_s *j   = (struct job_s *)uj;
+        json_object *jobs = (json_object *)ud;
         struct config_key_s *found;
         ifr(config_keyexists(cfg, j->pubkeyhash, &found));
-        printf("| \33[1;32m%.*s\33[m | %10dkB | %5ld | %d/%d/%d/%d | %s |\n",
-               (int)sizeof(j->file.name), j->file.name,
-               (int)(j->file.size / 1024), j->chunks.size, j->counter.none,
-               j->counter.receiving, j->counter.notfound,
-               j->counter.done, found ? "Yes" : "No");
+        json_object *jj = json_object_new_object();
+        json_object *name = json_object_new_string_len((const char *)j->file.name,
+                                                       sizeof(j->file.name));
+        json_object *size = json_object_new_int64(j->file.size);
+        json_object *chunks_size = json_object_new_int64(j->chunks.size);
+        json_object *counter_none = json_object_new_int(j->counter.none);
+        json_object *counter_receiving = json_object_new_int(j->counter.receiving);
+        json_object *counter_notfound = json_object_new_int(j->counter.notfound);
+        json_object *counter_done = json_object_new_int(j->counter.done);
+        json_object_object_add(jj, "name", name);
+        json_object_object_add(jj, "size", size);
+        json_object_object_add(jj, "chunks_size", chunks_size);
+        json_object_object_add(jj, "counter_none", counter_none);
+        json_object_object_add(jj, "counter_receiving", counter_receiving);
+        json_object_object_add(jj, "counter_notfound", counter_notfound);
+        json_object_object_add(jj, "counter_done", counter_done);
+        json_object_array_add(jobs, jj);
         return 0;
     }
-    printf("| File | Size | Chunks | Counter| Decryptable |\n");
-    return list.map(jobs, cb, NULL);
+    *obj = json_object_new_object();
+    json_object *jjobs = json_object_new_array();
+    json_object_object_add(*obj, "jobs", jjobs);
+    return list.map(jobs, cb, jjobs);
 }
 
 static int chunk_find(struct distfs_s *dfs, unsigned char *filename,
@@ -427,7 +442,7 @@ const struct module_job_s job = {
     .update    = update,
     .resume    = resume,
     .finalize  = finalize,
-    .show      = show,
+    .dump      = dump,
     .remove    = job_remove,
     .data.save = data_save,
     .data.load = data_load,

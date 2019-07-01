@@ -1,8 +1,10 @@
 import json
 
-API_LISTPEERS = 0
-API_MESSAGE   = 1
-API_LISTFILES = 2
+API_LISTPEERS    = 0
+API_MESSAGE      = 1
+API_LISTFILES    = 2
+API_PEER_ONLINE  = 3
+API_PEER_OFFLINE = 4
 
 async def message(state, params):
     msg = { "command" : API_MESSAGE,

@@ -42,6 +42,7 @@ static int message(struct peer_s *p, int host,
     if (!p || !msg) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
+    rl_redraw_prompt_last_line();
     ifr(p->api.cb.message(p, host, port, msg, len));
     if (!(dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len) &&
         strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0))
@@ -180,8 +181,15 @@ static int distfs_command_send(struct distfs_s *dfs, enum distfs_cmd_e cmd,
 static int online(struct peer_s *p, struct world_peer_s *wp)
 {
     printf("New peer: %x:%d of type %d\n", wp->host, wp->port, wp->type);
+    if (p->api.cb.online && p->api.cb.online(p, wp) != 0) return -1;
     if (wp->type == WORLD_PEER_TRACKER) return 0;
     return distfs_command_send(p->user.data, DISTFS_HELLO, wp->host, wp->port);
+}
+
+static int offline(struct peer_s *p, struct world_peer_s *wp)
+{
+    if (p->api.cb.offline && p->api.cb.offline(p, wp) != 0) return -1;
+    return 0;
 }
 
 static void *mine_thread_fail(struct distfs_s *dfs, const char *file,
@@ -343,7 +351,11 @@ static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc)
 static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
-    return job.show(&dfs->peer->cfg, &dfs->jobs);
+    json_object *obj;
+    ifr(job.dump(&dfs->peer->cfg, &dfs->jobs, &obj));
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
 }
 
 static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc)
@@ -465,9 +477,13 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->user.cb.file    = dfile;
     p->user.cb.fileask = dfileask;
     p->user.cb.online  = online;
+    p->user.cb.offline = offline;
     p->user.cb.cli     = dfs_cli;
     p->user.cb.auth    = dfs_auth;
     p->user.data       = dfs;
+    p->api.cb.message  = api_message_write;
+    p->api.cb.online   = api_peer_online;
+    p->api.cb.offline  = api_peer_offline;
     dfs->peer          = p;
     ifr(group.init(&dfs->blocks.remote));
     ev_timer_init(&dfs->ev.jobs, job.resume, .0, 15.0);

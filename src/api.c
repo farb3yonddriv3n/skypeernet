@@ -79,6 +79,35 @@ static int api_write(struct peer_s *p, enum api_e cmd, json_object *payload)
     return 0;
 }
 
+static int api_peer_change(struct peer_s *p, struct world_peer_s *wp,
+                           enum api_e change)
+{
+    if (!p || !wp) return -1;
+    json_object *obj = json_object_new_object();
+    json_object *type = json_object_new_int(wp->type);
+    json_object_object_add(obj, "type", type);
+    char hoststr[32];
+    snprintf(hoststr, sizeof(hoststr), "%x", wp->host);
+    json_object *host = json_object_new_string(hoststr);
+    json_object_object_add(obj, "host", host);
+    json_object *port = json_object_new_int(wp->port);
+    json_object_object_add(obj, "port", port);
+    json_object *pubkeyhash = json_object_new_string_len((const char *)wp->pubkeyhash,
+                                                         sizeof(wp->pubkeyhash));
+    json_object_object_add(obj, "pubkeyhash", pubkeyhash);
+    return api.write(p, change, obj);
+}
+
+int api_peer_online(struct peer_s *p, struct world_peer_s *wp)
+{
+    return api_peer_change(p, wp, API_PEER_ONLINE);
+}
+
+int api_peer_offline(struct peer_s *p, struct world_peer_s *wp)
+{
+    return api_peer_change(p, wp, API_PEER_OFFLINE);
+}
+
 int api_message_write(struct peer_s *p, int host, unsigned short port,
                       char *msg, int len)
 {

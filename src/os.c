@@ -397,7 +397,6 @@ static int pipes(struct peer_s *p)
     ifr(pipe_open(p, p->cfg.api.pipes.read, O_RDONLY|O_NONBLOCK,
                   &p->api.pipes.read, &p->api.ev.read, EV_READ,
                   api.ev.read));
-    p->api.cb.message = api_message_write;
     return 0;
 }
 
