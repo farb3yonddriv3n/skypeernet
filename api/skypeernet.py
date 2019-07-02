@@ -1,6 +1,6 @@
-import asyncio, json, fcntl, os, errno
+import asyncio, json, fcntl, os, errno, sys
 from aiofile import AIOFile, Reader, Writer
-import command, reply, skynet
+import command, reply, skynet, util
 
 FIFO_BTF = '/tmp/skypeernet_write'
 FIFO_FTB = '/tmp/skypeernet_read'
@@ -33,6 +33,13 @@ async def stdinput(state):
 async def ai(state):
     await skynet.run(state)
 
+def get_config():
+    filename = "config/skypeernet.cfg"
+    if(len(sys.argv) == 2):
+        filename = sys.argv[1]
+    c = util.fread(filename, "r")
+    return json.loads(c)
+
 async def run(loop):
     try:
         try:
@@ -42,9 +49,11 @@ async def run(loop):
             if oe.errno != errno.EEXIST:
                 raise
         ftb = await AIOFile(FIFO_FTB, 'w')
-        state = { "peers"    : {},
+        state = { "cfg"      : get_config(),
+                  "peers"    : {},
                   "files"    : {},
                   "messages" : [],
+                  "jobs"     : {},
                   "recv"     : "",
                   "ftb"      : ftb }
         task1 = loop.create_task(piperecv(state))

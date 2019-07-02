@@ -126,6 +126,14 @@ static int gettime(char *buffer, size_t nbuffer)
     return 0;
 }
 
+static int gettimestr(char *buffer, size_t nbuffer)
+{
+    time_t     n = time(NULL);
+    struct tm *t = localtime(&n);
+    strftime(buffer, nbuffer - 1, "%d/%m/%Y %H:%M:%S", t);
+    return 0;
+}
+
 static int finalize(struct config_s *cfg, struct list_s *l,
                     char *fullpath, int nfullpath,
                     char *filename, int nfilename)
@@ -417,6 +425,7 @@ const struct module_os_s os = {
     .loadjsonfile  = load_json_file,
     .loadjson      = load_json,
     .gettimems     = gettimems,
+    .gettimestr    = gettimestr,
     .getpartsdir   = getpartsdir,
     .readkeys      = readkeys,
     .pipes         = pipes,

@@ -42,7 +42,6 @@ static int message(struct peer_s *p, int host,
     if (!p || !msg) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     printf("Message %.*s from %x:%d\n", len, msg, host, port);
-    rl_redraw_prompt_last_line();
     ifr(p->api.cb.message(p, host, port, msg, len));
     if (!(dmemcmp(MSG_HELLO, MSG_HELLO_SIZE, msg, len) &&
         strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0))
@@ -347,8 +346,7 @@ static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc)
     return  0;
 }
 
-
-static int dfs_job_show(struct distfs_s *dfs, char **argv, int argc)
+static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs) return -1;
     json_object *obj;
@@ -405,7 +403,7 @@ static const struct { const char *alias[8];
     { { "ba", "blocksaction" }, 2, 1, dfs_block_xet },
     { { "lf", "listfiles" }, 2, 1, dfs_list_files },
     { { "ja", "jobadd" }, 2, 1, dfs_job_add },
-    { { "js", "jobshow" }, 2, 0, dfs_job_show },
+    { { "jd", "jobdump" }, 2, 0, dfs_job_dump },
     { { "jf", "jobfinalize" }, 2, 1, dfs_job_finalize },
     { { "jr", "jobremove" }, 2, 1, dfs_job_remove },
     { { "kd", "keysdump" }, 2, 0, dfs_keysdump },

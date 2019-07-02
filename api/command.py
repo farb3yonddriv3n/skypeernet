@@ -5,6 +5,7 @@ API_MESSAGE      = 1
 API_LISTFILES    = 2
 API_PEER_ONLINE  = 3
 API_PEER_OFFLINE = 4
+API_JOBDUMP      = 5
 
 async def message(state, params):
     msg = { "command" : API_MESSAGE,
@@ -30,9 +31,18 @@ async def listfiles(state, params):
     if len(r) != len(obj): return -1
     return 0
 
+async def jobdump(state, params):
+    msg = { "command" : API_JOBDUMP }
+    obj = json.dumps(msg)
+    r = await state["ftb"].write(obj)
+    if len(r) != len(obj): return -1
+    return 0
+
 commands = [ { "cmd" : "m",  "params" : 3, "func" : message   },
              { "cmd" : "l",  "params" : 0, "func" : listpeers },
-             { "cmd" : "lf", "params" : 0, "func" : listfiles } ]
+             { "cmd" : "lf", "params" : 0, "func" : listfiles },
+             { "cmd" : "jd", "params" : 0, "func" : jobdump }
+           ]
 
 async def parse(state, inpt):
     params = inpt.split(" ")

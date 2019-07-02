@@ -29,6 +29,7 @@ struct module_os_s {
     int (*loadjson)(json_object **obj, char *content, int ncontent);
     int (*loadjsonfile)(json_object **obj, const char *filename);
     int (*gettimems)(double *result);
+    int (*gettimestr)(char *buffer, size_t nbuffer);
     const char *(*getpartsdir)();
     int (*readkeys)(struct config_s *cfg,
                     int (*cb)(struct config_s *cfg, const char *fullpath,

@@ -7,6 +7,7 @@ enum api_e {
     API_LISTFILES,
     API_PEER_ONLINE,
     API_PEER_OFFLINE,
+    API_JOBSDUMP,
 };
 
 struct module_api_s {
