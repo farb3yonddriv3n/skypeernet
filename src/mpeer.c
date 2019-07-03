@@ -140,7 +140,7 @@ static int dfile(struct peer_s *p, int host,
                              blockname, host, port);
         }
     } else {
-        ifr(job.update(p->cfg.dir.download, &dfs->jobs,
+        ifr(job.update(p, p->cfg.dir.download, &dfs->jobs,
                        filename));
     }
     return 0;
@@ -302,27 +302,6 @@ static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
     return 0;
 }
 
-static int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
-{
-    if (!dfs || !argv) return -1;
-    unsigned char *h = (unsigned char *)argv[1];
-    bool added, found, exists;
-    ifr(job.add(&dfs->peer->cfg, &dfs->jobs, dfs->blocks.remote, h,
-                strlen((const char *)h), &found,
-                &added, &exists));
-    if (exists) {
-        printf("File %s exists, no need to download it\n", h);
-        return 0;
-    }
-    if (!found) {
-        printf("File %s not found\n", h);
-        return 0;
-    }
-    if (added) printf("Job %s added\n", h);
-    else       printf("Job %s exists\n", h);
-    return 0;
-}
-
 static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
 {
     if (!dfs || !argv) return -1;
@@ -396,17 +375,17 @@ static const struct { const char *alias[8];
                       int         argc;
                       int         (*cb)(struct distfs_s *dfs, char **argv, int argc);
                     } cmds[] = {
-    { { "ta", "tadd"  }, 2, 1, dfs_transaction_add  },
-    { { "ts", "tshare"  }, 2, 1, dfs_transaction_share  },
-    { { "tl", "tlist" }, 2, 0, dfs_transaction_list },
-    { { "bm", "bmine" }, 2, 0, dfs_block_mine },
-    { { "ba", "blocksaction" }, 2, 1, dfs_block_xet },
-    { { "lf", "listfiles" }, 2, 1, dfs_list_files },
-    { { "ja", "jobadd" }, 2, 1, dfs_job_add },
-    { { "jd", "jobdump" }, 2, 0, dfs_job_dump },
-    { { "jf", "jobfinalize" }, 2, 1, dfs_job_finalize },
-    { { "jr", "jobremove" }, 2, 1, dfs_job_remove },
-    { { "kd", "keysdump" }, 2, 0, dfs_keysdump },
+    { { "ta", "tadd"  },        2, 1, dfs_transaction_add   },
+    { { "ts", "tshare"  },      2, 1, dfs_transaction_share },
+    { { "tl", "tlist" },        2, 0, dfs_transaction_list  },
+    { { "bm", "bmine" },        2, 0, dfs_block_mine        },
+    { { "ba", "blocksaction" }, 2, 1, dfs_block_xet         },
+    { { "lf", "listfiles" },    2, 1, dfs_list_files        },
+    { { "ja", "jobadd" },       2, 1, dfs_job_add           },
+    { { "jd", "jobdump" },      2, 0, dfs_job_dump          },
+    { { "jf", "jobfinalize" },  2, 1, dfs_job_finalize      },
+    { { "jr", "jobremove" },    2, 1, dfs_job_remove        },
+    { { "kd", "keysdump" },     2, 0, dfs_keysdump          },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)
@@ -482,6 +461,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->api.cb.message  = api_message_write;
     p->api.cb.online   = api_peer_online;
     p->api.cb.offline  = api_peer_offline;
+    p->api.cb.job.done = api_job_done;
     dfs->peer          = p;
     ifr(group.init(&dfs->blocks.remote));
     ev_timer_init(&dfs->ev.jobs, job.resume, .0, 15.0);

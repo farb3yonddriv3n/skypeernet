@@ -136,6 +136,16 @@ static int api_listpeers_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_LISTPEERS, pobj);
 }
 
+int api_job_done(struct peer_s *p, unsigned char *filename,
+                        int nfilename)
+{
+    if (!p || !filename) return -1;
+    json_object *obj = json_object_new_object();
+    json_object *name = json_object_new_string_len((const char *)filename, nfilename);
+    json_object_object_add(obj, "name", name);
+    return api.write(p, API_JOBDONE, obj);
+}
+
 static int api_message_read(struct peer_s *p, json_object *obj)
 {
     if (!p || !obj) return -1;
@@ -171,11 +181,45 @@ static int api_jobsdump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_JOBSDUMP, jobj);
 }
 
+static int api_jobadd_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    char **argv;
+    int argc = 2;
+    argv = malloc(sizeof(char *) * argc);
+    char name[256];
+    json_object *tmp;
+    BIND_STRLEN(name, "name", tmp, obj);
+    argv[0] = NULL;
+    argv[1] = name;
+    ifr(dfs_job_add(p->user.data, argv, argc));
+    free(argv);
+    return 0;
+}
+
+static int api_tshare_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    char **argv;
+    int argc = 2;
+    argv = malloc(sizeof(char *) * argc);
+    char name[256];
+    json_object *tmp;
+    BIND_STRLEN(name, "name", tmp, obj);
+    argv[0] = NULL;
+    argv[1] = name;
+    ifr(dfs_transaction_share(p->user.data, argv, argc));
+    free(argv);
+    return 0;
+}
+
 static struct api_command_s cmds[] = {
     { API_LISTPEERS, api_listpeers_read },
     { API_MESSAGE,   api_message_read   },
     { API_LISTFILES, api_listfiles_read },
     { API_JOBSDUMP,  api_jobsdump_read  },
+    { API_JOBADD,    api_jobadd_read    },
+    { API_TSHARE,    api_tshare_read    },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

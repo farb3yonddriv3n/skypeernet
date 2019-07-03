@@ -290,10 +290,10 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
     return 0;
 }
 
-static int update(const char *downloaddir, struct list_s *jobs,
-                  const char *filename)
+static int update(struct peer_s *p, const char *downloaddir,
+                  struct list_s *jobs, const char *filename)
 {
-    if (!jobs || !filename) return -1;
+    if (!p || !downloaddir || !jobs || !filename) return -1;
     struct chunk_find_s { const char         *filename;
                           struct job_s       *foundj;
                           struct job_chunk_s *foundjc; };
@@ -321,7 +321,10 @@ static int update(const char *downloaddir, struct list_s *jobs,
     }
     ifr(chunk_state(cf.foundj, cf.foundjc, JOBCHUNK_DONE));
     if (cf.foundj->counter.done == cf.foundj->chunks.size) {
-        printf("Job done: %.*s\n", (int)sizeof(cf.foundj->file.name),
+        if (p->api.cb.job.done && p->api.cb.job.done(p, cf.foundj->file.name,
+                                                     (int )sizeof(cf.foundj->file.name)) != 0)
+            return -1;
+        printf("Job done: %.*s\n", (int )sizeof(cf.foundj->file.name),
                                    cf.foundj->file.name);
     }
     return 0;

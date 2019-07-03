@@ -81,3 +81,25 @@ int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc)
     }
     return list.map(&dfs->transactions, cb, NULL);
 }
+
+int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
+{
+    if (!dfs || !argv || argc != 2) return -1;
+    if (strlen(argv[1]) != SHA256HEX) return -1;
+    unsigned char *h = (unsigned char *)argv[1];
+    bool added, found, exists;
+    ifr(job.add(&dfs->peer->cfg, &dfs->jobs, dfs->blocks.remote, h,
+                strlen((const char *)h), &found,
+                &added, &exists));
+    if (exists) {
+        printf("File %s exists locally, no need to download it\n", h);
+        return 0;
+    }
+    if (!found) {
+        printf("File %s not found in the list of remote files\n", h);
+        return 0;
+    }
+    if (added) printf("Job %s added\n", h);
+    else       printf("Job %s exists\n", h);
+    return 0;
+}

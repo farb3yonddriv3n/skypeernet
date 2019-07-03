@@ -8,6 +8,9 @@ enum api_e {
     API_PEER_ONLINE,
     API_PEER_OFFLINE,
     API_JOBSDUMP,
+    API_JOBDONE,
+    API_JOBADD,
+    API_TSHARE,
 };
 
 struct module_api_s {
@@ -24,6 +27,8 @@ int api_message_write(struct peer_s *p, int host, unsigned short port,
                       char *msg, int len);
 int api_peer_online(struct peer_s *p, struct world_peer_s *wp);
 int api_peer_offline(struct peer_s *p, struct world_peer_s *wp);
+int api_job_done(struct peer_s *p, unsigned char *filename,
+                 int nfilename);
 
 extern const struct module_api_s api;
 

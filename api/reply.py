@@ -33,6 +33,10 @@ def jobdump(state, obj):
     util.colorjson(obj)
     return 0
 
+def jobdone(state, obj):
+    util.colorjson(obj)
+    return 0
+
 cmds = [ { "command" : command.API_LISTPEERS,    "func" : listpeers   },
          { "command" : command.API_MESSAGE,      "func" : message     },
          { "command" : command.API_LISTFILES,    "func" : listfiles   },
@@ -40,6 +44,7 @@ cmds = [ { "command" : command.API_LISTPEERS,    "func" : listpeers   },
          { "command" : command.API_PEER_ONLINE,  "func" : peeronline  },
          { "command" : command.API_PEER_OFFLINE, "func" : peeroffline },
          { "command" : command.API_JOBDUMP,      "func" : jobdump     },
+         { "command" : command.API_JOBDONE,      "func" : jobdone     },
        ]
 
 def run(state, obj):

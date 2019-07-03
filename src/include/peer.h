@@ -135,6 +135,10 @@ struct peer_s {
                            char *msg, int len);
             int (*online)(struct peer_s *p, struct world_peer_s *wp);
             int (*offline)(struct peer_s *p, struct world_peer_s *wp);
+            struct {
+                int (*done)(struct peer_s *p, unsigned char *filename,
+                            int nfilename);
+            } job;
         } cb;
         struct {
             struct ev_io write;
