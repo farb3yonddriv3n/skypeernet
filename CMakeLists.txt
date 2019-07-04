@@ -74,6 +74,8 @@ target_link_libraries(validate m)
 
 find_package(Threads REQUIRED)
 target_link_libraries(peer ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(tracker ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(validate ${CMAKE_THREAD_LIBS_INIT})
 
 find_package(OpenSSL REQUIRED)
 target_link_libraries(peer ${OPENSSL_LIBRARIES})

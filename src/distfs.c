@@ -11,14 +11,16 @@ static int transaction_locked(struct distfs_s *dfs, bool *locked)
     return 0;
 }
 
-int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc)
+int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc,
+                        int *dfserr)
 {
-    if (!dfs || !argv || argc < 2) return -1;
+    if (!dfs || !argv || argc < 2 || !dfserr) return -1;
     if (strlen(argv[1]) > 128) return -1;
     int size;
     ifr(list.size(&dfs->transactions, &size));
     if (size > 0) {
         printf("Exactly one transaction allowed per block.\n");
+        *dfserr = 1;
         return 0;
     }
     bool locked;
@@ -37,24 +39,30 @@ int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc)
     return list.add(&dfs->transactions, t, transaction.clean);
 }
 
-int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc)
+int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr)
 {
-    if (!dfs || !argv) return -1;
+    if (!dfs || !argv || !dfserr || argc != 2) return -1;
+    if (strlen(argv[1]) != SHA256HEX) return -1;
     int size;
     ifr(list.size(&dfs->transactions, &size));
     if (size > 0) {
         printf("Exactly one transaction allowed per block.\n");
+        *dfserr = 1;
         return 0;
     }
     bool locked;
     ifr(transaction_locked(dfs, &locked));
-    if (locked) return 0;
+    if (locked) {
+        *dfserr = 2;
+        return 0;
+    }
     struct file_s *f = NULL;
-    if (strlen(argv[1]) != SHA256HEX) return -1;
     ifr(group.find.transaction(dfs->blocks.remote, (unsigned char *)argv[1],
                                (void **)&f, NULL, NULL));
     if (!f) {
         printf("Transaction's file hash %s not found\n", argv[1]);
+        *dfserr = 3;
         return 0;
     }
     json_object *obj;
@@ -65,9 +73,10 @@ int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc)
     return list.add(&dfs->transactions, t, NULL);
 }
 
-int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc)
+int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc,
+                         int *dfserr)
 {
-    if (!dfs) return -1;
+    if (!dfs || !dfserr) return -1;
     bool locked;
     ifr(transaction_locked(dfs, &locked));
     if (locked) return 0;
@@ -82,9 +91,10 @@ int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc)
     return list.map(&dfs->transactions, cb, NULL);
 }
 
-int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
+int dfs_job_add(struct distfs_s *dfs, char **argv, int argc,
+                int *dfserr)
 {
-    if (!dfs || !argv || argc != 2) return -1;
+    if (!dfs || !argv || argc != 2 || !dfserr) return -1;
     if (strlen(argv[1]) != SHA256HEX) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool added, found, exists;
@@ -93,13 +103,122 @@ int dfs_job_add(struct distfs_s *dfs, char **argv, int argc)
                 &added, &exists));
     if (exists) {
         printf("File %s exists locally, no need to download it\n", h);
+        *dfserr = 1;
         return 0;
     }
     if (!found) {
         printf("File %s not found in the list of remote files\n", h);
+        *dfserr = 2;
         return 0;
     }
-    if (added) printf("Job %s added\n", h);
-    else       printf("Job %s exists\n", h);
+    if (added)
+        printf("Job %s added\n", h);
+    else {
+        printf("Job %s exists\n", h);
+        *dfserr = 3;
+    }
+    return 0;
+}
+
+static void *mine_thread_fail(struct distfs_s *dfs, const char *file,
+                              const int line)
+{
+    syslog(LOG_ERR, "Error at %s:%d", file, line);
+    pthread_mutex_lock(&dfs->mining.mutex);
+    dfs->mining.state = false;
+    pthread_mutex_unlock(&dfs->mining.mutex);
+    return NULL;
+}
+
+static int mine_block_file(struct distfs_s *dfs)
+{
+    if (!dfs) return -1;
+    struct peer_s *p = dfs->peer;
+    char blockfile[256];
+    if (strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
+        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
+                                                          (int )sizeof(dfs->blocks.file),
+                                                          dfs->blocks.file);
+        if (remove(blockfile) != 0) return -1;
+    }
+    memcpy(dfs->blocks.file, dfs->blocks.local->hash, sizeof(dfs->blocks.local->hash));
+    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
+                                                      (int )sizeof(dfs->blocks.file),
+                                                      dfs->blocks.file);
+    return root.data.save.file(dfs->blocks.local, blockfile);
+}
+
+static void *mine(void *data)
+{
+    struct distfs_s *dfs = (struct distfs_s *)data;
+    if (!dfs)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    int cb(struct list_s *l, void *ut, void *ud) {
+        struct transaction_s *t = (struct transaction_s *)ut;
+        struct block_s       *b = (struct block_s *)ud;
+        if (!l || !ut || !ud) return -1;
+        json_object *obj;
+        ifr(transaction.data.save(t, &obj));
+        struct transaction_s *tl;
+        ifr(transaction.data.load(&tl, obj));
+        ifr(block.transactions.add(b, tl));
+        json_object_put(obj);
+        return 0;
+    }
+    size_t size;
+    if (root.blocks.size(dfs->blocks.local, &size) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    unsigned char *prev_block;
+    if (size == 0) prev_block = (unsigned char *)DISTFS_BASE_ROOT_HASH;
+    else           prev_block = dfs->blocks.local->hash;
+    struct block_s *b;
+    if (block.init(&b, prev_block) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (list.map(&dfs->transactions, cb, b) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (list.clean(&dfs->transactions) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (block.transactions.lock(b) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    double start;
+    if (os.gettimems(&start) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (block.mine(b) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    double end;
+    if (os.gettimems(&end) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (root.blocks.add(dfs->blocks.local, b) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    if (mine_block_file(dfs) != 0)
+        return mine_thread_fail(dfs, __FILE__, __LINE__);
+    pthread_mutex_lock(&dfs->mining.mutex);
+    dfs->mining.state = false;
+    pthread_mutex_unlock(&dfs->mining.mutex);
+    printf("Mining finished. It took %f seconds\n", end - start);
+    return NULL;
+}
+
+int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc,
+                   int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    ifr(pthread_mutex_lock(&dfs->mining.mutex));
+    if (dfs->mining.state) {
+        *dfserr = 1;
+        ifr(pthread_mutex_unlock(&dfs->mining.mutex));
+        return 0;
+    }
+    int size;
+    ifr(list.size(&dfs->transactions, &size));
+    if (size < 1) {
+        *dfserr = 2;
+        ifr(pthread_mutex_unlock(&dfs->mining.mutex));
+        return 0;
+    }
+    pthread_t m;
+    dfs->mining.state = true;
+    ifr(pthread_mutex_unlock(&dfs->mining.mutex));
+    if (pthread_create(&m, NULL, mine, dfs) != 0) return -1;
     return 0;
 }

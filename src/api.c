@@ -51,23 +51,33 @@ static int write_reopen(struct peer_s *p, bool *success)
     return 0;
 }
 
-static int api_write(struct peer_s *p, enum api_e cmd, json_object *payload)
+static int api_write(struct peer_s *p, enum api_e cmd, json_object *payload,
+                     json_object *request, int dfserr)
 {
-    if (!p || !payload) return -1;
+    if (!p) return -1;
     bool success;
     ifr(write_reopen(p, &success));
     if (!success) {
-        json_object_put(payload);
+        if (payload) json_object_put(payload);
         return 0;
     }
     json_object *obj  = json_object_new_object();
     json_object *jcmd = json_object_new_int(cmd);
-    char timestr[64];
-    ifr(os.gettimestr(timestr, sizeof(timestr)));
-    json_object *time = json_object_new_string(timestr);
+    json_object *err  = json_object_new_int(dfserr);
+    double timems;
+    ifr(os.gettimems(&timems));
+    json_object *time = json_object_new_double(timems);
     json_object_object_add(obj, "command", jcmd);
     json_object_object_add(obj, "time",    time);
     json_object_object_add(obj, "payload", payload);
+    json_object_object_add(obj, "error",   err);
+    if (request) {
+        json_object *tmp;
+        uint64_t requestid;
+        BIND_INT64(requestid, "request_id", tmp, request);
+        json_object *rid = json_object_new_int64(requestid);
+        json_object_object_add(obj, "request_id", rid);
+    }
     const char *json = json_object_to_json_string(obj);
     if (!json) return -1;
     int len = strlen(json);
@@ -99,7 +109,7 @@ static int api_peer_change(struct peer_s *p, struct world_peer_s *wp,
     json_object *pubkeyhash = json_object_new_string_len((const char *)wp->pubkeyhash,
                                                          sizeof(wp->pubkeyhash));
     json_object_object_add(obj, "pubkeyhash", pubkeyhash);
-    return api.write(p, change, obj);
+    return api.write(p, change, obj, NULL, 0);
 }
 
 int api_peer_online(struct peer_s *p, struct world_peer_s *wp)
@@ -125,7 +135,7 @@ int api_message_write(struct peer_s *p, int host, unsigned short port,
     json_object_object_add(obj, "port", jport);
     json_object *message = json_object_new_string_len((const char *)msg, len);
     json_object_object_add(obj, "message", message);
-    return api.write(p, API_MESSAGE, obj);
+    return api.write(p, API_MESSAGE, obj, NULL, 0);
 }
 
 static int api_listpeers_read(struct peer_s *p, json_object *obj)
@@ -133,7 +143,7 @@ static int api_listpeers_read(struct peer_s *p, json_object *obj)
     if (!p) return -1;
     json_object *pobj;
     ifr(cli.peers.list(p, &pobj));
-    return api.write(p, API_LISTPEERS, pobj);
+    return api.write(p, API_LISTPEERS, pobj, obj, 0);
 }
 
 int api_job_done(struct peer_s *p, unsigned char *filename,
@@ -143,7 +153,7 @@ int api_job_done(struct peer_s *p, unsigned char *filename,
     json_object *obj = json_object_new_object();
     json_object *name = json_object_new_string_len((const char *)filename, nfilename);
     json_object_object_add(obj, "name", name);
-    return api.write(p, API_JOBDONE, obj);
+    return api.write(p, API_JOBDONE, obj, NULL, 0);
 }
 
 static int api_message_read(struct peer_s *p, json_object *obj)
@@ -163,13 +173,22 @@ static int api_message_read(struct peer_s *p, json_object *obj)
                         host, port, 0, 0, NULL);
 }
 
-static int api_listfiles_read(struct peer_s *p, json_object *obj)
+static int api_listfileslocal_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
+    json_object *robj;
+    ifr(root.dump(dfs->blocks.local, &p->cfg, &robj));
+    return api.write(p, API_LISTFILES_LOCAL, robj, obj, 0);
+}
+
+static int api_listfilesremote_read(struct peer_s *p, json_object *obj)
 {
     if (!p) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     json_object *gobj;
     ifr(group.dump(dfs->blocks.remote, &p->cfg, &gobj));
-    return api.write(p, API_LISTFILES, gobj);
+    return api.write(p, API_LISTFILES_REMOTE, gobj, obj, 0);
 }
 
 static int api_jobsdump_read(struct peer_s *p, json_object *obj)
@@ -178,7 +197,7 @@ static int api_jobsdump_read(struct peer_s *p, json_object *obj)
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     json_object *jobj;
     ifr(job.dump(&p->cfg, &dfs->jobs, &jobj));
-    return api.write(p, API_JOBSDUMP, jobj);
+    return api.write(p, API_JOBSDUMP, jobj, obj, 0);
 }
 
 static int api_jobadd_read(struct peer_s *p, json_object *obj)
@@ -192,9 +211,10 @@ static int api_jobadd_read(struct peer_s *p, json_object *obj)
     BIND_STRLEN(name, "name", tmp, obj);
     argv[0] = NULL;
     argv[1] = name;
-    ifr(dfs_job_add(p->user.data, argv, argc));
+    int dfserr = 0;
+    ifr(dfs_job_add(p->user.data, argv, argc, &dfserr));
     free(argv);
-    return 0;
+    return api.write(p, API_JOBADD, NULL, obj, dfserr);
 }
 
 static int api_tshare_read(struct peer_s *p, json_object *obj)
@@ -208,18 +228,29 @@ static int api_tshare_read(struct peer_s *p, json_object *obj)
     BIND_STRLEN(name, "name", tmp, obj);
     argv[0] = NULL;
     argv[1] = name;
-    ifr(dfs_transaction_share(p->user.data, argv, argc));
+    int dfserr = 0;
+    ifr(dfs_transaction_share(p->user.data, argv, argc, &dfserr));
     free(argv);
-    return 0;
+    return api.write(p, API_TSHARE, NULL, obj, dfserr);
+}
+
+static int api_bmine_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    int dfserr = 0;
+    ifr(dfs_block_mine(p->user.data, NULL, 0, &dfserr));
+    return api.write(p, API_BMINE, NULL, obj, dfserr);
 }
 
 static struct api_command_s cmds[] = {
-    { API_LISTPEERS, api_listpeers_read },
-    { API_MESSAGE,   api_message_read   },
-    { API_LISTFILES, api_listfiles_read },
-    { API_JOBSDUMP,  api_jobsdump_read  },
-    { API_JOBADD,    api_jobadd_read    },
-    { API_TSHARE,    api_tshare_read    },
+    { API_LISTPEERS,        api_listpeers_read       },
+    { API_MESSAGE,          api_message_read         },
+    { API_LISTFILES_LOCAL,  api_listfileslocal_read  },
+    { API_LISTFILES_REMOTE, api_listfilesremote_read },
+    { API_JOBSDUMP,         api_jobsdump_read        },
+    { API_JOBADD,           api_jobadd_read          },
+    { API_TSHARE,           api_tshare_read          },
+    { API_BMINE,            api_bmine_read           },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

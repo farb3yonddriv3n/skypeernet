@@ -19,9 +19,15 @@ struct distfs_s {
     } mining;
 };
 
-int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc);
-int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc);
-int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc);
-int dfs_job_add(struct distfs_s *dfs, char **argv, int argc);
+int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc,
+                        int *dfserr);
+int dfs_transaction_list(struct distfs_s *dfs, char **argv, int argc,
+                         int *dfserr);
+int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr);
+int dfs_job_add(struct distfs_s *dfs, char **argv, int argc,
+                int *dfserr);
+int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc,
+                   int *dfserr);
 
 #endif

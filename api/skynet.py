@@ -1,12 +1,17 @@
 import asyncio
 import command
 
-async def update(state):
-    return 0
+class skynet:
+    def __init__(self, state):
+        self.state = state
+        return
 
-async def run(state):
-    while True:
-        await asyncio.sleep(5)
-        u = await update(state)
-        if u != 0: break
-    await run(state)
+    async def update(self):
+        return 0
+
+    async def run(self):
+        while True:
+            await asyncio.sleep(5)
+            u = await self.update()
+            if u != 0: break
+        await self.run()

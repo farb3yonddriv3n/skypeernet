@@ -4,17 +4,20 @@
 enum api_e {
     API_LISTPEERS,
     API_MESSAGE,
-    API_LISTFILES,
+    API_LISTFILES_LOCAL,
+    API_LISTFILES_REMOTE,
     API_PEER_ONLINE,
     API_PEER_OFFLINE,
     API_JOBSDUMP,
     API_JOBDONE,
     API_JOBADD,
     API_TSHARE,
+    API_BMINE,
 };
 
 struct module_api_s {
-    int (*write)(struct peer_s *p, enum api_e cmd, json_object *payload);
+    int (*write)(struct peer_s *p, enum api_e cmd, json_object *payload,
+                 json_object *request, int dfserr);
     int (*read)();
     //int (*clean)();
     struct {

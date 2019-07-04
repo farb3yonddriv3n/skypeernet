@@ -191,104 +191,10 @@ static int offline(struct peer_s *p, struct world_peer_s *wp)
     return 0;
 }
 
-static void *mine_thread_fail(struct distfs_s *dfs, const char *file,
-                              const int line)
+static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr)
 {
-    syslog(LOG_ERR, "Error at %s:%d", file, line);
-    pthread_mutex_lock(&dfs->mining.mutex);
-    dfs->mining.state = false;
-    pthread_mutex_unlock(&dfs->mining.mutex);
-    return NULL;
-}
-
-static int mine_block_file(struct distfs_s *dfs)
-{
-    if (!dfs) return -1;
-    struct peer_s *p = dfs->peer;
-    char blockfile[256];
-    if (strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0) {
-        snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
-                                                          (int )sizeof(dfs->blocks.file),
-                                                          dfs->blocks.file);
-        if (remove(blockfile) != 0) return -1;
-    }
-    memcpy(dfs->blocks.file, dfs->blocks.local->hash, sizeof(dfs->blocks.local->hash));
-    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
-                                                      (int )sizeof(dfs->blocks.file),
-                                                      dfs->blocks.file);
-    return root.data.save.file(dfs->blocks.local, blockfile);
-}
-
-static void *mine(void *data)
-{
-    struct distfs_s *dfs = (struct distfs_s *)data;
-    if (!dfs)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    int cb(struct list_s *l, void *ut, void *ud) {
-        struct transaction_s *t = (struct transaction_s *)ut;
-        struct block_s       *b = (struct block_s *)ud;
-        if (!l || !ut || !ud) return -1;
-        json_object *obj;
-        ifr(transaction.data.save(t, &obj));
-        struct transaction_s *tl;
-        ifr(transaction.data.load(&tl, obj));
-        ifr(block.transactions.add(b, tl));
-        json_object_put(obj);
-        return 0;
-    }
-    size_t size;
-    if (root.blocks.size(dfs->blocks.local, &size) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    unsigned char *prev_block;
-    if (size == 0) prev_block = (unsigned char *)DISTFS_BASE_ROOT_HASH;
-    else           prev_block = dfs->blocks.local->hash;
-    struct block_s *b;
-    if (block.init(&b, prev_block) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (list.map(&dfs->transactions, cb, b) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (list.clean(&dfs->transactions) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (block.transactions.lock(b) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    double start;
-    if (os.gettimems(&start) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (block.mine(b) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    double end;
-    if (os.gettimems(&end) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (root.blocks.add(dfs->blocks.local, b) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (mine_block_file(dfs) != 0)
-        return mine_thread_fail(dfs, __FILE__, __LINE__);
-    pthread_mutex_lock(&dfs->mining.mutex);
-    dfs->mining.state = false;
-    pthread_mutex_unlock(&dfs->mining.mutex);
-    printf("Mining finished. It took %f seconds\n", end - start);
-    return NULL;
-}
-
-static int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc)
-{
-    int size;
-    ifr(pthread_mutex_lock(&dfs->mining.mutex));
-    ifr(list.size(&dfs->transactions, &size));
-    if (size < 1 || dfs->mining.state) {
-        ifr(pthread_mutex_unlock(&dfs->mining.mutex));
-        return 0;
-    }
-    pthread_t m;
-    dfs->mining.state = true;
-    ifr(pthread_mutex_unlock(&dfs->mining.mutex));
-    if (pthread_create(&m, NULL, mine, dfs) != 0) return -1;
-    return 0;
-}
-
-static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
-{
-    if (!dfs || !argv) return -1;
+    if (!dfs || !argv || !dfserr) return -1;
     json_object *obj;
     if (strcmp(argv[1], "remote") == 0 ||
         strcmp(argv[1], "r") == 0) {
@@ -302,9 +208,10 @@ static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc)
     return 0;
 }
 
-static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
+static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc,
+                            int *dfserr)
 {
-    if (!dfs || !argv) return -1;
+    if (!dfs || !argv || !dfserr) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool finalized;
     ifr(job.finalize(&dfs->peer->cfg, dfs->blocks.remote, h,
@@ -314,9 +221,10 @@ static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc)
     return  0;
 }
 
-static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc)
+static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr)
 {
-    if (!dfs || !argv) return -1;
+    if (!dfs || !argv || !dfserr) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool removed;
     ifr(job.remove(&dfs->jobs, h, strlen((const char *)h), &removed));
@@ -325,9 +233,10 @@ static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc)
     return  0;
 }
 
-static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc)
+static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc,
+                        int *dfserr)
 {
-    if (!dfs) return -1;
+    if (!dfs || !dfserr) return -1;
     json_object *obj;
     ifr(job.dump(&dfs->peer->cfg, &dfs->jobs, &obj));
     printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
@@ -335,15 +244,17 @@ static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc)
     return 0;
 }
 
-static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc)
+static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc,
+                        int *dfserr)
 {
-    if (!dfs) return -1;
+    if (!dfs || !dfserr) return -1;
     return config_keysdump(&dfs->peer->cfg);
 }
 
-static int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc)
+static int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,
+                         int *dfserr)
 {
-    if (!dfs || !argv) return -1;
+    if (!dfs || !argv || !dfserr) return -1;
     enum block_action_e { BLOCK_ACTION_NONE, BLOCK_ACTION_UPDATE,
                           BLOCK_ACTION_ADVERTISE };
     struct block_action_s { struct distfs_s *dfs; int counter; int action; };
@@ -373,7 +284,8 @@ static int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc)
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
-                      int         (*cb)(struct distfs_s *dfs, char **argv, int argc);
+                      int         (*cb)(struct distfs_s *dfs, char **argv,
+                                        int argc, int *dfserr);
                     } cmds[] = {
     { { "ta", "tadd"  },        2, 1, dfs_transaction_add   },
     { { "ts", "tshare"  },      2, 1, dfs_transaction_share },
@@ -410,7 +322,8 @@ static int dfs_cli(struct peer_s *p, char **argv, int argc)
     int idx;
     ifr(find_cmd(argv[0], argc, &idx));
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
-    return cmds[idx].cb(dfs, argv, argc);
+    int dfserr = 0;
+    return cmds[idx].cb(dfs, argv, argc, &dfserr);
 }
 
 static int clean(struct peer_s *p, void *data)

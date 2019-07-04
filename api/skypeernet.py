@@ -11,12 +11,13 @@ async def piperecv(state):
             msg = await fp.read(4096)
             if (len(msg) == 0):
                 break
-            state["recv"] += msg
+            state["recvbuf"] += msg
             try:
-                obj = json.loads(state["recv"])
-                if (reply.run(state, obj) != 0):
-                    print("Command failed: ", obj)
-                state["recv"] = ""
+                obj = json.loads(state["recvbuf"])
+                r = await reply.run(state, obj)
+                if r != 0:
+                    print("Command failed: ", obj, r)
+                state["recvbuf"] = ""
             except:
                continue
     await piperecv(state)
@@ -28,10 +29,10 @@ async def stdinput(state):
             if not inpt: break
             inpt = inpt.replace("\n", "")
             r = await command.run(state, inpt)
-            if (r != 0): print('command "%s" failed' % inpt)
+            if (r != 0): print('Command "%s" failed' % inpt)
 
 async def ai(state):
-    await skynet.run(state)
+    await state["skynet"].run()
 
 def get_config():
     filename = "config/skypeernet.cfg"
@@ -51,11 +52,16 @@ async def run(loop):
         ftb = await AIOFile(FIFO_FTB, 'w')
         state = { "cfg"      : get_config(),
                   "peers"    : {},
-                  "files"    : {},
+                  "files"    : { "remote" : [],
+                                 "local"  : [] },
                   "messages" : [],
                   "jobs"     : {},
-                  "recv"     : "",
+                  "packets"  : { "sent" : [],
+                                 "recv" : [] },
+                  "recvbuf"  : "",
+                  "request"  : 0,
                   "ftb"      : ftb }
+        state["skynet"] = skynet.skynet(state)
         task1 = loop.create_task(piperecv(state))
         task2 = loop.create_task(stdinput(state))
         task3 = loop.create_task(ai(state))
