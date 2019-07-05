@@ -242,6 +242,20 @@ static int api_bmine_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_BMINE, NULL, obj, dfserr);
 }
 
+static int api_badvertise_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    char **argv;
+    int argc = 2;
+    argv = malloc(sizeof(char *) * argc);
+    argv[0] = NULL;
+    argv[1] = "a";
+    int dfserr = 0;
+    ifr(dfs_block_xet(p->user.data, argv, argc, &dfserr));
+    free(argv);
+    return api.write(p, API_TSHARE, NULL, obj, dfserr);
+}
+
 static struct api_command_s cmds[] = {
     { API_LISTPEERS,        api_listpeers_read       },
     { API_MESSAGE,          api_message_read         },
@@ -251,6 +265,7 @@ static struct api_command_s cmds[] = {
     { API_JOBADD,           api_jobadd_read          },
     { API_TSHARE,           api_tshare_read          },
     { API_BMINE,            api_bmine_read           },
+    { API_BADVERTISE,       api_badvertise_read      },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

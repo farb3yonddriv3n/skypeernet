@@ -16,7 +16,6 @@ def listpeers(state, obj):
 
 def message(state, obj):
     state["messages"].append(obj)
-    #print(json.dumps(obj["payload"], indent=2, sort_keys=True))
     util.colorjson(obj)
     return 0
 
@@ -28,11 +27,6 @@ def listfiles_local(state, obj):
                 files.append({ "name"       : transaction["name"],
                                "size"       : transaction["size"],
                                "downloaded" : transaction["downloaded"] })
-                #for transaction in block["transactions"]:
-                #    files.append({ "owner"      : root["owner"],
-                #                   "name"       : transaction["name"],
-                #                   "size"       : transaction["size"],
-                #                   "downloaded" : transaction["downloaded"] })
     state["files"]["local"] = files
     util.colorjson(files)
     return 0
@@ -49,12 +43,14 @@ def listfiles_remote(state, obj):
                                    "downloaded" : transaction["downloaded"] })
     state["files"]["remote"] = files
     util.colorjson(files)
-    #util.colorjson(obj)
     return 0
 
 def jobdump(state, obj):
     state["jobs"] = obj
-    #print(json.dumps(obj["payload"], indent=2, sort_keys=True))
+    util.colorjson(obj)
+    return 0
+
+def jobadd(state, obj):
     util.colorjson(obj)
     return 0
 
@@ -70,6 +66,10 @@ def bmine(state, obj):
     util.colorjson(obj)
     return 0
 
+def badvertise(state, obj):
+    util.colorjson(obj)
+    return 0
+
 cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        },
          { "command" : command.API_MESSAGE,          "func" : message          },
          { "command" : command.API_LISTFILES_LOCAL,  "func" : listfiles_local  },
@@ -78,17 +78,29 @@ cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        }
          { "command" : command.API_PEER_ONLINE,      "func" : peeronline       },
          { "command" : command.API_PEER_OFFLINE,     "func" : peeroffline      },
          { "command" : command.API_JOBDUMP,          "func" : jobdump          },
+         { "command" : command.API_JOBADD,           "func" : jobadd           },
          { "command" : command.API_JOBDONE,          "func" : jobdone          },
          { "command" : command.API_TSHARE,           "func" : tshare           },
          { "command" : command.API_BMINE,            "func" : bmine            },
+         { "command" : command.API_BADVERTISE,       "func" : badvertise       },
        ]
+
+def handle(state, recv):
+    if not "request_id" in recv: return
+    for p in state["packets"]["sent"]:
+        if recv["request_id"] == p["request_id"]:
+            state["packets"]["handled"].append({ "id"    : recv["request_id"],
+                                                 "error" : recv["error"] })
+            state["packets"]["sent"].remove(p)
+            break
 
 async def run(state, obj):
     try:
         for c in cmds:
             if c["command"] == obj["command"]:
                 if c["func"](state, obj) != 0: return -1
-                state["packets"]["recv"].append(obj)
+                #state["packets"]["recv"].append(obj)
+                handle(state, obj)
                 return await state["skynet"].update()
         return -1
     except:

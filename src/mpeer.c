@@ -4,36 +4,12 @@ enum distfs_cmd_e {
     DISTFS_HELLO,
 };
 
-#define MSG_HELLO      "hello"
-#define MSG_HELLO_SIZE (sizeof(MSG_HELLO) - 1)
-
-static int hello_write(struct distfs_s *dfs, int host, unsigned short port);
-
 static const struct { enum distfs_cmd_e cmd;
                       int (*write)(struct distfs_s *dfs, int host, unsigned short port);
                       int (*read)(struct distfs_s *dfs);
                     } dfs_cmds[] = {
-    { DISTFS_HELLO, hello_write, NULL },
+    { DISTFS_HELLO, dfs_hello, NULL },
 };
-
-static int block_send(struct peer_s *p, struct distfs_s *dfs,
-                      int host, unsigned short port)
-{
-    if (!p || !dfs) return -1;
-    char blockfile[256];
-    if (strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) < 1) return 0;
-    snprintf(blockfile, sizeof(blockfile), "%s/%.*s", p->cfg.dir.block,
-            (int )sizeof(dfs->blocks.file),
-            dfs->blocks.file);
-    bool exists;
-    ifr(os.fileexists(blockfile, &exists));
-    if (exists) {
-        ifr(task.add(p, p->cfg.dir.block, dfs->blocks.file,
-                     sizeof(dfs->blocks.file),
-                     host, port, TASK_FILE_KEEP));
-    }
-    return 0;
-}
 
 static int message(struct peer_s *p, int host,
                    unsigned short port,
@@ -47,7 +23,7 @@ static int message(struct peer_s *p, int host,
         strnlen((char *)dfs->blocks.file, sizeof(dfs->blocks.file)) > 0))
         return 0;
     syslog(LOG_INFO, "Peer %x:%d asked for blockfile", host, port);
-    ifr(block_send(p, dfs, host, port));
+    ifr(dfs_block_send(p, dfs, host, port));
     return 0;
 }
 
@@ -158,17 +134,6 @@ static int distfs_cmd_find(enum distfs_cmd_e cmd, int *idx)
     return -1;
 }
 
-static int hello_write(struct distfs_s *dfs, int host, unsigned short port)
-{
-    if (!dfs) return -1;
-    struct peer_s *p = (struct peer_s *)dfs->peer;
-    p->send_buffer.type = BUFFER_MESSAGE;
-    p->send_buffer.u.message.str = MSG_HELLO;
-    return payload.send(p, COMMAND_MESSAGE,
-                        host, port, 0, 0,
-                        NULL);
-}
-
 static int distfs_command_send(struct distfs_s *dfs, enum distfs_cmd_e cmd,
                                int host, unsigned short port)
 {
@@ -249,36 +214,6 @@ static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc,
 {
     if (!dfs || !dfserr) return -1;
     return config_keysdump(&dfs->peer->cfg);
-}
-
-static int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,
-                         int *dfserr)
-{
-    if (!dfs || !argv || !dfserr) return -1;
-    enum block_action_e { BLOCK_ACTION_NONE, BLOCK_ACTION_UPDATE,
-                          BLOCK_ACTION_ADVERTISE };
-    struct block_action_s { struct distfs_s *dfs; int counter; int action; };
-    int cb(struct list_s *l, void *up, void *ud) {
-        struct world_peer_s   *wp = (struct world_peer_s *)up;
-        struct block_action_s *ba = (struct block_action_s *)ud;
-        if (wp->unreachable != 0 || wp->type != WORLD_PEER_PEER) return 0;
-        if (ba->action == BLOCK_ACTION_ADVERTISE) {
-            ifr(block_send(ba->dfs->peer, ba->dfs,
-                           wp->host, wp->port));
-        } else if (ba->action == BLOCK_ACTION_UPDATE) {
-            ifr(hello_write(ba->dfs,
-                            wp->host, wp->port));
-        } else return -1;
-        ba->counter++;
-        return 0;
-    }
-    struct block_action_s ba = { .dfs = dfs, .counter = 0 };
-    if (strcmp(argv[1], "u")      == 0) ba.action = BLOCK_ACTION_UPDATE;
-    else if (strcmp(argv[1], "a") == 0) ba.action = BLOCK_ACTION_ADVERTISE;
-    else                                ba.action = BLOCK_ACTION_NONE;
-    ifr(list.map(&dfs->peer->peers, cb, &ba));
-    printf("Block action %d to %d peers\n", ba.action, ba.counter);
-    return 0;
 }
 
 static const struct { const char *alias[8];

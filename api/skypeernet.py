@@ -32,7 +32,7 @@ async def stdinput(state):
             if (r != 0): print('Command "%s" failed' % inpt)
 
 async def ai(state):
-    await state["skynet"].run()
+    await state["skynet"].start()
 
 def get_config():
     filename = "config/skypeernet.cfg"
@@ -56,8 +56,8 @@ async def run(loop):
                                  "local"  : [] },
                   "messages" : [],
                   "jobs"     : {},
-                  "packets"  : { "sent" : [],
-                                 "recv" : [] },
+                  "packets"  : { "sent"    : [],
+                                 "handled" : [] },
                   "recvbuf"  : "",
                   "request"  : 0,
                   "ftb"      : ftb }

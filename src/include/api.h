@@ -13,6 +13,7 @@ enum api_e {
     API_JOBADD,
     API_TSHARE,
     API_BMINE,
+    API_BADVERTISE,
 };
 
 struct module_api_s {

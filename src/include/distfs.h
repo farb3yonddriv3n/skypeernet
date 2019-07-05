@@ -1,6 +1,9 @@
 #ifndef DISTFS_H_
 #define DISTFS_H_
 
+#define MSG_HELLO      "hello"
+#define MSG_HELLO_SIZE (sizeof(MSG_HELLO) - 1)
+
 struct distfs_s {
     struct peer_s *peer;
     struct {
@@ -16,6 +19,7 @@ struct distfs_s {
     struct {
         pthread_mutex_t mutex;
         bool            state;
+        bool            newblock;
     } mining;
 };
 
@@ -29,5 +33,10 @@ int dfs_job_add(struct distfs_s *dfs, char **argv, int argc,
                 int *dfserr);
 int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc,
                    int *dfserr);
+int dfs_hello(struct distfs_s *dfs, int host, unsigned short port);
+int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,
+                         int *dfserr);
+int dfs_block_send(struct peer_s *p, struct distfs_s *dfs,
+                   int host, unsigned short port);
 
 #endif

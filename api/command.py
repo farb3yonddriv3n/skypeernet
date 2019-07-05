@@ -11,13 +11,14 @@ API_JOBDONE          = 7
 API_JOBADD           = 8
 API_TSHARE           = 9
 API_BMINE            = 10
+API_BADVERTISE       = 11
 
 async def cmdsend(state, msg, cmd):
     msg["command"] = cmd
     msg["request_id"] = state["request"]
     state["request"] += 1
     obj = json.dumps(msg)
-    state["packets"]["sent"].append(obj)
+    state["packets"]["sent"].append(msg)
     r = await state["ftb"].write(obj)
     if len(r) != len(obj): return -1
     return 0
@@ -48,8 +49,11 @@ async def listfiles_local(state, params):
 async def jobdump(state, params):
     return await cmdsend(state, {}, API_JOBDUMP)
 
-async def blockmine(state, params):
+async def bmine(state, params):
     return await cmdsend(state, {}, API_BMINE)
+
+async def badv(state, params):
+    return await cmdsend(state, {}, API_BADVERTISE)
 
 commands = [ { "cmd" : "m",   "params" : 3, "func" : message          },
              { "cmd" : "l",   "params" : 0, "func" : listpeers        },
@@ -58,7 +62,8 @@ commands = [ { "cmd" : "m",   "params" : 3, "func" : message          },
              { "cmd" : "jd",  "params" : 0, "func" : jobdump          },
              { "cmd" : "ja",  "params" : 1, "func" : jobadd           },
              { "cmd" : "ts",  "params" : 1, "func" : tshare           },
-             { "cmd" : "bm",  "params" : 0, "func" : blockmine        },
+             { "cmd" : "bm",  "params" : 0, "func" : bmine            },
+             { "cmd" : "ba",  "params" : 0, "func" : badv             },
            ]
 
 async def parse(state, inpt):
