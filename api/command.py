@@ -12,6 +12,7 @@ API_JOBADD           = 8
 API_TSHARE           = 9
 API_BMINE            = 10
 API_BADVERTISE       = 11
+API_BMINING          = 12
 
 async def cmdsend(state, msg, cmd):
     msg["command"] = cmd
@@ -55,6 +56,9 @@ async def bmine(state, params):
 async def badv(state, params):
     return await cmdsend(state, {}, API_BADVERTISE)
 
+async def bmining(state, params):
+    return await cmdsend(state, {}, API_BMINING)
+
 commands = [ { "cmd" : "m",   "params" : 3, "func" : message          },
              { "cmd" : "l",   "params" : 0, "func" : listpeers        },
              { "cmd" : "lfr", "params" : 0, "func" : listfiles_remote },
@@ -64,6 +68,7 @@ commands = [ { "cmd" : "m",   "params" : 3, "func" : message          },
              { "cmd" : "ts",  "params" : 1, "func" : tshare           },
              { "cmd" : "bm",  "params" : 0, "func" : bmine            },
              { "cmd" : "ba",  "params" : 0, "func" : badv             },
+             { "cmd" : "bmn", "params" : 0, "func" : bmining          },
            ]
 
 async def parse(state, inpt):

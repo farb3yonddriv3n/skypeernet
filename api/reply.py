@@ -70,6 +70,10 @@ def badvertise(state, obj):
     util.colorjson(obj)
     return 0
 
+def bmining(state, obj):
+    util.colorjson(obj)
+    return 0
+
 cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        },
          { "command" : command.API_MESSAGE,          "func" : message          },
          { "command" : command.API_LISTFILES_LOCAL,  "func" : listfiles_local  },
@@ -83,14 +87,21 @@ cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        }
          { "command" : command.API_TSHARE,           "func" : tshare           },
          { "command" : command.API_BMINE,            "func" : bmine            },
          { "command" : command.API_BADVERTISE,       "func" : badvertise       },
+         { "command" : command.API_BMINING,          "func" : bmining          },
        ]
 
 def handle(state, recv):
     if not "request_id" in recv: return
     for p in state["packets"]["sent"]:
         if recv["request_id"] == p["request_id"]:
-            state["packets"]["handled"].append({ "id"    : recv["request_id"],
-                                                 "error" : recv["error"] })
+            mining = False
+            if recv["command"] == command.API_BMINE:
+                mining = True
+            elif recv["command"] == command.API_BMINING:
+                mining = recv["payload"]["locked"]
+            state["packets"]["handled"].append({ "id"     : recv["request_id"],
+                                                 "error"  : recv["error"],
+                                                 "mining" : mining })
             state["packets"]["sent"].remove(p)
             break
 
@@ -99,9 +110,8 @@ async def run(state, obj):
         for c in cmds:
             if c["command"] == obj["command"]:
                 if c["func"](state, obj) != 0: return -1
-                #state["packets"]["recv"].append(obj)
                 handle(state, obj)
-                return await state["skynet"].update()
+                return state["skynet"].update()
         return -1
     except:
         return -1

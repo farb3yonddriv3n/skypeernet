@@ -253,7 +253,19 @@ static int api_badvertise_read(struct peer_s *p, json_object *obj)
     int dfserr = 0;
     ifr(dfs_block_xet(p->user.data, argv, argc, &dfserr));
     free(argv);
-    return api.write(p, API_TSHARE, NULL, obj, dfserr);
+    return api.write(p, API_BADVERTISE, NULL, obj, dfserr);
+}
+
+static int api_bmining_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    json_object *bobj = json_object_new_object();
+    int dfserr = 0;
+    bool locked;
+    ifr(dfs_block_mining(p->user.data, &locked));
+    json_object *jblocked = json_object_new_boolean(locked);
+    json_object_object_add(bobj, "locked", jblocked);
+    return api.write(p, API_BMINING, bobj, obj, dfserr);
 }
 
 static struct api_command_s cmds[] = {
@@ -266,6 +278,7 @@ static struct api_command_s cmds[] = {
     { API_TSHARE,           api_tshare_read          },
     { API_BMINE,            api_bmine_read           },
     { API_BADVERTISE,       api_badvertise_read      },
+    { API_BMINING,          api_bmining_read         },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

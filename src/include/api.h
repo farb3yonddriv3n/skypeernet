@@ -14,6 +14,7 @@ enum api_e {
     API_TSHARE,
     API_BMINE,
     API_BADVERTISE,
+    API_BMINING,
 };
 
 struct module_api_s {

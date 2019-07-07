@@ -293,3 +293,13 @@ int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,
     printf("Block action %d to %d peers\n", ba.action, ba.counter);
     return 0;
 }
+
+int dfs_block_mining(struct distfs_s *dfs, bool *locked)
+{
+    if (!dfs || !locked) return -1;
+    ifr(pthread_mutex_lock(&dfs->mining.mutex));
+    if (dfs->mining.state) *locked = true;
+    else                   *locked = false;
+    ifr(pthread_mutex_unlock(&dfs->mining.mutex));
+    return 0;
+}

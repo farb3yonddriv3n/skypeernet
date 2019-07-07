@@ -38,5 +38,6 @@ int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,
                          int *dfserr);
 int dfs_block_send(struct peer_s *p, struct distfs_s *dfs,
                    int host, unsigned short port);
+int dfs_block_mining(struct distfs_s *dfs, bool *locked);
 
 #endif
