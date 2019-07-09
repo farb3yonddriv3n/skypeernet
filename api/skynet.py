@@ -5,6 +5,8 @@ class skynet:
     def __init__(self, state):
         self.state = state
         self.actions = [
+        { "blocking" : None,            "func" : command.listfiles_remote, "params" : None,
+            "done"   : None, "request_id" : -1, "name" : "lfiles" },
         { "blocking" : None,            "func" : command.jobadd, "params" : self.jobadd_file,
             "done"   : None, "request_id" : -1, "name" : "jobadd" },
         { "blocking" : None,           "func" : command.tshare,  "params" : self.jobadd_file,
@@ -27,7 +29,7 @@ class skynet:
     async def is_mining(self, action):
         action["request_id"] = self.request_id()
         r = await command.bmining(self.state, {})
-        if r == -1: print("error")
+        if r == -1: return -1
         return 0
 
     def reset(self):
@@ -47,10 +49,12 @@ class skynet:
             if a["done"] == None and a["request_id"] == -1:
                 if a["params"]: params = a["params"]()
                 else:           params = []
-                if params == [] and a["params"]: return
+                if params == [] and a["params"]:
+                    self.reset()
+                    return
                 a["request_id"] = self.request_id()
                 r = await a["func"](self.state, params)
-                if r == -1: print("error")
+                if r == -1: return -1
                 return
 
     def update(self):
