@@ -5,8 +5,10 @@ class skynet:
     def __init__(self, state):
         self.state = state
         self.actions = [
+        { "blocking" : None,            "func" : command.listfiles_local,  "params" : None,
+            "done"   : None, "request_id" : -1, "name" : "filesl" },
         { "blocking" : None,            "func" : command.listfiles_remote, "params" : None,
-            "done"   : None, "request_id" : -1, "name" : "lfiles" },
+            "done"   : None, "request_id" : -1, "name" : "filesr" },
         { "blocking" : None,            "func" : command.jobadd, "params" : self.jobadd_file,
             "done"   : None, "request_id" : -1, "name" : "jobadd" },
         { "blocking" : None,           "func" : command.tshare,  "params" : self.jobadd_file,
@@ -20,10 +22,16 @@ class skynet:
     def request_id(self):
         return self.state["request"]
 
+    def file_local_exists(self, remote):
+        for l in self.state["files"]["local"]:
+            if l["name"] == remote:
+                return 1
+        return 0
+
     def jobadd_file(self):
-        for f in self.state["files"]["remote"]:
-            if f["downloaded"] == False:
-                return [ None, f["name"] ]
+        for r in self.state["files"]["remote"]:
+            if r["downloaded"] == False and self.file_local_exists(r["name"]) == 0:
+                return [ None, r["name"] ]
         return []
 
     async def is_mining(self, action):
