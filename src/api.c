@@ -31,8 +31,10 @@ static void api_ev_write(EV_P_ ev_io *w, int revents)
     int cb(struct list_s *l, void *ue, void *ud) {
         struct api_buffer_s *ab   = (struct api_buffer_s *)ue;
         int                  pipe = *(int *)ud;
-        int r = write(pipe, ab->buffer, ab->length);
-        if (r != ab->length) return -1;
+        int n = write(pipe, (void *)&ab->length, sizeof(ab->length));
+        if (n != sizeof(ab->length)) return -1;
+        n = write(pipe, ab->buffer, ab->length);
+        if (n != ab->length) return -1;
         return 0;
     }
     list.map(&p->api.buffer, cb, &p->api.pipes.write);

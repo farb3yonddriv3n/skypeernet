@@ -74,7 +74,7 @@ class skynet:
                     return 0
         return 0
 
-    async def start(self):
+    async def boot(self):
         await self.resume()
         await self.loop()
 
