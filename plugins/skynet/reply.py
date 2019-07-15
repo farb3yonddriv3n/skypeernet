@@ -74,6 +74,10 @@ def bmining(state, obj):
     util.colorjson(obj)
     return 0
 
+def roguedump(state, obj):
+    util.colorjson(obj)
+    return 0
+
 cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        },
          { "command" : command.API_MESSAGE,          "func" : message          },
          { "command" : command.API_LISTFILES_LOCAL,  "func" : listfiles_local  },
@@ -88,6 +92,7 @@ cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        }
          { "command" : command.API_BMINE,            "func" : bmine            },
          { "command" : command.API_BADVERTISE,       "func" : badvertise       },
          { "command" : command.API_BMINING,          "func" : bmining          },
+         { "command" : command.API_ROGUEDUMP,        "func" : roguedump        },
        ]
 
 def handle(state, recv):

@@ -88,6 +88,7 @@ struct peer_s {
     struct send_buffer_s send_buffer;
     struct recv_buffer_s recv_buffer;
     struct list_s        backtrace;
+    struct list_s        rogue;
     struct {
         struct list_s list;
         int           idx;

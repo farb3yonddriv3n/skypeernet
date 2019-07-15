@@ -58,6 +58,7 @@
 #include <payload.h>
 #include <cli.h>
 #include <os.h>
+#include <rogue.h>
 
 #include <distfs.h>
 #include <job.h>

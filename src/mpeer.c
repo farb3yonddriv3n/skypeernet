@@ -117,7 +117,7 @@ static int dfile(struct peer_s *p, int host,
         }
     } else {
         ifr(job.update(p, p->cfg.dir.download, &dfs->jobs,
-                       filename));
+                       filename, host, port));
     }
     return 0;
 }
@@ -209,6 +209,17 @@ static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+static int dfs_rogue_dump(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    json_object *obj;
+    ifr(rogue.dump(&dfs->peer->rogue, &obj));
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
+}
+
 static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc,
                         int *dfserr)
 {
@@ -233,6 +244,7 @@ static const struct { const char *alias[8];
     { { "jf", "jobfinalize" },  2, 1, dfs_job_finalize      },
     { { "jr", "jobremove" },    2, 1, dfs_job_remove        },
     { { "kd", "keysdump" },     2, 0, dfs_keysdump          },
+    { { "rd", "rdump" },        2, 0, dfs_rogue_dump        },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)
@@ -270,6 +282,7 @@ static int clean(struct peer_s *p, void *data)
     ifr(list.clean(&dfs->transactions));
     ifr(job.data.save(dfs));
     ifr(list.clean(&dfs->jobs));
+    ifr(list.clean(&p->rogue));
     ev_io_stop(p->ev.loop, &p->api.ev.read);
     return 0;
 }

@@ -41,6 +41,7 @@ src/net.c
 src/os.c
 src/packet.c
 src/peer.c
+src/rogue.c
 src/root.c
 src/rsa.c
 src/task.c

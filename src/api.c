@@ -270,6 +270,14 @@ static int api_bmining_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_BMINING, bobj, obj, dfserr);
 }
 
+static int api_roguedump_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    json_object *jobj;
+    ifr(rogue.dump(&p->rogue, &jobj));
+    return api.write(p, API_ROGUEDUMP, jobj, obj, 0);
+}
+
 static struct api_command_s cmds[] = {
     { API_LISTPEERS,        api_listpeers_read       },
     { API_MESSAGE,          api_message_read         },
@@ -281,6 +289,7 @@ static struct api_command_s cmds[] = {
     { API_BMINE,            api_bmine_read           },
     { API_BADVERTISE,       api_badvertise_read      },
     { API_BMINING,          api_bmining_read         },
+    { API_ROGUEDUMP,        api_roguedump_read       },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

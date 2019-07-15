@@ -47,7 +47,8 @@ struct module_job_s {
                unsigned char *file, int nfile, bool *found,
                bool *added, bool *exists);
     int (*update)(struct peer_s *p, const char *downloaddir,
-                  struct list_s *jobs, const char *filename);
+                  struct list_s *jobs, const char *filename,
+                  int host, unsigned short port);
     void (*resume)(struct ev_loop *loop, struct ev_timer *timer, int revents);
     int (*finalize)(struct config_s *cfg, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized);

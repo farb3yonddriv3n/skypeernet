@@ -291,7 +291,8 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
 }
 
 static int update(struct peer_s *p, const char *downloaddir,
-                  struct list_s *jobs, const char *filename)
+                  struct list_s *jobs, const char *filename,
+                  int host, unsigned short port)
 {
     if (!p || !downloaddir || !jobs || !filename) return -1;
     struct chunk_find_s { const char         *filename;
@@ -316,7 +317,11 @@ static int update(struct peer_s *p, const char *downloaddir,
                                .foundjc  = NULL };
     ifr(list.map(jobs, cb, &cf));
     if (!cf.foundjc) {
+        char fullpath[512];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", downloaddir, filename);
+        ifr(remove(fullpath));
         printf("Unwanted file %s received\n", filename);
+        ifr(rogue.add(&p->rogue, host, port, ROGUE_UNWANTED_FILE));
         return 0;
     }
     ifr(chunk_state(cf.foundj, cf.foundjc, JOBCHUNK_DONE));
