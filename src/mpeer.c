@@ -220,6 +220,29 @@ static int dfs_rogue_dump(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+static int dfs_task_dump(struct distfs_s *dfs, char **argv, int argc,
+                         int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    json_object *obj;
+    ifr(task.dump(dfs->peer, &obj));
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
+}
+
+static int dfs_task_cancel(struct distfs_s *dfs, char **argv, int argc,
+                           int *dfserr)
+{
+    if (!dfs || !argv || !dfserr) return -1;
+    unsigned int idx = strtol(argv[1], NULL, 10);
+    bool cancelled;
+    ifr(task.cancel(dfs->peer, idx, &cancelled));
+    if (cancelled) printf("Task %d cancelled\n", idx);
+    else           printf("Task %d failed to cancel\n", idx);
+    return  0;
+}
+
 static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc,
                         int *dfserr)
 {
@@ -245,6 +268,8 @@ static const struct { const char *alias[8];
     { { "jr", "jobremove" },    2, 1, dfs_job_remove        },
     { { "kd", "keysdump" },     2, 0, dfs_keysdump          },
     { { "rd", "rdump" },        2, 0, dfs_rogue_dump        },
+    { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
+    { { "ac", "taskcancel" },   2, 1, dfs_task_cancel       },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)

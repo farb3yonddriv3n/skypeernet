@@ -25,6 +25,8 @@ struct module_task_s {
                int nfilename, int host, unsigned short port,
                enum task_e action);
     int (*update)(struct peer_s *p);
+    int (*cancel)(struct peer_s *p, unsigned int idx, bool *cancelled);
+    int (*dump)(struct peer_s *p, json_object **obj);
     int (*clean)(void *t);
 };
 

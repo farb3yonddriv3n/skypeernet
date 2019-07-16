@@ -101,8 +101,54 @@ static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
     return task.update(p);
 }
 
+static int dump(struct peer_s *p, json_object **obj)
+{
+    int cb(struct list_s *l, void *ut, void *ud) {
+        struct task_s *t     = (struct task_s *)ut;
+        json_object   *tasks = (json_object *)ud;
+        json_object *id = json_object_new_int(t->idx);
+        json_object *size = json_object_new_int64(t->file.size);
+        json_object *jt = json_object_new_object();
+        json_object_object_add(jt, "idx",  id);
+        json_object_object_add(jt, "size", size);
+        json_object_array_add(tasks, jt);
+        return 0;
+    }
+    if (!p) return -1;
+    *obj = json_object_new_object();
+    json_object *jtasks = json_object_new_array();
+    json_object_object_add(*obj, "tasks", jtasks);
+    return list.map(&p->tasks.list, cb, jtasks);
+}
+
+static int cancel(struct peer_s *p, unsigned int idx,
+                  bool *cancelled)
+{
+    if (!p || !cancelled) return -1;
+    *cancelled = false;
+    struct task_id_s { unsigned int idx; struct task_s *found; };
+    int find_by_id(struct list_s *l, void *ut, void *ud) {
+        struct task_s    *t  = (struct task_s *)ut;
+        struct task_id_s *ti = (struct task_id_s *)ud;
+        if (t->idx == ti->idx) {
+            ti->found = t;
+            return 1;
+        }
+        return 0;
+    }
+    struct task_id_s ti = { .idx = idx, .found = NULL };
+    ifr(list.map(&p->tasks.list, find_by_id, &ti));
+    if (ti.found) {
+        *cancelled = true;
+        return list.del(&p->tasks.list, ti.found);
+    }
+    return 0;
+}
+
 struct module_task_s task = {
     .add    = add,
     .update = update,
+    .cancel = cancel,
+    .dump   = dump,
     .clean  = clean,
 };
