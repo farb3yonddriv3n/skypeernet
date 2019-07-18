@@ -22,7 +22,10 @@ static void read_cb(EV_P_ ev_io *w, int revents)
 {
     struct peer_s *p = w->data;
     if (net.receive(p, p->net.sd, p->recv.data, sizeof(p->recv.data),
-                    &p->net.remote.addr, &p->net.remote.len) != 0) abort();
+                    &p->net.remote.addr, &p->net.remote.len) != 0) {
+        syslog(LOG_ERR, "Net.receive failed");
+        return;
+    }
     if (p->type == INSTANCE_TRACKER &&
         ADDR_IP(p->net.remote.addr) == 0 &&
         ADDR_PORT(p->net.remote.addr) == 0) return;
