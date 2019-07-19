@@ -34,6 +34,7 @@
 #include <ev.h>
 #include <pthread.h>
 
+#include <version.h>
 #include <aes.h>
 #include <base64.h>
 #include <sn.h>
@@ -59,6 +60,7 @@
 #include <cli.h>
 #include <os.h>
 #include <rogue.h>
+#include <spn_version.h>
 
 #include <distfs.h>
 #include <job.h>

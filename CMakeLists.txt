@@ -13,6 +13,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE release)
 endif()
 
+execute_process (
+    COMMAND bash tools/version/main.sh
+)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=gnu11")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -DDEBUG")
@@ -48,6 +52,7 @@ src/task.c
 src/traffic.c
 src/transaction.c
 src/utils.c
+src/version.c
 src/world.c
 src/payload/ack.c
 src/payload/announce.c

@@ -278,6 +278,14 @@ static int api_roguedump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_ROGUEDUMP, jobj, obj, 0);
 }
 
+static int api_versiondump_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    json_object *jobj;
+    ifr(version.dump(&jobj));
+    return api.write(p, API_VERSIONDUMP, jobj, obj, 0);
+}
+
 static struct api_command_s cmds[] = {
     { API_LISTPEERS,        api_listpeers_read       },
     { API_MESSAGE,          api_message_read         },
@@ -290,6 +298,7 @@ static struct api_command_s cmds[] = {
     { API_BADVERTISE,       api_badvertise_read      },
     { API_BMINING,          api_bmining_read         },
     { API_ROGUEDUMP,        api_roguedump_read       },
+    { API_VERSIONDUMP,      api_versiondump_read     },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)
@@ -329,7 +338,7 @@ static void api_ev_read(EV_P_ ev_io *w, int revents)
         return;
     }
     if (api_read(p, buffer, n) != 0)
-        syslog(LOG_ERR, "API read error: %.*s", n, buffer);
+        syslog(LOG_ERR, "API read error: %d bytes", n);
 }
 
 const struct module_api_s api = {

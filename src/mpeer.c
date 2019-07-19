@@ -231,6 +231,17 @@ static int dfs_task_dump(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+static int dfs_version_dump(struct distfs_s *dfs, char **argv, int argc,
+                            int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    json_object *obj;
+    ifr(version.dump(&obj));
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
+}
+
 static int dfs_task_cancel(struct distfs_s *dfs, char **argv, int argc,
                            int *dfserr)
 {
@@ -270,6 +281,7 @@ static const struct { const char *alias[8];
     { { "rd", "rdump" },        2, 0, dfs_rogue_dump        },
     { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
     { { "ac", "taskcancel" },   2, 1, dfs_task_cancel       },
+    { { "v",  "versiondump" },  2, 0, dfs_version_dump      },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)

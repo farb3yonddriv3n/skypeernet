@@ -16,6 +16,7 @@ enum api_e {
     API_BADVERTISE,
     API_BMINING,
     API_ROGUEDUMP,
+    API_VERSIONDUMP,
 };
 
 struct module_api_s {
