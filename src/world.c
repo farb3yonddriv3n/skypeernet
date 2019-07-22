@@ -152,12 +152,6 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
     ev_timer_again(p->ev.loop, &p->ev.peers_reachable);
 }
 
-struct peer_root_s {
-    const char    *transaction_name;
-    unsigned char *pubkeyhash;
-    struct file_s *file;
-};
-
 const struct module_world_s world = {
     .peer.reachable      = peer_reachable,
     .peer.unreachable    = peer_unreachable,

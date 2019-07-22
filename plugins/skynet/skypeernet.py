@@ -15,7 +15,7 @@ async def piperecv(state):
                 state["recvbuf"] += msg
                 n = int.from_bytes(state["recvbuf"][:4], byteorder='little')
                 if n > len(state["recvbuf"]): continue
-                obj = json.loads(state["recvbuf"][4:n + 4])
+                obj = json.loads(state["recvbuf"][4:n + 4].decode("utf-8"))
                 state["recvbuf"] = state["recvbuf"][n + 4:]
                 r = await reply.run(state, obj)
                 if r != 0:
