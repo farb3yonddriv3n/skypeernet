@@ -10,6 +10,7 @@ int encx(unsigned char **dst, size_t *ndst,
     ifr(rsa_encrypt(psig->cfg.keys.local.rsa.public, src,
                     nsrc, &encrypted, &nencrypted));
     *dst = base64_encode(encrypted, nencrypted, ndst);
+    if (!(*dst)) return -1;
     if (encrypted) free(encrypted);
     return 0;
 }
@@ -21,6 +22,7 @@ int decx(unsigned char **dst, int *ndst,
     if (!dst || !ndst || !src || !key) return -1;
     size_t         ndecoded;
     unsigned char *decoded = base64_decode(src, nsrc, &ndecoded);
+    if (!decoded) return -1;
     ifr(rsa_decrypt(key->rsa.private, decoded, ndecoded,
                     dst, ndst));
     if (decoded) free(decoded);
