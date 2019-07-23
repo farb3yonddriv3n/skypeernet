@@ -2,13 +2,10 @@
 #include <cu.h>
 
 static struct test_s testlist[] = {
-    { "group, mine block and append transactions", t1_group_mine_block_append_transactions },
-    { "groupt root load and save",                 t2_group_root_load_save },
-    { "block append transactions",                 t3_block_append_transactions },
-    { "rsa encrypt and decrypt",                   t4_rsa_encrypt_decrypt },
-    { "root compare",                              t5_root_compare },
-    { "packet",                                    t6_packet },
-    { "list",                                      t7_list },
+    { "group, root, block, transaction", t1_group_mine_block_append_transactions },
+    { "rsa encrypt and decrypt",         t2_rsa_encrypt_decrypt },
+    { "packet",                          t3_packet },
+    { "list",                            t4_list },
 };
 
 static int init_suite()
@@ -28,7 +25,7 @@ int main()
     if (CUE_SUCCESS != CU_initialize_registry())
         return CU_get_error();
 
-    suite = CU_add_suite("eioie", init_suite, clean_suite);
+    suite = CU_add_suite("skypeernet", init_suite, clean_suite);
     if (NULL == suite) {
         CU_cleanup_registry();
         return CU_get_error();
