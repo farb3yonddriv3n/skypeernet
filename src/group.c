@@ -1,8 +1,6 @@
 #include <common.h>
 #include <dirent.h>
 
-#define DB_DIR "./db/"
-
 static int mallocz(struct group_s **g)
 {
     *g = malloc(sizeof(**g));
@@ -85,7 +83,7 @@ static int dump(struct group_s *g, struct config_s *cfg, json_object **obj)
 
 static void filename(char *buffer, size_t nbuffer, char *fname, int nfname)
 {
-    snprintf(buffer, nbuffer, "%s%.*s", DB_DIR, nfname, fname);
+    snprintf(buffer, nbuffer, "%s/%.*s", psig->cfg.dir.block, nfname, fname);
 }
 
 static int compare(struct group_s *local, struct group_s *remote,
@@ -140,7 +138,7 @@ static int db_load(struct group_s *g)
     if (!g) return -1;
     DIR *dir;
     struct dirent *ent;
-    if ((dir = opendir(DB_DIR)) == NULL) return -1;
+    if ((dir = opendir(psig->cfg.dir.block)) == NULL) return -1;
     while ((ent = readdir(dir)) != NULL) {
         char fname[1024];
         filename(fname, sizeof(fname), ent->d_name, strlen(ent->d_name));

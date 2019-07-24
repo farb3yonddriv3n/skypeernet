@@ -1,7 +1,7 @@
 #include <common.h>
 #include <cu.h>
 
-void t6_packet()
+void t3_packet()
 {
     char tblock[8192];
     memset(tblock, 0, sizeof(tblock));

@@ -4,7 +4,7 @@
 #define STR    "aaaabbbbccccddddeeee"
 #define STRLEN (sizeof(STR) - 1)
 
-void t4_rsa_encrypt_decrypt()
+void t2_rsa_encrypt_decrypt()
 {
     struct config_s cfg;
     A(config_init(&cfg), 0);

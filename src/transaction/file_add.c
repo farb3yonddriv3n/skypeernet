@@ -78,9 +78,10 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
              "%.*s", (int )nencoded, encoded);
     free(encoded);
     char filename[256];
-    snprintf(filename, sizeof(filename), "finalized/%s", t->action.add.meta.name);
+    snprintf(filename, sizeof(filename), "%s/%s",
+                                         psig->cfg.dir.finalized,
+                                         t->action.add.meta.name);
     if (os.filemove(param->action.add.pathname, filename) != 0) return -1;
-
     ret = hash_meta(t, t->action.add.meta.hash);
     if (ret != 0) return -1;
 
@@ -124,8 +125,9 @@ static int validate(struct transaction_s *t, unsigned char *dst_hash,
     }
 
     hash(hmeta, hchunks, t->action.add.pubkeyhash, dst_hash);
-    if (memcmp(t->action.add.hash, dst_hash, sizeof(t->action.add.hash)) != 0)
+    if (memcmp(t->action.add.hash, dst_hash, sizeof(t->action.add.hash)) != 0) {
         *valid = false;
+    }
 
     return 0;
 }

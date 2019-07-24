@@ -33,6 +33,8 @@ int config_keysdump(struct config_s *cfg)
 
 int config_init(struct config_s *cfg)
 {
+    if (!cfg) return -1;
+    memset(cfg, 0, sizeof(*cfg));
     json_object *obj;
     if (os.loadjsonfile(&obj, "config/settings.cfg") != 0) return -1;
     json_object *tmp;
@@ -85,7 +87,6 @@ int config_init(struct config_s *cfg)
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
     json_object_put(obj);
-    if (!cfg) return -1;
     if (rsa_load(cfg) != 0) {
         if (rsa_generate() != 0) return -1;
         if (rsa_load(cfg) != 0) return -1;
