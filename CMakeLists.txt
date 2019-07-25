@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 execute_process (
-    COMMAND bash tools/version/main.sh
+    COMMAND bash tools/version/set.sh
 )
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=gnu11")
