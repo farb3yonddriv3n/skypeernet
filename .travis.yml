@@ -4,7 +4,7 @@ sudo: true
 
 before_install:
     - sudo apt-get update -qq
-    - sudo apt-get install -qq cmake libssl-dev libev-dev libreadline-dev libjson-c-dev
+    - sudo apt-get install -qq cmake libssl-dev libev-dev libreadline-dev libjson-c-dev libncurses5-dev libcunit1-dev
 
 addons:
     apt:
@@ -17,3 +17,8 @@ compiler:
 script:
     - cmake .
     - make
+    - mkdir -p finalized/ block/
+    - bash tools/dd/dd.sh file1 1
+    - bash tools/dd/dd.sh file2 1
+    - cp file2 file1 finalized/
+    - ./spntest
