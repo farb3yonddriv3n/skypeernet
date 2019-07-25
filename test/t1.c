@@ -20,7 +20,7 @@ static int t_file_add(const char *filename, struct block_s *b)
     return 0;
 }
 
-static struct root_s *root_add(const char *file)
+static struct root_s *root_add(struct peer_s *p, const char *file)
 {
     struct root_s *r;
     A(root.init(&r), 0);
@@ -30,9 +30,9 @@ static struct root_s *root_add(const char *file)
     A(block.init(&b, prev_block), 0);
     A(t_file_add(file, b), 0);
     A(block.transactions.lock(b), 0);
-    A(block.mine(b), 0);
+    A(block.mine(b, p->miningtarget.ptr, p->miningtarget.size), 0);
     bool valid;
-    A(block.validate(b, &valid), 0);
+    A(block.validate(b, &valid, p->miningtarget.ptr, p->miningtarget.size), 0);
     A(valid, true);
     A(root.blocks.add(r, b), 0);
     memcpy(prev_block, b->hash.pow, sizeof(b->hash.pow));
@@ -48,7 +48,7 @@ void t1_group_mine_block_append_transactions()
     A(group.init(&g[0]), 0);
     int i;
     for (i = 0; i < COUNTOF(files); i++) {
-        struct root_s *r = root_add(files[i]);
+        struct root_s *r = root_add(&p, files[i]);
         CU_ASSERT(r != NULL);
         A(group.roots.add(g[0], r), 0);
     }

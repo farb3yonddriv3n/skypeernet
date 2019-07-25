@@ -183,7 +183,8 @@ static void *mine(void *data)
     double start;
     if (os.gettimems(&start) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
-    if (block.mine(b) != 0)
+    if (block.mine(b, dfs->peer->miningtarget.ptr,
+                   dfs->peer->miningtarget.size) != 0)
         return mine_thread_fail(dfs, __FILE__, __LINE__);
     double end;
     if (os.gettimems(&end) != 0)

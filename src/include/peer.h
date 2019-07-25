@@ -90,6 +90,10 @@ struct peer_s {
     struct list_s        backtrace;
     struct list_s        rogue;
     struct {
+        char *ptr;
+        int   size;
+    } miningtarget;
+    struct {
         struct list_s list;
         int           idx;
     } tasks;

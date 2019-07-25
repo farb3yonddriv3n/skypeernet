@@ -221,7 +221,8 @@ static int validate(const struct root_s *r, bool *valid)
             *valid = false;
             return 0;
         }
-        if (block.validate(b, valid) != 0) return -1;
+        if (block.validate(b, valid, psig->miningtarget.ptr,
+                           psig->miningtarget.size) != 0) return -1;
         if (*valid != true) return 0;
         block_prev = b->hash.pow;
     }

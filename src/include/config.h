@@ -59,6 +59,7 @@ struct config_s {
             char write[256];
         } pipes;
     } api;
+    int miningtarget;
 };
 
 int config_init(struct config_s *cfg);

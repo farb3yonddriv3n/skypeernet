@@ -75,6 +75,9 @@ static int init_peer(struct peer_s *p)
     psig = p;
     p->type = INSTANCE_PEER;
     if (config_init(&p->cfg) != 0) return -1;
+    p->miningtarget.ptr = malloc(p->cfg.miningtarget);
+    if (!p->miningtarget.ptr) return -1;
+    p->miningtarget.size = p->cfg.miningtarget;
     if ((p->net.sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         return -1;
     int nb = 1;
@@ -167,6 +170,7 @@ static int clean(struct peer_s *p)
     list.clean(&p->recv_buffer.sealed);
     list.clean(&p->tasks.list);
     config_free(&p->cfg);
+    if (p->miningtarget.ptr) free(p->miningtarget.ptr);
     backtrace.clean();
     return 0;
 }

@@ -21,8 +21,8 @@ struct block_s {
 
 struct module_block_s {
     int (*init)(struct block_s **b, unsigned char *prev_hash);
-    int (*mine)(struct block_s *b);
-    int (*validate)(struct block_s *b, bool *valid);
+    int (*mine)(struct block_s *b, char *mt, int nmt);
+    int (*validate)(struct block_s *b, bool *valid, char *mt, int nmt);
     int (*size)(struct block_s *b, size_t *s);
     int (*compare)(struct block_s *local, struct block_s *remote,
                    struct root_diff_s *equal);

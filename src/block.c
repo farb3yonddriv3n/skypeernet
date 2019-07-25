@@ -1,7 +1,5 @@
 #include <common.h>
 
-static char miningtarget[2];
-
 static int mallocz(struct block_s **b)
 {
     *b = malloc(sizeof(**b));
@@ -28,16 +26,16 @@ static void hash_calc(char *buffer, const int nbuffer, unsigned char *pow,
     sha256hex((unsigned char *)buffer, strlen(buffer), pow);
 }
 
-static int mine(struct block_s *b)
+static int mine(struct block_s *b, char *mt, int nmt)
 {
     int i;
     char buffer[1024];
-    memset(miningtarget, '0', sizeof(miningtarget));
+    memset(mt, '0', nmt);
     for (b->hash.nonce = 0, i = 0; /* void */; b->hash.nonce++, i++) {
         hash_calc(buffer, sizeof(buffer), b->hash.pow,
                   b->hash.nonce, b->hash.prev,
                   b->hash.transactions);
-        if (memcmp(b->hash.pow, miningtarget, sizeof(miningtarget)) == 0) break;
+        if (memcmp(b->hash.pow, mt, nmt) == 0) break;
     }
     return 0;
 }
@@ -52,14 +50,15 @@ static void hash_trans(struct transaction_s *t, unsigned char *prev_hash,
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
 }
 
-static int validate(struct block_s *b, bool *valid)
+static int validate(struct block_s *b, bool *valid,
+                    char *mt, int nmt)
 {
     char buffer[1024];
     unsigned char md[SHA256HEX];
     *valid = true;
 
-    memset(miningtarget, '0', sizeof(miningtarget));
-    if (memcmp(miningtarget, b->hash.pow, sizeof(miningtarget)) != 0) {
+    memset(mt, '0', nmt);
+    if (memcmp(mt, b->hash.pow, nmt) != 0) {
         *valid = false;
         return 0;
     }
