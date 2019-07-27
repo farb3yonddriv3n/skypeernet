@@ -6,6 +6,6 @@ setup(
      author_email="far.b3yond.driv3n@gmail.com",
      description="skypeernet p2p network - skynet plugin",
      url="https://github.com/farb3yonddriv3n/skypeernet",
-     packages=find_packages(),
+     packages=['.'],
      scripts=['skypeernet.py'],
  )

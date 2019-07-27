@@ -254,6 +254,10 @@ static int dump(struct transaction_s *t, json_object **obj)
     json_object_object_add(*obj, "name", name);
     json_object_object_add(*obj, "size", size);
     json_object_object_add(*obj, "decryptable", decryptable);
+    if (desc) {
+        json_object *description = json_object_new_string_len((const char *)desc, ndesc);
+        json_object_object_add(*obj, "description", description);
+    }
 
     json_object *chunks = json_object_new_array();
     json_object_object_add(*obj, "chunks", chunks);
