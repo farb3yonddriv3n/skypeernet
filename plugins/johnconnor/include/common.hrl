@@ -23,3 +23,4 @@
                                 snapshots :: integer(),
                                 temp      :: list()}).
 -record(proto_message, {data :: binary()}).
+-record(proto_files_get, {}).

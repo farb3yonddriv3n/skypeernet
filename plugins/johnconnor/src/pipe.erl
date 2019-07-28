@@ -13,14 +13,15 @@ loop(Fifo, 0, []) ->
         {Fifo, {data, Data}} ->
             {ListSize, Rest} = lists:split(4, Data),
             <<Size:32>> = list_to_binary(lists:reverse(ListSize)),
-            io:format("Target size: ~p~n", [Size]),
             if Size == length(Rest) ->
                 dispatch(Rest),
                 loop(Fifo, 0, []);
             true ->
                 loop(Fifo, Size, Rest)
             end;
-        _ ->
+        {Pid, eof} ->
+            read();
+        Unsupported ->
             loop(Fifo, 0, [])
     end;
 loop(Fifo, Size, Rest) ->
@@ -33,7 +34,9 @@ loop(Fifo, Size, Rest) ->
             true ->
                 loop(Fifo, Size, NewData)
             end;
-        _ ->
+        {Pid, eof} ->
+            read();
+        Unsupported ->
             loop(Fifo, 0, [])
     end.
 

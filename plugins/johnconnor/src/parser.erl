@@ -13,6 +13,9 @@ do(Data, State) ->
         Json = jiffy:decode(Data),
         Parsed = parse(Json),
         case Parsed of
+            {<<"files_get">>, Payload, _Version} ->
+                files:get(Payload, State),
+                {reply, nochange};
             {<<"account_signup">>, Payload, _Version} ->
                 account:signup(Payload, State),
                 {reply, nochange};

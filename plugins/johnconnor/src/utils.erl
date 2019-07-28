@@ -1,5 +1,5 @@
 -module(utils).
--export([send/1, send/2]).
+-export([send/1, send/2, sendpipe/1]).
 
 -include("proto.hrl").
 -include("common.hrl").
@@ -48,11 +48,16 @@ reply(#proto_camera_response{ error = Error, pid = Pid, image = Image,
                 {<<"temp">>     , Temp}]},
     encode(<<"camera_response">>, Payload);
 reply(#proto_message{ data = Data }) ->
-    Payload = {[{<<"data">>, Data }]},
+    Payload = Data,
     encode(<<"message">>, Payload);
+reply(#proto_files_get{}) ->
+    encode(2, {[{<<"test">>, 1}]});
 reply(_) ->
     error.
 
+sendpipe(Proto) ->
+    Reply = reply(Proto),
+    pipe:write(Reply).
 send(Pid, Proto) ->
     Reply = reply(Proto),
     Pid ! {dispatch, Reply},

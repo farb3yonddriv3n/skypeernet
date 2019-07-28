@@ -12,7 +12,9 @@ var server = [
     ["broadcast",            broadcast],
     ["devices_online",       devices_online],
     ["device_offline",       device_offline],
-    ["camera_response",      camera_response]
+    ["camera_response",      camera_response],
+
+    ["message",              message]
 ];
 
 var entities = new Array();
@@ -416,6 +418,49 @@ function getdate(ts)
     return datetime;
 }
 
+function message(payload)
+{
+    var parsed = JSON.parse(payload);
+    console.log("Parsed");
+
+    var files = document.getElementById("files");
+    files.innerHTML = "";
+    for (i = 0; i < parsed["payload"]["blocks"].length; i++) {
+        for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++) {
+            //if ("description" in parsed["payload"]["blocks"][i])
+            var name = document.createElement("div");
+            name.style.width     = "50%";
+            name.style.textAlign = "center";
+            name.style.float     = "left";
+            if ("description" in parsed["payload"]["blocks"][i]["transactions"][t])
+                name.innerHTML       = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
+            else
+                name.innerHTML   = "Not decryptable";
+            var desc = document.createElement("div");
+            desc.style.width     = "50%";
+            desc.style.textAlign = "center";
+            desc.style.float     = "left";
+            if ("description" in parsed["payload"]["blocks"][i]["transactions"][t]) {
+                var description = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
+                var filename = parsed["payload"]["blocks"][i]["transactions"][t]["name"];
+                if (description.endsWith("mp3"))
+                    desc.innerHTML = "<audio controls><source src=\"assets/media/"+filename+"\" type=\"audio/mpeg\"></audio>";
+                else if(description.endsWith("mp4"))
+                    desc.innerHTML = "<video width=\"320\" height=\"240\" controls><source src=\"assets/media/"+filename+"\" type=\"video/mp4\"></video>";
+                else
+                    desc.innerHTML = "<a href=\"assets/media/"+filename+"\">"+description+"</a>";
+
+            } else
+                desc.innerHTML   = "Not decryptable";
+            var filename = document.createElement("div");
+            filename.style.width = "100%";
+            filename.appendChild(name);
+            filename.appendChild(desc);
+            files.appendChild(filename);
+        }
+    }
+}
+
 function camera_response(payload)
 {
     if("error" in payload && payload["error"] != 0) return;
@@ -467,11 +512,13 @@ function account_signup_reply(payload)
 
 function gui_reset()
 {
+    /*
     var logged = document.getElementById("logged");
     var cams   = document.getElementById("panel_cam");
     logged.innerHTML = "";
     cams.innerHTML = '';
     show_loginsignup(true);
+    */
 }
 
 function account_logout_reply(payload)
@@ -503,6 +550,12 @@ function list()
 {
     send("list", new Object());
     return "List requested";
+}
+
+function files_get()
+{
+    var payload  = new Object();
+    send("files_get", payload);
 }
 
 function camera_reinit(pid)
