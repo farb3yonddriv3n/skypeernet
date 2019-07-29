@@ -77,9 +77,20 @@ static int tokenize(char *line, char ***argv, int *argc)
 {
     char *s, *arg;
     char *end = line + strlen(line);
+    bool quotes = false;
     arg = s = line;
     for ( ; s <= end; s++) {
-        if (*s == ' ' || *s == '\0') {
+        if ((*s == ' ' && !quotes) || *s == '\0' || *s == '"') {
+            if (*s == '"' && !quotes) {
+                arg += 1;
+                quotes = true;
+                continue;
+            }
+            if (*s == '"' && quotes) {
+                quotes = false;
+                *s = '\0';
+                continue;
+            }
             *argv = realloc(*argv, ++(*argc) * sizeof(void *));
             if (!argv) return -1;
             (*argv)[*argc - 1] = arg;
