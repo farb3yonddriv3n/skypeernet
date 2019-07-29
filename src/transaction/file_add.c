@@ -77,11 +77,6 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
              (int )sizeof(t->action.add.meta.description),
              "%.*s", (int )nencoded, encoded);
     free(encoded);
-    char filename[256];
-    snprintf(filename, sizeof(filename), "%s/%s",
-                                         psig->cfg.dir.finalized,
-                                         t->action.add.meta.name);
-    if (os.filemove(param->action.add.pathname, filename) != 0) return -1;
     ret = hash_meta(t, t->action.add.meta.hash);
     if (ret != 0) return -1;
 
@@ -237,10 +232,6 @@ static int dump(struct transaction_s *t, json_object **obj)
     struct config_key_s *key;
     ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
                          &key));
-    char fullpath[512];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s",
-                                         psig->cfg.dir.finalized,
-                                         f->meta.name);
     int            ndesc = 0;
     unsigned char *desc  = NULL;
     if (key) {
@@ -257,6 +248,14 @@ static int dump(struct transaction_s *t, json_object **obj)
     if (desc) {
         json_object *description = json_object_new_string_len((const char *)desc, ndesc);
         json_object_object_add(*obj, "description", description);
+        bool exists;
+        char fullpath[512];
+        snprintf(fullpath, sizeof(fullpath), "%s/%.*s",
+                                              psig->cfg.dir.finalized,
+                                              ndesc, desc);
+        ifr(os.fileexists(fullpath, &exists));
+        json_object *finalized = json_object_new_boolean(exists ? true : false);
+        json_object_object_add(*obj, "finalized", finalized);
     }
 
     json_object *chunks = json_object_new_array();
@@ -282,8 +281,8 @@ static int dump(struct transaction_s *t, json_object **obj)
         json_object_object_add(chunk, "downloaded", cdownloaded);
         json_object_array_add(chunks, chunk);
     }
-    json_object *downloaded = json_object_new_boolean(incomplete == 0 ? true : false);
-    json_object_object_add(*obj, "downloaded", downloaded);
+    json_object *complete = json_object_new_boolean(incomplete == 0 ? true : false);
+    json_object_object_add(*obj, "complete", complete);
     if (desc) free(desc);
     return 0;
 }
