@@ -418,46 +418,90 @@ function getdate(ts)
     return datetime;
 }
 
-function message(payload)
+function menuFiles(src)
 {
-    var parsed = JSON.parse(payload);
-    console.log("Parsed");
+    var filesLocalList  = document.getElementById("filesLocalList");
+    var filesRemoteList = document.getElementById("filesRemoteList");
+    filesLocalList.style.display = "none";
+    filesRemoteList.style.display = "none";
 
-    var files = document.getElementById("files");
+    if (src == "local")       filesLocalList.style.display = "block";
+    else if (src == "remote") filesRemoteList.style.display = "block";
+
+
+    var fileItemBody = document.getElementById("fileItemBody");
+    fileItemBody.innerHTML = "none";
+
+    var fileItem = document.getElementById("fileItem");
+    fileItem.style.display = "none";
+}
+
+function showFile(file)
+{
+    var filesLocalList = document.getElementById("filesLocalList");
+    filesLocalList.style.display = "none";
+    var filesRemoteList = document.getElementById("filesRemoteList");
+    filesRemoteList.style.display = "none";
+    var fileItemBody = document.getElementById("fileItemBody");
+    var fileItemTitle = document.getElementById("fileItemTitle");
+    fileItemBody.innerHTML = "";
+    fileItemTitle.innerHTML = "";
+    var desc = document.createElement("div");
+    if (file.endsWith("mp3")) {
+        desc.innerHTML = "<audio controls><source src=\"assets/media/"+file+"\" type=\"audio/mpeg\"></audio>";
+        desc.setAttribute("class", "fileAudio");
+    } else if(file.endsWith("mp4")) {
+        desc.innerHTML = "<video width=\"800\" height=\"600\" controls><source src=\"assets/media/"+file+"\" type=\"video/mp4\"></video>";
+        desc.setAttribute("class", "fileVideo");
+    } else {
+        desc.innerHTML = "<a href=\"assets/media/"+file+"\">"+file+"</a>";
+        desc.setAttribute("class", "fileGeneric");
+    }
+    fileItemBody.appendChild(desc);
+    fileItemTitle.innerHTML = file;
+    var fileItem = document.getElementById("fileItem");
+    fileItem.style.display = "block";
+}
+
+function update_onclick1(element, desc)
+{
+    element.onclick = function() {
+        showFile(desc);
+    }
+}
+
+function message_files(parsed)
+{
+    var files = document.getElementById("filesLocal");
     files.innerHTML = "";
     for (i = 0; i < parsed["payload"]["blocks"].length; i++) {
         for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++) {
-            //if ("description" in parsed["payload"]["blocks"][i])
             var name = document.createElement("div");
-            name.style.width     = "50%";
-            name.style.textAlign = "center";
-            name.style.float     = "left";
+            name.setAttribute("class", "filesItem");
+            var desc = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
+            //name.onclick = function(){showFile(desc);};
+            update_onclick1(name, desc);
             if ("description" in parsed["payload"]["blocks"][i]["transactions"][t])
-                name.innerHTML       = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
+                name.innerHTML = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
             else
-                name.innerHTML   = "Not decryptable";
-            var desc = document.createElement("div");
-            desc.style.width     = "50%";
-            desc.style.textAlign = "center";
-            desc.style.float     = "left";
-            if ("description" in parsed["payload"]["blocks"][i]["transactions"][t]) {
-                var description = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
-                var filename = parsed["payload"]["blocks"][i]["transactions"][t]["name"];
-                if (description.endsWith("mp3"))
-                    desc.innerHTML = "<audio controls><source src=\"assets/media/"+filename+"\" type=\"audio/mpeg\"></audio>";
-                else if(description.endsWith("mp4"))
-                    desc.innerHTML = "<video width=\"320\" height=\"240\" controls><source src=\"assets/media/"+filename+"\" type=\"video/mp4\"></video>";
-                else
-                    desc.innerHTML = "<a href=\"assets/media/"+filename+"\">"+description+"</a>";
-
-            } else
-                desc.innerHTML   = "Not decryptable";
+                name.innerHTML = parsed["payload"]["blocks"][i]["transactions"][t]["name"];
             var filename = document.createElement("div");
             filename.style.width = "100%";
             filename.appendChild(name);
-            filename.appendChild(desc);
             files.appendChild(filename);
         }
+    }
+}
+
+function message(payload)
+{
+    var parsed = JSON.parse(payload);
+    if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
+        message_files(parsed);
+    } else if (parsed["command"] == 1) {
+        console.log("Message " + parsed["payload"]["message"] + " from " + parsed["payload"]["host"]);
+    } else {
+        console.log(parsed);
     }
 }
 

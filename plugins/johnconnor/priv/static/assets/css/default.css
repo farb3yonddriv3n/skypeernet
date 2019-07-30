@@ -1,0 +1,44 @@
+video, audio {
+    cursor:pointer;
+}
+
+#filesLocalList #filesRemoteList{
+    width:100%;
+    overflow:hidden;
+}
+
+#filesRemoteList {
+    display:none;
+}
+
+.filesItem {
+    background-color:grey;
+    margin:2px;
+    cursor:pointer;
+}
+
+#fileItemTitle {
+    width:100%;
+    font-weight:bold;
+    font-size:24pt;
+}
+
+.fileItemBody {
+    width:100%;
+    overflow:hidden;
+}
+
+.fileGeneric {
+    width:100%;
+    text-align:center;
+}
+
+.fileAudio {
+    width:100%;
+    text-align:center;
+}
+
+.fileVideo {
+    width:100%;
+    text-align:center;
+}
