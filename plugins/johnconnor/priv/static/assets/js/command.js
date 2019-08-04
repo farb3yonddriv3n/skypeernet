@@ -463,10 +463,13 @@ function showFile(file)
     fileItem.style.display = "block";
 }
 
-function update_onclick1(element, desc)
+function update_onclick1(element, desc, type)
 {
     element.onclick = function() {
-        showFile(desc);
+        if (type == "show_files")
+            showFile(desc);
+        else if (type == "job_add")
+            job_add(desc);
     }
 }
 
@@ -480,7 +483,7 @@ function message_files(parsed)
             name.setAttribute("class", "filesItem");
             var desc = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
             //name.onclick = function(){showFile(desc);};
-            update_onclick1(name, desc);
+            update_onclick1(name, desc, "show_files");
             if ("description" in parsed["payload"]["blocks"][i]["transactions"][t])
                 name.innerHTML = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
             else
@@ -493,15 +496,36 @@ function message_files(parsed)
     }
 }
 
+function message_files_remote(parsed)
+{
+    var files = document.getElementById("filesRemote");
+    files.innerHTML = "";
+    for (i = 0; i < parsed["payload"]["roots"].length; i++) {
+        for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++) {
+            for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++) {
+                var name = document.createElement("div");
+                name.setAttribute("class", "filesItem");
+                var filename = parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]["name"];
+                name.innerHTML = filename;
+                update_onclick1(name, filename, "job_add");
+                var filename = document.createElement("div");
+                filename.style.width = "100%";
+                filename.appendChild(name);
+                files.appendChild(filename);
+            }
+        }
+    }
+}
+
 function message(payload)
 {
     var parsed = JSON.parse(payload);
     if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
         message_files(parsed);
+    } else if (parsed["command"] == 3 && "roots" in parsed["payload"]) {
+        message_files_remote(parsed);
     } else if (parsed["command"] == 1) {
-        console.log("Message " + parsed["payload"]["message"] + " from " + parsed["payload"]["host"]);
     } else {
-        console.log(parsed);
     }
 }
 
@@ -596,15 +620,23 @@ function list()
     return "List requested";
 }
 
-function files_get()
+function files_get(src)
 {
-    var payload  = new Object();
+    var payload = new Object();
+    payload.src = src;
     send("files_get", payload);
+}
+
+function job_add(name)
+{
+    var payload = new Object();
+    payload.name = name;
+    send("job_add", payload);
 }
 
 function camera_reinit(pid)
 {
-    var payload  = new Object();
+    var payload = new Object();
     payload.pid = pid;
     send("camera_reinit", payload);
 }
@@ -685,8 +717,6 @@ function connect(cmd, payload)
 
     ws.onmessage = function (evt) {
         var json = JSON.parse(evt.data);
-        console.log("Received:");
-        console.log(json);
         for (var i = 0; i < server.length; i++) {
             if (server[i][0] == json.command) {
                 server[i][1](json["payload"]);

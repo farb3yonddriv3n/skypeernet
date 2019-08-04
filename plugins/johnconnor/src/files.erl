@@ -1,8 +1,11 @@
 -module(files).
--export([get/2]).
+-export([get/2, job_add/2]).
 
 -include("proto.hrl").
 -include("common.hrl").
 
-get(_Payload, _State) ->
-    utils:sendpipe(#proto_files_get{}).
+get([{ <<"src">>, Src }], _State) ->
+    utils:sendpipe(#proto_files_get{ src = Src }).
+
+job_add([{ <<"name">>, Name }], _State) ->
+    utils:sendpipe(#proto_job_add{ name = Name }).

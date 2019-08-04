@@ -7,6 +7,9 @@
 encode(Command, Payload) ->
     jiffy:encode({[{<<"command">>, Command}, {<<"payload">>, Payload}]}).
 
+encodepipe(Cmd) ->
+    jiffy:encode({Cmd}).
+
 reply(#proto_account_signup_reply{error = Error}) ->
     Payload = {[{<<"error">>, Error}]},
     encode(<<"account_signup_reply">>, Payload);
@@ -50,8 +53,12 @@ reply(#proto_camera_response{ error = Error, pid = Pid, image = Image,
 reply(#proto_message{ data = Data }) ->
     Payload = Data,
     encode(<<"message">>, Payload);
-reply(#proto_files_get{}) ->
+reply(#proto_files_get{ src = <<"local">> }) ->
     encode(2, {[{<<"test">>, 1}]});
+reply(#proto_files_get{ src = <<"remote">> }) ->
+    encode(3, {[{<<"test">>, 1}]});
+reply(#proto_job_add{ name = Name }) ->
+    encodepipe([{<<"command">>, 8}, {<<"name">>, Name}]);
 reply(_) ->
     error.
 
