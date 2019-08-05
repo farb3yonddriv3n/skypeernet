@@ -12,7 +12,7 @@ int file_chunks(const char *filename, size_t nbytes,
                 struct file_chunk_s **chunks,
                 size_t *nchunks)
 {
-    if (nbytes < 1) return -1;
+    if (nbytes < 1 || !chunks || !nchunks || !filename) return -1;
 
     int i;
     *chunks  = NULL;
