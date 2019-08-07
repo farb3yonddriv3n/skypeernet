@@ -19,9 +19,9 @@ loop(Fifo, 0, []) ->
             true ->
                 loop(Fifo, Size, Rest)
             end;
-        {Pid, eof} ->
+        {_Pid, eof} ->
             read();
-        Unsupported ->
+        _Unsupported ->
             loop(Fifo, 0, [])
     end;
 loop(Fifo, Size, Rest) ->
@@ -34,9 +34,9 @@ loop(Fifo, Size, Rest) ->
             true ->
                 loop(Fifo, Size, NewData)
             end;
-        {Pid, eof} ->
+        {_Pid, eof} ->
             read();
-        Unsupported ->
+        _Unsupported ->
             loop(Fifo, 0, [])
     end.
 
