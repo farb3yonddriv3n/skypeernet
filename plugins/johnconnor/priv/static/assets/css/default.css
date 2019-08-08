@@ -12,9 +12,21 @@ video, audio {
 }
 
 .filesItem {
+    width:100%;
+    overflow:hidden;
     background-color:grey;
     margin:2px;
-    cursor:pointer;
+}
+
+.filesItemSubClick {
+    cursor: pointer;
+}
+
+.filesItemSub {
+    width:20%;
+    margin:2px;
+    float:left;
+    background-color:grey;
 }
 
 #fileItemTitle {

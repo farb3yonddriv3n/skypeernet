@@ -1,5 +1,6 @@
 var ws = undefined;
-
+var files_local = [];
+var files_remote = [];
 var server = [
     ["message",              message]
 ];
@@ -89,57 +90,92 @@ function file_onclick(element, desc, type)
     }
 }
 
-function message_files(parsed)
+function files_show(src)
 {
-    var files = document.getElementById("filesLocal");
-    files.innerHTML = "";
-    for (i = 0; i < parsed["payload"]["blocks"].length; i++) {
-        for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++) {
+    if (src == "local") {
+        var files = document.getElementById("filesLocal");
+        files.innerHTML = "";
+        for (i = 0; i < files_local.length; i++) {
             var name = document.createElement("div");
             name.setAttribute("class", "filesItem");
-            var desc = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
+            var desc = files_local[i]["description"];
             file_onclick(name, desc, "show_files");
-            if ("description" in parsed["payload"]["blocks"][i]["transactions"][t])
-                name.innerHTML = parsed["payload"]["blocks"][i]["transactions"][t]["description"];
+            if ("description" in files_local[i])
+                name.innerHTML = files_local[i]["description"];
             else
-                name.innerHTML = parsed["payload"]["blocks"][i]["transactions"][t]["name"];
+                name.innerHTML = files_local[i]["name"];
             var filename = document.createElement("div");
             filename.style.width = "100%";
             filename.appendChild(name);
             files.appendChild(filename);
         }
+    } else if (src == "remote") {
+        var files = document.getElementById("filesRemote");
+        files.innerHTML = "";
+        for (i = 0; i < files_remote.length; i++) {
+            var transactionDiv = document.createElement("div");
+            transactionDiv.setAttribute("class", "filesItem");
+            var transaction = files_remote[i];
+            files_item_sub(transactionDiv, transaction["name"]);
+            files_item_sub(transactionDiv, transaction["size"]);
+            var complete = files_item_sub(transactionDiv, transaction["complete"]);
+            if (!transaction["complete"]) {
+                file_onclick(complete, transaction["name"], "job_add");
+                complete.setAttribute("class", "filesItemSubClick");
+            }
+            files.appendChild(transactionDiv);
+        }
     }
+}
+
+function message_files_local(parsed)
+{
+    files_local = [];
+    for (i = 0; i < parsed["payload"]["blocks"].length; i++)
+        for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++)
+            files_local.push(parsed["payload"]["blocks"][i]["transactions"][t]);
+    files_show("local");
+}
+
+function files_item_sub(dst, innerHtml)
+{
+    var div = document.createElement("div");
+    div.setAttribute("class", "filesItemSub");
+    div.innerHTML = innerHtml;
+    dst.appendChild(div);
+    return div;
 }
 
 function message_files_remote(parsed)
 {
-    var files = document.getElementById("filesRemote");
-    files.innerHTML = "";
-    for (i = 0; i < parsed["payload"]["roots"].length; i++) {
-        for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++) {
-            for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++) {
-                var name = document.createElement("div");
-                name.setAttribute("class", "filesItem");
-                var filename = parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]["name"];
-                name.innerHTML = filename;
-                file_onclick(name, filename, "job_add");
-                var filename = document.createElement("div");
-                filename.style.width = "100%";
-                filename.appendChild(name);
-                files.appendChild(filename);
-            }
+    files_remote = [];
+    for (i = 0; i < parsed["payload"]["roots"].length; i++)
+        for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++)
+            for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++)
+                files_remote.push(parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]);
+    files_show("remote");
+}
+
+function message_file_job_done(parsed)
+{
+    for (i = 0; i < files_remote.length; i++)
+        if (files_remote[i]["name"] == parsed["payload"]["name"]) {
+            files_remote[i]["complete"] = true;
+            break;
         }
-    }
+    files_show("remote");
 }
 
 function message(payload)
 {
     var parsed = JSON.parse(payload);
     if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
-        message_files(parsed);
+        message_files_local(parsed);
     } else if (parsed["command"] == 3 && "roots" in parsed["payload"]) {
         message_files_remote(parsed);
     } else if (parsed["command"] == 1) {
+    } else if (parsed["command"] == 7) {
+        message_file_job_done(parsed);
     } else {
     }
 }
