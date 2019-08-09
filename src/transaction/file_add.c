@@ -229,19 +229,13 @@ static int save(struct transaction_s *t, json_object **parent)
 static int dump(struct transaction_s *t, json_object **obj)
 {
     struct file_s *f = &t->action.add;
-    struct config_key_s *key;
-    ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
-                         &key));
-    int            ndesc = 0;
-    unsigned char *desc  = NULL;
-    if (key) {
-        ifr(decx(&desc, &ndesc, (unsigned char *)f->meta.description,
-                 strlen(f->meta.description), key));
-    }
+    int            ndesc;
+    unsigned char *desc;
+    ifr(decode_desc(f, &desc, &ndesc));
     *obj = json_object_new_object();
     json_object *name = json_object_new_string((const char *)f->meta.name);
     json_object *size = json_object_new_int64(f->meta.size);
-    json_object *decryptable = json_object_new_boolean(key ? true : false);
+    json_object *decryptable = json_object_new_boolean(desc ? true : false);
     json_object_object_add(*obj, "name", name);
     json_object_object_add(*obj, "size", size);
     json_object_object_add(*obj, "decryptable", decryptable);

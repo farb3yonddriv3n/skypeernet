@@ -254,8 +254,12 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
                                NULL, NULL));
     if (!f) return -1;
 
-    char dst[256], chunkpath[256];
-    snprintf(dst, sizeof(dst), "%s/%.*s", cfg->dir.finalized, SHA256HEX, file);
+    unsigned char *desc;
+    int            ndesc;
+    ifr(decode_desc(f, &desc, &ndesc));
+    if (!desc) return 0;
+    char dst[2048], chunkpath[256];
+    snprintf(dst, sizeof(dst), "%s/%.*s", cfg->dir.finalized, ndesc, desc);
     remove(dst);
     int i;
     for (i = 0; i < f->chunks.size; i++) {

@@ -62,5 +62,7 @@ inline static void sha256hex(const unsigned char *src, const int srclen,
     SHA256(src, srclen, md);
     bin2hexstr((char *)hex, SHA256HEX, (char *)md, sizeof(md));
 }
+struct file_s;
+int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc);
 
 #endif

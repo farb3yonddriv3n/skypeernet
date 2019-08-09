@@ -102,3 +102,18 @@ void bin2hexstr(char *dst, size_t dstlen,
         step++;
     }
 }
+
+int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc)
+{
+    if (!f || !desc || !ndesc) return -1;
+    struct config_key_s *key;
+    *desc  = NULL;
+    *ndesc = 0;
+    ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
+                         &key));
+    if (key) {
+        ifr(decx(desc, ndesc, (unsigned char *)f->meta.description,
+                 strlen(f->meta.description), key));
+    }
+    return 0;
+}
