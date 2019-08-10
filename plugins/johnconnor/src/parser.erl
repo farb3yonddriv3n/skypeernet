@@ -19,6 +19,9 @@ do(Data, State) ->
             {<<"job_add">>, Payload, _Version} ->
                 files:job_add(Payload, State),
                 {reply, nochange};
+            {<<"job_finalize">>, Payload, _Version} ->
+                files:job_finalize(Payload, State),
+                {reply, nochange};
             {<<"account_signup">>, Payload, _Version} ->
                 account:signup(Payload, State),
                 {reply, nochange};

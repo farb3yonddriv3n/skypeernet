@@ -25,3 +25,4 @@
 -record(proto_message, {data :: binary()}).
 -record(proto_files_get, {src :: binary()}).
 -record(proto_job_add, {name :: binary()}).
+-record(proto_job_finalize, {name :: binary()}).

@@ -59,6 +59,8 @@ reply(#proto_files_get{ src = <<"remote">> }) ->
     encode(3, {[{<<"test">>, 1}]});
 reply(#proto_job_add{ name = Name }) ->
     encodepipe([{<<"command">>, 8}, {<<"name">>, Name}]);
+reply(#proto_job_finalize{ name = Name }) ->
+    encodepipe([{<<"command">>, 9}, {<<"name">>, Name}]);
 reply(_) ->
     error.
 

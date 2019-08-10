@@ -116,13 +116,24 @@ function files_show(src)
             var transactionDiv = document.createElement("div");
             transactionDiv.setAttribute("class", "filesItem");
             var transaction = files_remote[i];
-            files_item_sub(transactionDiv, transaction["name"]);
+            if (transaction["decryptable"])
+                files_item_sub(transactionDiv, transaction["description"]);
+            else
+                files_item_sub(transactionDiv, transaction["name"]);
             files_item_sub(transactionDiv, transaction["size"]);
             var complete = files_item_sub(transactionDiv, transaction["complete"]);
             if (!transaction["complete"]) {
                 file_onclick(complete, transaction["name"], "job_add");
                 complete.setAttribute("class", "filesItemSubClick");
             }
+            if (transaction["finalized"]) {
+                    var finalized = files_item_sub(transactionDiv, "View");
+                    file_onclick(finalized, transaction["description"], "show_files");
+                    finalized.setAttribute("class", "filesItemSubClick");
+            } else {
+                files_item_sub(transactionDiv, "Encrypted");
+            }
+
             files.appendChild(transactionDiv);
         }
     }
@@ -161,6 +172,17 @@ function message_file_job_done(parsed)
     for (i = 0; i < files_remote.length; i++)
         if (files_remote[i]["name"] == parsed["payload"]["name"]) {
             files_remote[i]["complete"] = true;
+            job_finalize(files_remote[i]["name"]);
+            break;
+        }
+    files_show("remote");
+}
+
+function message_file_job_finalized(parsed)
+{
+    for (i = 0; i < files_remote.length; i++)
+        if (files_remote[i]["name"] == parsed["request"]["name"]) {
+            files_remote[i]["finalized"] = true;
             break;
         }
     files_show("remote");
@@ -176,6 +198,8 @@ function message(payload)
     } else if (parsed["command"] == 1) {
     } else if (parsed["command"] == 7) {
         message_file_job_done(parsed);
+    } else if (parsed["command"] == 9) {
+        message_file_job_finalized(parsed);
     } else {
     }
 }
@@ -192,6 +216,13 @@ function job_add(name)
     var payload = new Object();
     payload.name = name;
     send("job_add", payload);
+}
+
+function job_finalize(name)
+{
+    var payload = new Object();
+    payload.name = name;
+    send("job_finalize", payload);
 }
 
 function send(cmd, payload)

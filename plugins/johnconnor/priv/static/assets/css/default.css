@@ -14,11 +14,16 @@ video, audio {
 .filesItem {
     width:100%;
     overflow:hidden;
-    background-color:grey;
     margin:2px;
 }
 
 .filesItemSubClick {
+    width:20%;
+    margin:2px;
+    float:left;
+    overflow:hidden;
+    text-align:center;
+    background-color:#efe;
     cursor: pointer;
 }
 
@@ -26,7 +31,9 @@ video, audio {
     width:20%;
     margin:2px;
     float:left;
-    background-color:grey;
+    overflow:hidden;
+    text-align:center;
+    background-color:#f8f8f8;
 }
 
 #fileItemTitle {
