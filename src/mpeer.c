@@ -173,19 +173,6 @@ static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
-static int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc,
-                            int *dfserr)
-{
-    if (!dfs || !argv || !dfserr) return -1;
-    unsigned char *h = (unsigned char *)argv[1];
-    bool finalized;
-    ifr(job.finalize(&dfs->peer->cfg, dfs->blocks.remote, h,
-                     strlen((const char *)h), &finalized));
-    if (finalized) printf ("Job %s finalized\n", h);
-    else           printf ("Unable to finalize job %s\n", h);
-    return  0;
-}
-
 static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc,
                           int *dfserr)
 {

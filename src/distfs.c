@@ -120,6 +120,20 @@ int dfs_job_add(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc,
+                     int *dfserr)
+{
+    if (!dfs || !argv || argc != 2 || !dfserr) return -1;
+    if (strlen(argv[1]) != SHA256HEX) return -1;
+    unsigned char *h = (unsigned char *)argv[1];
+    bool finalized;
+    ifr(job.finalize(&dfs->peer->cfg, dfs->blocks.remote, h,
+                     strlen((const char *)h), &finalized));
+    if (finalized) *dfserr = 0;
+    else           *dfserr = 1;
+    return 0;
+}
+
 static void *mine_thread_fail(struct distfs_s *dfs, const char *file,
                               const int line)
 {

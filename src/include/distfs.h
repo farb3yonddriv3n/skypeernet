@@ -31,6 +31,8 @@ int dfs_transaction_share(struct distfs_s *dfs, char **argv, int argc,
                           int *dfserr);
 int dfs_job_add(struct distfs_s *dfs, char **argv, int argc,
                 int *dfserr);
+int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc,
+                     int *dfserr);
 int dfs_block_mine(struct distfs_s *dfs, char **argv, int argc,
                    int *dfserr);
 int dfs_hello(struct distfs_s *dfs, int host, unsigned short port);

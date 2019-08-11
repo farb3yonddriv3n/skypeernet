@@ -11,6 +11,7 @@ enum api_e {
     API_JOBSDUMP,
     API_JOBDONE,
     API_JOBADD,
+    API_JOBFINALIZE,
     API_TSHARE,
     API_BMINE,
     API_BADVERTISE,
