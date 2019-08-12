@@ -14,7 +14,7 @@ static int transaction_locked(struct distfs_s *dfs, bool *locked)
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc,
                         int *dfserr)
 {
-    if (!dfs || !argv || argc < 2 || !dfserr) return -1;
+    if (!dfs || !argv || argc != 3 || !dfserr) return -1;
     if (strlen(argv[1]) > 128) return -1;
     int size;
     ifr(list.size(&dfs->transactions, &size));
@@ -31,6 +31,7 @@ int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc,
     struct transaction_param_s param;
     param.type = TFILE_ADD;
     param.action.add.name = argv[1];
+    param.action.add.tags = argv[2];
     char pathname[256];
     snprintf(pathname, sizeof(pathname), "%s/%s", p->cfg.dir.finalized,
                                                   argv[1]);

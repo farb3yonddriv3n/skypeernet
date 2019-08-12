@@ -23,6 +23,7 @@ struct file_s {
         char          name[128];
         size_t        size;
         char          description[1024];
+        char          tags[1024];
         unsigned char hash[SHA256HEX];
     } meta;
     struct {

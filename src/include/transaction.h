@@ -35,6 +35,7 @@ struct transaction_param_s {
         struct {
             const char *name;
             const char *pathname;
+            const char *tags;
         } add;
         struct {
             bool *valid;

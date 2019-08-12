@@ -182,7 +182,7 @@ static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc,
     ifr(job.remove(&dfs->jobs, h, strlen((const char *)h), &removed));
     if (removed) printf ("Job %s removed\n", h);
     else         printf ("Unable to remove job %s\n", h);
-    return  0;
+    return 0;
 }
 
 static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc,
@@ -254,7 +254,7 @@ static const struct { const char *alias[8];
                       int         (*cb)(struct distfs_s *dfs, char **argv,
                                         int argc, int *dfserr);
                     } cmds[] = {
-    { { "ta", "tadd"  },        2, 1, dfs_transaction_add   },
+    { { "ta", "tadd"  },        2, 2, dfs_transaction_add   },
     { { "ts", "tshare"  },      2, 1, dfs_transaction_share },
     { { "tl", "tlist" },        2, 0, dfs_transaction_list  },
     { { "bm", "bmine" },        2, 0, dfs_block_mine        },

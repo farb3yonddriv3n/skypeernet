@@ -25,11 +25,12 @@ static int hash_chunks(struct transaction_s *t,
 static int hash_meta(struct transaction_s *t,
                      unsigned char *dst_hash)
 {
-    char buffer[2048];
-    snprintf(buffer, sizeof(buffer), "%s%ld%s",
+    char buffer[4096];
+    snprintf(buffer, sizeof(buffer), "%s%ld%s%s",
              t->action.add.meta.name,
              t->action.add.meta.size,
-             t->action.add.meta.description);
+             t->action.add.meta.description,
+             t->action.add.meta.tags);
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
     return 0;
 }
@@ -77,6 +78,8 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
              (int )sizeof(t->action.add.meta.description),
              "%.*s", (int )nencoded, encoded);
     free(encoded);
+    snprintf(t->action.add.meta.tags, sizeof(t->action.add.meta.tags), "%s",
+             param->action.add.tags);
     ret = hash_meta(t, t->action.add.meta.hash);
     if (ret != 0) return -1;
 
@@ -137,6 +140,7 @@ static int load(struct transaction_s *t, json_object *tobj)
     json_object *fmeta;
     json_object_object_get_ex(fadd,  "meta", &fmeta);
     BIND_STRLEN(f->meta.description, "desc", obj, fmeta);
+    BIND_STRLEN(f->meta.tags,        "tags", obj, fmeta);
     BIND_STR(f->meta.hash,           "hash", obj, fmeta);
     BIND_STRLEN(f->meta.name,        "name", obj, fmeta);
     BIND_INT64(f->meta.size,         "size", obj, fmeta);
@@ -192,6 +196,8 @@ static int save(struct transaction_s *t, json_object **parent)
     json_object_object_add(meta, "size", meta_size);
     json_object *meta_desc = json_object_new_string(f->meta.description);
     json_object_object_add(meta, "desc", meta_desc);
+    json_object *meta_tags = json_object_new_string(f->meta.tags);
+    json_object_object_add(meta, "tags", meta_tags);
     json_object *meta_hash = json_object_new_string_len((const char *)f->meta.hash,
                                                         sizeof(f->meta.hash));
     json_object_object_add(meta, "hash", meta_hash);
@@ -235,9 +241,11 @@ static int dump(struct transaction_s *t, json_object **obj)
     *obj = json_object_new_object();
     json_object *name = json_object_new_string((const char *)f->meta.name);
     json_object *size = json_object_new_int64(f->meta.size);
+    json_object *tags = json_object_new_string((const char *)f->meta.tags);
     json_object *decryptable = json_object_new_boolean(desc ? true : false);
     json_object_object_add(*obj, "name", name);
     json_object_object_add(*obj, "size", size);
+    json_object_object_add(*obj, "tags", tags);
     json_object_object_add(*obj, "decryptable", decryptable);
     if (desc) {
         json_object *description = json_object_new_string_len((const char *)desc, ndesc);
