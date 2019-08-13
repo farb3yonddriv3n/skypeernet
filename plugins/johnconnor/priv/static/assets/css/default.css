@@ -7,7 +7,7 @@ video, audio {
     overflow:hidden;
 }
 
-#filesRemoteList {
+#filesLocalList {
     display:none;
 }
 
@@ -60,4 +60,20 @@ video, audio {
 .fileVideo {
     width:100%;
     text-align:center;
+}
+
+.fileShowName {
+    width:300px;
+}
+
+.fileShowSize {
+    width:100px;
+}
+
+.fileShowComplete {
+    width:100px;
+}
+
+.fileShowFinalized {
+    width:100px;
 }

@@ -8,7 +8,6 @@ var server = [
 function connection_status(status)
 {
     var cn = document.getElementById("connected");
-
     if(status) {
         cn.innerHTML = "Connected";
     } else {
@@ -35,7 +34,7 @@ function getdate(ts)
     return datetime;
 }
 
-function menuFiles(src)
+function menu_files(src)
 {
     var filesLocalList  = document.getElementById("filesLocalList");
     var filesRemoteList = document.getElementById("filesRemoteList");
@@ -90,7 +89,13 @@ function file_onclick(element, desc, type)
     }
 }
 
-function files_show(src)
+function search_remote()
+{
+    var search = document.getElementById("searchRemote");
+    files_show("remote", search.value);
+}
+
+function files_show(src, filter)
 {
     if (src == "local") {
         var files = document.getElementById("filesLocal");
@@ -112,29 +117,39 @@ function files_show(src)
     } else if (src == "remote") {
         var files = document.getElementById("filesRemote");
         files.innerHTML = "";
-        for (i = 0; i < files_remote.length; i++) {
+        for (added = 0, i = 0; i < files_remote.length; i++) {
+            var transaction = files_remote[i];
+            if (filter.length > 0 &&
+                !(transaction["description"].indexOf(filter) != -1 ||
+                  transaction["tags"].indexOf(filter) != -1)) continue;
+            added++;
             var transactionDiv = document.createElement("div");
             transactionDiv.setAttribute("class", "filesItem");
-            var transaction = files_remote[i];
             if (transaction["decryptable"])
-                files_item_sub(transactionDiv, transaction["description"]);
+                var name = files_item_sub(transactionDiv, transaction["description"]);
             else
-                files_item_sub(transactionDiv, transaction["name"]);
-            files_item_sub(transactionDiv, transaction["size"]);
+                var name = files_item_sub(transactionDiv, transaction["name"]);
+            name.classList.add("fileShowName");
+            var size = files_item_sub(transactionDiv, transaction["size"]);
+            size.classList.add("fileShowSize");
             var complete = files_item_sub(transactionDiv, transaction["complete"]);
             if (!transaction["complete"]) {
                 file_onclick(complete, transaction["name"], "job_add");
                 complete.setAttribute("class", "filesItemSubClick");
             }
+            complete.classList.add("fileShowComplete");
+            var finalized;
             if (transaction["finalized"]) {
-                    var finalized = files_item_sub(transactionDiv, "View");
+                    finalized = files_item_sub(transactionDiv, "View");
                     file_onclick(finalized, transaction["description"], "show_files");
                     finalized.setAttribute("class", "filesItemSubClick");
             } else {
-                files_item_sub(transactionDiv, "Encrypted");
+                finalized = files_item_sub(transactionDiv, "Encrypted");
             }
-
+            finalized.classList.add("fileShowFinalized");
+            files_item_sub(transactionDiv, transaction["tags"]);
             files.appendChild(transactionDiv);
+            if (!added) files.innerHTML = "No files found.";
         }
     }
 }
@@ -145,7 +160,7 @@ function message_files_local(parsed)
     for (i = 0; i < parsed["payload"]["blocks"].length; i++)
         for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++)
             files_local.push(parsed["payload"]["blocks"][i]["transactions"][t]);
-    files_show("local");
+    files_show("local", "");
 }
 
 function files_item_sub(dst, innerHtml)
@@ -164,7 +179,7 @@ function message_files_remote(parsed)
         for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++)
             for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++)
                 files_remote.push(parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]);
-    files_show("remote");
+    files_show("remote", "");
 }
 
 function message_file_job_done(parsed)
@@ -175,7 +190,7 @@ function message_file_job_done(parsed)
             job_finalize(files_remote[i]["name"]);
             break;
         }
-    files_show("remote");
+    files_show("remote", "");
 }
 
 function message_file_job_finalized(parsed)
@@ -185,7 +200,7 @@ function message_file_job_finalized(parsed)
             files_remote[i]["finalized"] = true;
             break;
         }
-    files_show("remote");
+    files_show("remote", "");
 }
 
 function message(payload)
@@ -253,6 +268,8 @@ function connect(cmd, payload)
 
     ws.onopen = function() {
         connection_status(true);
+        menu_files("remote");
+        files_get("remote");
     };
 
     ws.onmessage = function (evt) {

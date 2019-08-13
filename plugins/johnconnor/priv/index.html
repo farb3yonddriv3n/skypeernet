@@ -14,20 +14,30 @@
 <div id="container" style="width:1024px;text-align:center;margin:0 auto;">
     <div id="menu" style="width:100%;overflow:hidden;">
         <div style="float:left">
-            <input type="submit" value="Local Files" onClick="menuFiles('local')"></input>
+            <input type="submit" value="Local Files" onClick="menu_files('local')"></input>
         </div>
         <div style="float:left">
-            <input type="submit" value="Remote Files" onClick="menuFiles('remote')"></input>
+            <input type="submit" value="Remote Files" onClick="menu_files('remote')"></input>
         </div>
     </div>
     <div id="filesLocalList">
         <input type="submit" value="Get Local Files" onClick="files_get('local')"></input>
         <div id="filesLocal">
+            No local files.
         </div>
     </div>
     <div id="filesRemoteList">
         <input type="submit" value="Get Remote Files" onClick="files_get('remote')"></input>
+        Search: <input id="searchRemote" onkeyup="search_remote()" type="text"></input>
+            <div class="filesItem">
+                <div class="filesItemSub fileShowName">Name</div>
+                <div class="filesItemSub fileShowSize">Size</div>
+                <div class="filesItemSub fileShowComplete">Downloaded</div>
+                <div class="filesItemSub fileShowFinalized">Finalized</div>
+                <div class="filesItemSub">Tags</div>
+            </div>
         <div id="filesRemote">
+            No remote files.
         </div>
     </div>
     <div id="fileItem" style="display:none;width:100%;overflow:hidden;">
