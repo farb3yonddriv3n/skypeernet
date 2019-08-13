@@ -9,12 +9,13 @@ API_PEER_OFFLINE     = 5
 API_JOBDUMP          = 6
 API_JOBDONE          = 7
 API_JOBADD           = 8
-API_TSHARE           = 9
-API_BMINE            = 10
-API_BADVERTISE       = 11
-API_BMINING          = 12
-API_ROGUEDUMP        = 13
-API_VERSIONDUMP      = 14
+API_JOBFINALIZE      = 9
+API_TSHARE           = 10
+API_BMINE            = 11
+API_BADVERTISE       = 12
+API_BMINING          = 13
+API_ROGUEDUMP        = 14
+API_VERSIONDUMP      = 15
 
 async def cmdsend(state, msg, cmd):
     msg["command"] = cmd

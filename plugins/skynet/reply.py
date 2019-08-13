@@ -58,6 +58,10 @@ def jobdone(state, obj):
     util.colorjson(obj)
     return 0
 
+def jobfinalize(state, obj):
+    util.colorjson(obj)
+    return 0
+
 def tshare(state, obj):
     util.colorjson(obj)
     return 0
@@ -92,6 +96,7 @@ cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        }
          { "command" : command.API_JOBDUMP,          "func" : jobdump          },
          { "command" : command.API_JOBADD,           "func" : jobadd           },
          { "command" : command.API_JOBDONE,          "func" : jobdone          },
+         { "command" : command.API_JOBFINALIZE,      "func" : jobfinalize      },
          { "command" : command.API_TSHARE,           "func" : tshare           },
          { "command" : command.API_BMINE,            "func" : bmine            },
          { "command" : command.API_BADVERTISE,       "func" : badvertise       },
