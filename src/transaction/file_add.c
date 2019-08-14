@@ -3,6 +3,7 @@
 static int hash_chunks(struct transaction_s *t,
                        unsigned char *dst_hash)
 {
+    if (!t || !dst_hash) return -1;
     unsigned char prev[SHA256HEX];
     memset(prev, 0, sizeof(prev));
     int i;
@@ -25,11 +26,12 @@ static int hash_chunks(struct transaction_s *t,
 static int hash_meta(struct transaction_s *t,
                      unsigned char *dst_hash)
 {
+    if (!t || !dst_hash) return -1;
     char buffer[4096];
     snprintf(buffer, sizeof(buffer), "%s%ld%s%s",
              t->action.add.meta.name,
              t->action.add.meta.size,
-             t->action.add.meta.description,
+             t->action.add.meta.description.enc,
              t->action.add.meta.tags);
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
     return 0;
@@ -40,6 +42,7 @@ static int hash(unsigned char *hash_cmeta,
                 unsigned char *pubkeyhash,
                 unsigned char *dst_hash)
 {
+    if (!hash_cmeta || !hash_chunks || !pubkeyhash || !dst_hash) return -1;
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), "%.*s%.*s%.*s",
              SHA256HEX, hash_cmeta,
@@ -52,8 +55,8 @@ static int hash(unsigned char *hash_cmeta,
 static int init(struct transaction_s *t, struct transaction_param_s *param,
                 unsigned char *dst_hash)
 {
+    if (!t || !param || !dst_hash) return -1;
     memset(&t->action.add, 0, sizeof(t->action.add));
-
     int ret;
     size_t size;
     if (os.filesize(param->action.add.pathname, &size) != 0) return -1;
@@ -74,8 +77,8 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     unsigned char *encoded;
     ifr(encx(&encoded, &nencoded, (unsigned char *)param->action.add.name,
              strlen(param->action.add.name), NULL));
-    snprintf(t->action.add.meta.description,
-             (int )sizeof(t->action.add.meta.description),
+    snprintf(t->action.add.meta.description.enc,
+             (int )sizeof(t->action.add.meta.description.enc),
              "%.*s", (int )nencoded, encoded);
     free(encoded);
     snprintf(t->action.add.meta.tags, sizeof(t->action.add.meta.tags), "%s",
@@ -108,6 +111,7 @@ static int find(struct transaction_s *t, unsigned char *file_hash,
 static int validate(struct transaction_s *t, unsigned char *dst_hash,
                     bool *valid)
 {
+    if (!t || !dst_hash || !valid) return -1;
     unsigned char hmeta[SHA256HEX];
     if (hash_meta(t, hmeta) != 0) return -1;
     if (memcmp(t->action.add.meta.hash, hmeta, sizeof(hmeta)) != 0) {
@@ -132,6 +136,7 @@ static int validate(struct transaction_s *t, unsigned char *dst_hash,
 
 static int load(struct transaction_s *t, json_object *tobj)
 {
+    if (!t || !tobj) return -1;
     struct file_s *f = &t->action.add;
     json_object *fadd;
     json_object_object_get_ex(tobj, "fileadd", &fadd);
@@ -139,11 +144,14 @@ static int load(struct transaction_s *t, json_object *tobj)
     json_object *obj;
     json_object *fmeta;
     json_object_object_get_ex(fadd,  "meta", &fmeta);
-    BIND_STRLEN(f->meta.description, "desc", obj, fmeta);
+    BIND_STRLEN(f->meta.description.enc, "desc", obj, fmeta);
     BIND_STRLEN(f->meta.tags,        "tags", obj, fmeta);
     BIND_STR(f->meta.hash,           "hash", obj, fmeta);
     BIND_STRLEN(f->meta.name,        "name", obj, fmeta);
     BIND_INT64(f->meta.size,         "size", obj, fmeta);
+
+    f->meta.description.flag = DESC_NONE;
+    f->meta.finalized        = false;
 
     BIND_STR(f->hash, "hash", obj, fadd);
     BIND_STR(f->pubkeyhash, "pubkeyhash", obj, fadd);
@@ -180,6 +188,7 @@ static int load(struct transaction_s *t, json_object *tobj)
 
 static int save(struct transaction_s *t, json_object **parent)
 {
+    if (!t || !parent) return -1;
     struct file_s *f = &t->action.add;
 
     *parent = json_object_new_object();
@@ -194,7 +203,7 @@ static int save(struct transaction_s *t, json_object **parent)
     json_object_object_add(meta, "name", meta_name);
     json_object *meta_size = json_object_new_int64(f->meta.size);
     json_object_object_add(meta, "size", meta_size);
-    json_object *meta_desc = json_object_new_string(f->meta.description);
+    json_object *meta_desc = json_object_new_string(f->meta.description.enc);
     json_object_object_add(meta, "desc", meta_desc);
     json_object *meta_tags = json_object_new_string(f->meta.tags);
     json_object_object_add(meta, "tags", meta_tags);
@@ -234,31 +243,53 @@ static int save(struct transaction_s *t, json_object **parent)
 
 static int dump(struct transaction_s *t, json_object **obj)
 {
+    if (!t || !obj) return -1;
     struct file_s *f = &t->action.add;
-    int            ndesc;
-    unsigned char *desc;
-    ifr(decode_desc(f, &desc, &ndesc));
     *obj = json_object_new_object();
     json_object *name = json_object_new_string((const char *)f->meta.name);
     json_object *size = json_object_new_int64(f->meta.size);
     json_object *tags = json_object_new_string((const char *)f->meta.tags);
-    json_object *decryptable = json_object_new_boolean(desc ? true : false);
     json_object_object_add(*obj, "name", name);
     json_object_object_add(*obj, "size", size);
     json_object_object_add(*obj, "tags", tags);
-    json_object_object_add(*obj, "decryptable", decryptable);
-    if (desc) {
-        json_object *description = json_object_new_string_len((const char *)desc, ndesc);
-        json_object_object_add(*obj, "description", description);
-        bool exists;
-        char fullpath[512];
+
+    int isfinalized(char *desc, int ndesc, bool *flag) {
+        if (!flag || !desc) return -1;
+        char fullpath[1024];
         snprintf(fullpath, sizeof(fullpath), "%s/%.*s",
-                                              psig->cfg.dir.finalized,
-                                              ndesc, desc);
-        ifr(os.fileexists(fullpath, &exists));
-        json_object *finalized = json_object_new_boolean(exists ? true : false);
-        json_object_object_add(*obj, "finalized", finalized);
+                                             psig->cfg.dir.finalized,
+                                             ndesc, desc);
+        return os.fileexists(fullpath, flag);
     }
+
+    bool bdecryptable = false;
+    if (f->meta.description.flag & (DESC_TRYDEC|DESC_DECODED)) {
+        json_object *description = json_object_new_string(f->meta.description.dec);
+        json_object_object_add(*obj, "description", description);
+        ifr(isfinalized(f->meta.description.dec, strlen(f->meta.description.dec),
+                        &f->meta.finalized));
+        bdecryptable = true;
+    } else if (!(f->meta.description.flag & DESC_TRYDEC)) {
+        int            ndesc;
+        unsigned char *desc;
+        f->meta.description.flag = DESC_TRYDEC;
+        ifr(decode_desc(f, &desc, &ndesc));
+        if (desc && ndesc < sizeof(f->meta.description.dec)) {
+            strncpy(f->meta.description.dec, (char *)desc, ndesc);
+            json_object *description = json_object_new_string_len((const char *)desc, ndesc);
+            json_object_object_add(*obj, "description", description);
+            ifr(isfinalized((char *)desc, ndesc, &f->meta.finalized));
+            free(desc);
+            f->meta.description.flag |= DESC_DECODED;
+            bdecryptable = true;
+        };
+    }
+
+    json_object *decryptable = json_object_new_boolean(bdecryptable);
+    json_object_object_add(*obj, "decryptable", decryptable);
+
+    json_object *finalized = json_object_new_boolean(f->meta.finalized);
+    json_object_object_add(*obj, "finalized", finalized);
 
     json_object *chunks = json_object_new_array();
     json_object_object_add(*obj, "chunks", chunks);
@@ -285,7 +316,6 @@ static int dump(struct transaction_s *t, json_object **obj)
     }
     json_object *complete = json_object_new_boolean(incomplete == 0 ? true : false);
     json_object_object_add(*obj, "complete", complete);
-    if (desc) free(desc);
     return 0;
 }
 

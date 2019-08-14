@@ -16,13 +16,24 @@ struct file_chunk_s {
     } hash;
 };
 
+enum {
+    DESC_NONE    = 0,
+    DESC_TRYDEC  = 1,
+    DESC_DECODED = 2,
+};
+
 struct file_s {
     unsigned char hash[SHA256HEX];
     unsigned char pubkeyhash[SHA256HEX];
     struct {
         char          name[128];
         size_t        size;
-        char          description[1024];
+        struct {
+            char      enc[1024];
+            char      dec[1024];
+            int       flag;
+        } description;
+        bool          finalized;
         char          tags[1024];
         unsigned char hash[SHA256HEX];
     } meta;

@@ -112,8 +112,8 @@ int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc)
     ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
                          &key));
     if (key) {
-        ifr(decx(desc, ndesc, (unsigned char *)f->meta.description,
-                 strlen(f->meta.description), key));
+        ifr(decx(desc, ndesc, (unsigned char *)f->meta.description.enc,
+                 strlen(f->meta.description.enc), key));
     }
     return 0;
 }
