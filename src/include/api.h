@@ -18,6 +18,7 @@ enum api_e {
     API_BMINING,
     API_ROGUEDUMP,
     API_VERSIONDUMP,
+    API_TRAFFICDUMP,
 };
 
 struct module_api_s {
@@ -37,6 +38,7 @@ int api_peer_online(struct peer_s *p, struct world_peer_s *wp);
 int api_peer_offline(struct peer_s *p, struct world_peer_s *wp);
 int api_job_done(struct peer_s *p, unsigned char *filename,
                  int nfilename);
+void api_traffic(struct ev_loop *loop, struct ev_timer *timer, int revents);
 
 extern const struct module_api_s api;
 

@@ -37,7 +37,23 @@ static int update_recv(struct peer_s *p, ssize_t bytes, bool *suspend)
     return 0;
 }
 
+static int dump(struct peer_s *p, json_object **obj)
+{
+    if (!p || !obj) return -1;
+    *obj = json_object_new_object();
+    if (!(*obj)) return -1;
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%4ldkB", p->traffic.recv.bytes / 1024);
+    json_object *recvbytes = json_object_new_string(buffer);
+    snprintf(buffer, sizeof(buffer), "%4ldkB", p->traffic.send.bytes / 1024);
+    json_object *sendbytes = json_object_new_string(buffer);
+    json_object_object_add(*obj, "download", recvbytes);
+    json_object_object_add(*obj, "upload", sendbytes);
+    return 0;
+}
+
 const struct module_traffic_s traffic = {
     .update.send = update_send,
     .update.recv = update_recv,
+    .dump        = dump,
 };

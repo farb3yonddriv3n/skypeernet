@@ -243,6 +243,13 @@ static int job_remove(struct list_s *jobs, unsigned char *file,
     return 0;
 }
 
+static int job_clean(struct list_s *jobs, bool *cleaned)
+{
+    if (!jobs || !cleaned) return -1;
+    *cleaned = true;
+    return list.clean(jobs);
+}
+
 static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized)
 {
@@ -456,6 +463,7 @@ const struct module_job_s job = {
     .finalize  = finalize,
     .dump      = dump,
     .remove    = job_remove,
+    .clean     = job_clean,
     .data.save = data_save,
     .data.load = data_load,
 };

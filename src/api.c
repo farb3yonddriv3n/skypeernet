@@ -297,6 +297,14 @@ static int api_versiondump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_VERSIONDUMP, jobj, obj, 0);
 }
 
+void api_traffic(struct ev_loop *loop, struct ev_timer *timer, int revents)
+{
+    struct peer_s *p = (struct peer_s *)timer->data;
+    json_object *jobj;
+    traffic.dump(p, &jobj);
+    api.write(p, API_TRAFFICDUMP, jobj, NULL, 0);
+}
+
 static struct api_command_s cmds[] = {
     { API_LISTPEERS,        api_listpeers_read       },
     { API_MESSAGE,          api_message_read         },

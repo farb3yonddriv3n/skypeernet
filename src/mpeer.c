@@ -185,6 +185,17 @@ static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+static int dfs_job_clean(struct distfs_s *dfs, char **argv, int argc,
+                         int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    bool cleaned;
+    ifr(job.clean(&dfs->jobs, &cleaned));
+    if (cleaned) printf ("Jobs cleaned\n");
+    else         printf ("No jobs to clean\n");
+    return 0;
+}
+
 static int dfs_job_dump(struct distfs_s *dfs, char **argv, int argc,
                         int *dfserr)
 {
@@ -264,6 +275,7 @@ static const struct { const char *alias[8];
     { { "jd", "jobdump" },      2, 0, dfs_job_dump          },
     { { "jf", "jobfinalize" },  2, 1, dfs_job_finalize      },
     { { "jr", "jobremove" },    2, 1, dfs_job_remove        },
+    { { "jc", "jobclean" },     2, 0, dfs_job_clean         },
     { { "kd", "keysdump" },     2, 0, dfs_keysdump          },
     { { "rd", "rdump" },        2, 0, dfs_rogue_dump        },
     { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
@@ -301,6 +313,7 @@ static int clean(struct peer_s *p, void *data)
 {
     struct distfs_s *dfs = (struct distfs_s *)data;
     ev_timer_stop(p->ev.loop, &dfs->ev.jobs);
+    ev_timer_stop(p->ev.loop, &dfs->ev.traffic);
     ifr(group.clean(dfs->blocks.remote));
     ifr(root.clean(dfs->blocks.local));
     ifr(list.clean(&dfs->transactions));
@@ -352,6 +365,9 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     ev_timer_init(&dfs->ev.jobs, job.resume, .0, 15.0);
     dfs->ev.jobs.data = (void *)dfs;
     ev_timer_again(p->ev.loop, &dfs->ev.jobs);
+    ev_timer_init(&dfs->ev.traffic, api_traffic, .0, 0.5);
+    dfs->ev.traffic.data = (void *)p;
+    ev_timer_again(p->ev.loop, &dfs->ev.traffic);
     bool exists;
     char blockpath[256];
     if (os.blockfile(&p->cfg, dfs->blocks.file, sizeof(dfs->blocks.file),

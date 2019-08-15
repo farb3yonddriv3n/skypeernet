@@ -15,6 +15,7 @@ struct distfs_s {
     struct list_s jobs;
     struct {
         struct ev_timer jobs;
+        struct ev_timer traffic;
     } ev;
     struct {
         pthread_mutex_t mutex;

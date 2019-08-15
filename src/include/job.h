@@ -55,6 +55,7 @@ struct module_job_s {
     int (*dump)(struct config_s *cfg, struct list_s *jobs, json_object **obj);
     int (*remove)(struct list_s *jobs, unsigned char *file,
                   int nfile, bool *removed);
+    int (*clean)(struct list_s *jobs, bool *cleaned);
     struct {
         int (*save)(struct distfs_s *dfs);
         int (*load)(struct distfs_s *dfs);

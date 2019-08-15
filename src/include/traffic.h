@@ -19,6 +19,7 @@ struct module_traffic_s {
         int (*send)(struct peer_s *p, ssize_t bytes, bool *suspend);
         int (*recv)(struct peer_s *p, ssize_t bytes, bool *suspend);
     } update;
+    int (*dump)(struct peer_s *p, json_object **obj);
 };
 
 extern const struct module_traffic_s traffic;
