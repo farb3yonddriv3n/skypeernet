@@ -5,12 +5,7 @@
 <link rel="stylesheet" href="assets/css/default.css">
 <script src="assets/js/command.js"></script>
 </head>
-<body style="margin:0px;background-color:white;font-family:Arial;" onLoad="connect(0, 0)">
-<div id="menu" style="width:99%;background-color:#f8f8f8;text-align:center;overflow:hidden;padding:0.5%;">
-    <div style="float:left;width:20%;text-align:right;">
-        <div id="connected" style="float:left;">Disconnected</div>
-    </div>
-</div>
+<body onLoad="connect(0, 0)">
 <div id="container" style="width:1024px;text-align:center;margin:0 auto;">
     <div id="menu" style="width:100%;overflow:hidden;">
         <div style="float:left">
@@ -27,15 +22,21 @@
         </div>
     </div>
     <div id="filesRemoteList">
-        <input type="submit" value="Get Remote Files" onClick="files_get('remote')"></input>
-        Search: <input id="searchRemote" onkeyup="search_remote()" type="text"></input>
-            <div class="filesItem">
-                <div class="filesItemSub fileShowName">Name</div>
-                <div class="filesItemSub fileShowSize">Size</div>
-                <div class="filesItemSub fileShowComplete">Downloaded</div>
-                <div class="filesItemSub fileShowFinalized">Finalized</div>
-                <div class="filesItemSub">Tags</div>
+        <div>
+            <div style="float:left;width:50%;text-align:left;">
+                <input type="submit" value="Refresh" onClick="files_get('remote')"></input>
             </div>
+            <div style="float:left;width:50%;text-align:right;">
+                Search: <input id="searchRemote" onkeyup="search_remote()" type="text"></input>
+            </div>
+        </div>
+        <div class="filesItem">
+            <div class="filesItemSub fileShowName">Name</div>
+            <div class="filesItemSub fileShowSize">Size</div>
+            <div class="filesItemSub fileShowComplete">Downloaded</div>
+            <div class="filesItemSub fileShowFinalized">Finalized</div>
+            <div class="filesItemSub fileShowTags">Tags</div>
+        </div>
         <div id="filesRemote">
             No remote files.
         </div>
@@ -47,8 +48,12 @@
         </div>
     </div>
 </div>
-<div id="footer" style="position:absolute;bottom:0;width:99%;background-color:#f8f8f8;text-align:center;overflow:hidden;padding:0.5%;">
-    skypeer.net
+<div id="footer" style="font-weight:bold;font-size:8pt;">
+    <div id="connected" style="float:left;width:30%;text-align:left;">Disconnected</div>
+    <div style="float:left;width:40%;text-align:center;">
+        skypeer.net
+    </div>
+    <div id="traffic" style="float:left;width:30%;text-align:right;"></div>
 </div>
 </body>
 </html>

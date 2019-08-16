@@ -95,6 +95,14 @@ function search_remote()
     files_show("remote", search.value);
 }
 
+function format_size(size)
+{
+    if (size < 1024)                      return size + "b";
+    else if (size < (1024 * 1024))        return (size / 1024).toFixed(2) + "kb";
+    else if (size < (1024 * 1024 * 1024)) return (size / (1024 * 1024)).toFixed(2) + "mb";
+    else                                  return (size / (1024 * 1024 * 1024)).toFixed(2) + "gb";
+}
+
 function files_show(src, filter)
 {
     if (src == "local") {
@@ -119,9 +127,9 @@ function files_show(src, filter)
         files.innerHTML = "";
         for (added = 0, i = 0; i < files_remote.length; i++) {
             var transaction = files_remote[i];
-            if (filter.length > 0 &&
-                !(transaction["description"].indexOf(filter) != -1 ||
-                  transaction["tags"].indexOf(filter) != -1)) continue;
+            if (filter.toLowerCase().length > 0 &&
+                !(transaction["description"].toLowerCase().indexOf(filter) != -1 ||
+                  transaction["tags"].toLowerCase().indexOf(filter) != -1)) continue;
             added++;
             var transactionDiv = document.createElement("div");
             transactionDiv.setAttribute("class", "filesItem");
@@ -130,7 +138,7 @@ function files_show(src, filter)
             else
                 var name = files_item_sub(transactionDiv, transaction["name"]);
             name.classList.add("fileShowName");
-            var size = files_item_sub(transactionDiv, transaction["size"]);
+            var size = files_item_sub(transactionDiv, format_size(transaction["size"]));
             size.classList.add("fileShowSize");
             var complete = files_item_sub(transactionDiv, transaction["complete"]);
             if (!transaction["complete"]) {
@@ -147,10 +155,11 @@ function files_show(src, filter)
                 finalized = files_item_sub(transactionDiv, "Encrypted");
             }
             finalized.classList.add("fileShowFinalized");
-            files_item_sub(transactionDiv, transaction["tags"]);
+            var tags = files_item_sub(transactionDiv, transaction["tags"]);
+            tags.classList.add("fileShowTags");
             files.appendChild(transactionDiv);
-            if (!added) files.innerHTML = "No files found.";
         }
+        if (!added) files.innerHTML = "No files found.";
     }
 }
 
@@ -203,6 +212,13 @@ function message_file_job_finalized(parsed)
     files_show("remote", "");
 }
 
+function message_traffic(parsed)
+{
+    var traffic = document.getElementById("traffic");
+    traffic.innerHTML = "Download: " + parsed["payload"]["download"] +
+                        " Upload: " + parsed["payload"]["upload"];
+}
+
 function message(payload)
 {
     var parsed = JSON.parse(payload);
@@ -215,6 +231,8 @@ function message(payload)
         message_file_job_done(parsed);
     } else if (parsed["command"] == 9) {
         message_file_job_finalized(parsed);
+    } else if (parsed["command"] == 16) {
+        message_traffic(parsed);
     } else {
     }
 }

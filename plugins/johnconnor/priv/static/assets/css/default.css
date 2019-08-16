@@ -1,8 +1,25 @@
+body {
+    margin:0px;
+    background-color:black;
+    font-family:Arial;
+    color:white;
+}
+
 video, audio {
     cursor:pointer;
 }
 
-#filesLocalList #filesRemoteList{
+#footer {
+    position:absolute;
+    bottom:0;
+    width:99%;
+    background-color:#2F4F4F;
+    text-align:center;
+    overflow:hidden;
+    padding:0.5%;
+}
+
+#filesLocalList #filesRemoteList {
     width:100%;
     overflow:hidden;
 }
@@ -23,7 +40,7 @@ video, audio {
     float:left;
     overflow:hidden;
     text-align:center;
-    background-color:#efe;
+    background-color:#008000;
     cursor: pointer;
 }
 
@@ -33,7 +50,7 @@ video, audio {
     float:left;
     overflow:hidden;
     text-align:center;
-    background-color:#f8f8f8;
+    background-color:#800;
 }
 
 #fileItemTitle {
@@ -63,7 +80,7 @@ video, audio {
 }
 
 .fileShowName {
-    width:300px;
+    width:500px;
 }
 
 .fileShowSize {
@@ -76,4 +93,8 @@ video, audio {
 
 .fileShowFinalized {
     width:100px;
+}
+
+.fileShowTags {
+    width:200px;
 }
