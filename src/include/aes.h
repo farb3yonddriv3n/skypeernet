@@ -2,6 +2,7 @@
 #define AES_H_
 
 #define AES_TAG_SIZE 16
+#define AES_IV_SIZE  16
 
 int aes_encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *aad,
                 int aad_len, unsigned char *key, unsigned char *iv,

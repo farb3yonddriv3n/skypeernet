@@ -34,10 +34,11 @@ int file_chunks(const char *filename, size_t nbytes,
         unsigned char *fpartenc = malloc(fc->size);
         if (!fpartenc) return -1;
         unsigned char tag[AES_TAG_SIZE];
-        int nfpartenc = aes_encrypt(fpart, nfpart, psig->cfg.keys.local.aes.key,
-                                    sizeof(psig->cfg.keys.local.aes.key),
+        memset(fc->timeiter, 0, sizeof(fc->timeiter));
+        ifr(os.gettimeiter(fc->timeiter, sizeof(fc->timeiter), i));
+        int nfpartenc = aes_encrypt(fpart, nfpart, NULL, 0,
                                     psig->cfg.keys.local.aes.key,
-                                    psig->cfg.keys.local.aes.key,
+                                    (unsigned char *)fc->timeiter,
                                     fpartenc, tag);
         if (nfpartenc < 1) return -1;
         fc->size = nfpartenc;

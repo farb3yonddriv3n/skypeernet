@@ -126,6 +126,15 @@ static int gettime(char *buffer, size_t nbuffer)
     return 0;
 }
 
+static int gettimeiter(char *buffer, size_t nbuffer, int i)
+{
+    if (!buffer) return -1;
+    double result;
+    if (gettimems(&result) != 0) return -1;
+    snprintf(buffer, nbuffer, "%ld%d", (unsigned long int)result, i);
+    return 0;
+}
+
 static int gettimestr(char *buffer, size_t nbuffer)
 {
     time_t     n = time(NULL);
@@ -426,6 +435,7 @@ const struct module_os_s os = {
     .loadjson      = load_json,
     .gettimems     = gettimems,
     .gettimestr    = gettimestr,
+    .gettimeiter   = gettimeiter,
     .getpartsdir   = getpartsdir,
     .readkeys      = readkeys,
     .pipes         = pipes,

@@ -288,9 +288,10 @@ static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char 
             key));
         unsigned char *decrypted = malloc(f->chunks.array[i].size);
         if (!decrypted) return -1;
-        int dc = aes_decrypt((unsigned char *)buffer, n, key->aes.key,
-                             sizeof(key->aes.key), tagdec, key->aes.key,
-                             key->aes.key, decrypted);
+        int dc = aes_decrypt((unsigned char *)buffer, n, NULL,
+                             0, tagdec, key->aes.key,
+                             (unsigned char *)f->chunks.array[i].timeiter,
+                             decrypted);
         free(tagdec);
         if (dc < 1) return -1;
         ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
