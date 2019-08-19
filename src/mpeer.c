@@ -313,7 +313,7 @@ static int clean(struct peer_s *p, void *data)
 {
     struct distfs_s *dfs = (struct distfs_s *)data;
     ev_timer_stop(p->ev.loop, &dfs->ev.jobs);
-    ev_timer_stop(p->ev.loop, &dfs->ev.traffic);
+    ev_timer_stop(p->ev.loop, &dfs->ev.update);
     ifr(group.clean(dfs->blocks.remote));
     ifr(root.clean(dfs->blocks.local));
     ifr(list.clean(&dfs->transactions));
@@ -365,9 +365,9 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     ev_timer_init(&dfs->ev.jobs, job.resume, .0, 15.0);
     dfs->ev.jobs.data = (void *)dfs;
     ev_timer_again(p->ev.loop, &dfs->ev.jobs);
-    ev_timer_init(&dfs->ev.traffic, api_traffic, .0, 0.5);
-    dfs->ev.traffic.data = (void *)p;
-    ev_timer_again(p->ev.loop, &dfs->ev.traffic);
+    ev_timer_init(&dfs->ev.update, api_update, .0, 0.5);
+    dfs->ev.update.data = (void *)p;
+    ev_timer_again(p->ev.loop, &dfs->ev.update);
     bool exists;
     char blockpath[256];
     if (os.blockfile(&p->cfg, dfs->blocks.file, sizeof(dfs->blocks.file),

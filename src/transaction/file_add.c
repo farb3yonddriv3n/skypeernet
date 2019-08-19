@@ -176,7 +176,7 @@ static int load(struct transaction_s *t, json_object *tobj)
             memset(f->chunks.array[i].tag, 0, sizeof(f->chunks.array[i].tag));
             BIND_STRLEN(f->chunks.array[i].tag, "tag",  obj, chunk_item);
             memset(f->chunks.array[i].timeiter, 0, sizeof(f->chunks.array[i].timeiter));
-            BIND_STRLEN(f->chunks.array[i].timeiter, "timeiter",  obj, chunk_item);
+            BIND_STRLEN(f->chunks.array[i].timeiter, "timeiter", obj, chunk_item);
 
             json_object *chash;
             json_object_object_get_ex(chunk_item, "hash", &chash);
