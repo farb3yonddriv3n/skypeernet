@@ -41,12 +41,7 @@ msgready(Fifo, NewData, Size) ->
 msgstart(Fifo, Data) ->
     {ListSize, Rest} = lists:split(4, Data),
     <<Size:32>> = list_to_binary(lists:reverse(ListSize)),
-    if Size == length(Rest) ->
-        dispatch(Rest),
-        loop(Fifo, 0, []);
-    true ->
-        loop(Fifo, Size, Rest)
-    end.
+    msgready(Fifo, Rest, Size).
 
 write(Json) ->
     Fifo = open_port("/tmp/skypeernet_read", [eof]),
