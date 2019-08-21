@@ -305,6 +305,9 @@ void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents)
     api.write(p, API_TRAFFICDUMP, jobj, NULL, 0);
     task.dump(p, &jobj);
     api.write(p, API_TASKDUMP, jobj, NULL, 0);
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
+    job.dump(&p->cfg, &dfs->jobs, &jobj);
+    api.write(p, API_JOBSDUMP, jobj, NULL, 0);
 }
 
 static struct api_command_s cmds[] = {
