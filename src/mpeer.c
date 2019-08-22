@@ -72,7 +72,7 @@ static int dfileask(struct peer_s *p, int host,
             ifr(os.fileexists(chunkfile, &exists));
             if (!exists) return -1;
             return task.add(p, p->cfg.dir.download, chunk, sizeof(chunk),
-                            host, port, TASK_FILE_KEEP);
+                            host, port, filename, TASK_FILE_KEEP);
         }
     }
     return 0;

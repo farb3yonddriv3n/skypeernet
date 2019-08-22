@@ -14,6 +14,7 @@ struct task_s {
         uint64_t      iter;
         unsigned char name[SHA256HEX];
         char          fullpath[256];
+        unsigned char parent[SHA256HEX];
     } file;
     int            host;
     unsigned short port;
@@ -22,7 +23,7 @@ struct task_s {
 
 struct module_task_s {
     int (*add)(struct peer_s *p, const char *blockdir, unsigned char *filename,
-               int nfilename, int host, unsigned short port,
+               int nfilename, int host, unsigned short port, unsigned char *parent,
                enum task_e action);
     int (*update)(struct peer_s *p);
     int (*cancel)(struct peer_s *p, unsigned int idx, bool *cancelled);

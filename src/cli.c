@@ -27,7 +27,7 @@ static int send_file(struct peer_s *p, char **argv, int argc)
     long int    port = strtol(argv[2], NULL, 10);
     const char *file = argv[3];
     return task.add(p, p->cfg.dir.download, (unsigned char *)file, strlen(file),
-                    host, port, TASK_FILE_KEEP);
+                    host, port, NULL, TASK_FILE_KEEP);
 }
 
 static int cli_peers_list(struct peer_s *p, json_object **obj)

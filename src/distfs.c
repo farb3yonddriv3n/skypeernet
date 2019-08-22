@@ -254,7 +254,7 @@ int dfs_block_send(struct peer_s *p, struct distfs_s *dfs,
     if (exists) {
         ifr(task.add(p, p->cfg.dir.block, dfs->blocks.file,
                      sizeof(dfs->blocks.file),
-                     host, port, TASK_FILE_KEEP));
+                     host, port, NULL, TASK_FILE_KEEP));
     }
     return 0;
 }

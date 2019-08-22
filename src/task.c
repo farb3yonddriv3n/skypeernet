@@ -76,7 +76,7 @@ static int find(struct list_s *tasks, const char *filename,
 
 static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
                int nfilename, int host, unsigned short port,
-               enum task_e action)
+               unsigned char *parent, enum task_e action)
 {
     if (!p || !filename) return -1;
     if (nfilename != SHA256HEX) return -1;
@@ -91,6 +91,7 @@ static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
     t->port   = port;
     t->action = action;
     t->idx  = ++(p->tasks.idx);
+    if (parent) memcpy(t->file.parent, parent, SHA256HEX);
     memcpy(t->file.name, filename, nfilename);
     snprintf(t->file.fullpath, sizeof(t->file.fullpath), "%s/%.*s",
                                                          blockdir,
@@ -108,9 +109,12 @@ static int dump(struct peer_s *p, json_object **obj)
         json_object   *tasks = (json_object *)ud;
         json_object *id = json_object_new_int(t->idx);
         json_object *size = json_object_new_int64(t->file.size);
+        json_object *name = json_object_new_string_len((const char *)t->file.parent,
+                                                       sizeof(t->file.parent));
         json_object *jt = json_object_new_object();
         json_object_object_add(jt, "idx",  id);
         json_object_object_add(jt, "size", size);
+        json_object_object_add(jt, "name", name);
         json_object_array_add(tasks, jt);
         return 0;
     }
