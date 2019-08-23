@@ -319,8 +319,13 @@ static int dump(struct transaction_s *t, json_object **obj)
         json_object_object_add(chunk, "downloaded", cdownloaded);
         json_object_array_add(chunks, chunk);
     }
+
+    json_object *chunks_done  = json_object_new_int(f->chunks.size - incomplete);
+    json_object *chunks_total = json_object_new_int(f->chunks.size);
     json_object *complete = json_object_new_boolean(incomplete == 0 ? true : false);
     json_object_object_add(*obj, "complete", complete);
+    json_object_object_add(*obj, "chunks_done", chunks_done);
+    json_object_object_add(*obj, "chunks_total", chunks_total);
     return 0;
 }
 
