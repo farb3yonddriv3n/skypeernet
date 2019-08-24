@@ -6,45 +6,48 @@
 <script src="assets/js/command.js"></script>
 </head>
 <body onLoad="connect(0, 0)">
-<div id="container" style="width:1024px;text-align:center;margin:0 auto;">
-    <div id="menu" style="width:100%;overflow:hidden;">
-        <div style="float:left">
-            <input type="submit" value="Local Files" onClick="menu_files('local')"></input>
-        </div>
-        <div style="float:left">
-            <input type="submit" value="Remote Files" onClick="menu_files('remote')"></input>
-        </div>
-    </div>
-    <div id="filesLocalList">
-        <input type="submit" value="Get Local Files" onClick="files_get('local')"></input>
-        <div id="filesLocal">
-            No local files.
-        </div>
-    </div>
-    <div id="filesRemoteList">
-        <div>
-            <div style="float:left;width:50%;text-align:left;">
-                <input type="submit" value="Refresh" onClick="files_get('remote')"></input>
-            </div>
-            <div style="float:left;width:50%;text-align:right;">
-                Search: <input id="searchRemote" onkeyup="search_remote()" type="text"></input>
+<div id="container" style="width:1460px;text-align:center;margin:0 auto;">
+    <div style="width:100%;">
+        <div id="menu" style="width:100%;overflow:hidden;">
+            <div style="float:left">
+                <input type="submit" value="Remote Files" onClick="menu_files('remote')"></input>
             </div>
         </div>
-        <div class="filesItem">
-            <div class="filesItemSub fileShowName">Name</div>
-            <div class="filesItemSub fileShowSize">Size</div>
-            <div class="filesItemSub fileShowComplete">Downloaded</div>
-            <div class="filesItemSub fileShowFinalized">Finalized</div>
-            <div class="filesItemSub fileShowTags">Tags</div>
-        </div>
-        <div id="filesRemote">
-            No remote files.
-        </div>
-    </div>
-    <div id="fileItem" style="display:none;width:100%;overflow:hidden;">
-        <div id="fileItemTitle">
-        </div>
-        <div id="fileItemBody">
+        <div style="float:left;width:100%;">
+            <div id="fileItem" style="display:none;width:100%;overflow:hidden;">
+                <div id="fileItemTitle">
+                </div>
+                <div id="fileItemBody">
+                </div>
+            </div>
+            <div id="filesLocalList">
+                <input type="submit" value="Get Local Files" onClick="files_get('local')"></input>
+                <div id="filesLocal">
+                    No local files.
+                </div>
+            </div>
+            <div id="filesRemoteList">
+                <div>
+                    <div style="float:left;width:50%;text-align:left;">
+                        <input type="submit" value="Refresh" onClick="files_get('remote')"></input>
+                    </div>
+                    <div style="float:left;width:50%;text-align:right;">
+                        Search: <input id="searchRemote" onkeyup="search_remote()" type="text"></input>
+                    </div>
+                </div>
+                <div class="filesItem">
+                    <div class="filesItemSub fileShowName">Name</div>
+                    <div class="filesItemSub fileShowSize">Size</div>
+                    <div class="filesItemSub fileShowComplete">Downloaded</div>
+                    <div class="filesItemSub fileShowFinalized">Finalized</div>
+                    <div class="filesItemSub fileShowTags">Tags</div>
+                    <div class="filesItemSub fileShowTags">Downloading parts</div>
+                    <div class="filesItemSub fileShowTags">Uploading parts</div>
+                </div>
+                <div id="filesRemote">
+                    No remote files.
+                </div>
+            </div>
         </div>
     </div>
 </div>
