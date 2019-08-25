@@ -1,6 +1,7 @@
 var ws = undefined;
 var files_local = [];
 var files_remote = [];
+var filter = "";
 var server = [
     ["message",              message]
 ];
@@ -91,8 +92,8 @@ function file_onclick(element, desc, type)
 
 function search_remote()
 {
-    var search = document.getElementById("searchRemote");
-    files_show("remote", search.value);
+    filter = document.getElementById("searchRemote").value;
+    files_show();
 }
 
 function format_size(size)
@@ -103,64 +104,69 @@ function format_size(size)
     else                                  return (size / (1024 * 1024 * 1024)).toFixed(2) + "gb";
 }
 
-function files_show(src, filter)
+function files_show_sub(src)
 {
-    if (src == "local") {
-        var files = document.getElementById("filesLocal");
-        files.innerHTML = "";
-        for (i = 0; i < files_local.length; i++) {
-            var name = document.createElement("div");
-            name.setAttribute("class", "filesItem");
-            var desc = files_local[i]["description"];
-            file_onclick(name, desc, "show_files");
-            if ("description" in files_local[i])
-                name.innerHTML = files_local[i]["description"];
-            else
-                name.innerHTML = files_local[i]["name"];
-            var filename = document.createElement("div");
-            filename.style.width = "100%";
-            filename.appendChild(name);
-            files.appendChild(filename);
+    var files = document.getElementById("filesRemote");
+    for (added = 0, i = 0; i < src.length; i++) {
+        var transaction = src[i];
+        if (filter.length > 0 &&
+            !(transaction["description"].toLowerCase().indexOf(filter) != -1 ||
+                transaction["tags"].toLowerCase().indexOf(filter) != -1)) continue;
+        added++;
+        var transactionDiv = document.createElement("div");
+        transactionDiv.setAttribute("class", "filesItem");
+        var name;
+        var local = (src == files_local) ? " (local)" : "";
+        if (transaction["decryptable"])
+            name = files_item_sub(transactionDiv, transaction["description"] + local);
+        else
+            name = files_item_sub(transactionDiv, transaction["name"] + local);
+        name.classList.add("fileShowName");
+        var size = files_item_sub(transactionDiv, format_size(transaction["size"]));
+        size.classList.add("fileShowSize");
+        var complete = files_item_sub(transactionDiv, transaction["complete"]);
+        if (!transaction["complete"]) {
+            file_onclick(complete, transaction["name"], "job_add");
+            complete.setAttribute("class", "filesItemSubClick");
         }
-    } else if (src == "remote") {
-        var files = document.getElementById("filesRemote");
-        files.innerHTML = "";
-        for (added = 0, i = 0; i < files_remote.length; i++) {
-            var transaction = files_remote[i];
-            if (filter.toLowerCase().length > 0 &&
-                !(transaction["description"].toLowerCase().indexOf(filter) != -1 ||
-                  transaction["tags"].toLowerCase().indexOf(filter) != -1)) continue;
-            added++;
-            var transactionDiv = document.createElement("div");
-            transactionDiv.setAttribute("class", "filesItem");
-            if (transaction["decryptable"])
-                var name = files_item_sub(transactionDiv, transaction["description"]);
-            else
-                var name = files_item_sub(transactionDiv, transaction["name"]);
-            name.classList.add("fileShowName");
-            var size = files_item_sub(transactionDiv, format_size(transaction["size"]));
-            size.classList.add("fileShowSize");
-            var complete = files_item_sub(transactionDiv, transaction["complete"]);
-            if (!transaction["complete"]) {
-                file_onclick(complete, transaction["name"], "job_add");
-                complete.setAttribute("class", "filesItemSubClick");
-            }
-            complete.classList.add("fileShowComplete");
-            var finalized;
-            if (transaction["finalized"]) {
-                    finalized = files_item_sub(transactionDiv, "View");
-                    file_onclick(finalized, transaction["description"], "show_files");
-                    finalized.setAttribute("class", "filesItemSubClick");
-            } else {
-                finalized = files_item_sub(transactionDiv, "Encrypted");
-            }
-            finalized.classList.add("fileShowFinalized");
-            var tags = files_item_sub(transactionDiv, transaction["tags"]);
-            tags.classList.add("fileShowTags");
-            files.appendChild(transactionDiv);
+        complete.classList.add("fileShowComplete");
+        var finalized;
+        if (transaction["finalized"]) {
+            finalized = files_item_sub(transactionDiv, "View");
+            file_onclick(finalized, transaction["description"], "show_files");
+            finalized.setAttribute("class", "filesItemSubClick");
+        } else {
+            finalized = files_item_sub(transactionDiv, "Encrypted");
         }
-        if (!added) files.innerHTML = "No files found.";
+        finalized.classList.add("fileShowFinalized");
+        var tags = files_item_sub(transactionDiv, transaction["tags"]);
+        tags.classList.add("fileShowTags");
+        var jobs;
+        if ("jobs" in transaction)
+            jobs = files_item_sub(transactionDiv, transaction["jobs"]);
+        else
+            jobs = files_item_sub(transactionDiv, transaction["chunks_done"] + "/" +
+                                                  transaction["chunks_total"]);
+        jobs.classList.add("fileShowTags");
+        var tasks;
+        if ("tasks" in transaction)
+            tasks = files_item_sub(transactionDiv, transaction["tasks"].length);
+        else
+            tasks = files_item_sub(transactionDiv, 0);
+        tasks.classList.add("fileShowTags");
+        files.appendChild(transactionDiv);
     }
+    return added;
+}
+
+function files_show()
+{
+    var added = 0;
+    var files = document.getElementById("filesRemote");
+    files.innerHTML = "";
+    added += files_show_sub(files_remote);
+    added += files_show_sub(files_local);
+    if (!added) files.innerHTML = "No files found.";
 }
 
 function message_files_local(parsed)
@@ -169,7 +175,7 @@ function message_files_local(parsed)
     for (i = 0; i < parsed["payload"]["blocks"].length; i++)
         for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++)
             files_local.push(parsed["payload"]["blocks"][i]["transactions"][t]);
-    files_show("local", "");
+    files_show();
 }
 
 function files_item_sub(dst, innerHtml)
@@ -188,7 +194,7 @@ function message_files_remote(parsed)
         for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++)
             for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++)
                 files_remote.push(parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]);
-    files_show("remote", "");
+    files_show();
 }
 
 function message_file_job_done(parsed)
@@ -199,7 +205,7 @@ function message_file_job_done(parsed)
             job_finalize(files_remote[i]["name"]);
             break;
         }
-    files_show("remote", "");
+    files_show();
 }
 
 function message_file_job_finalized(parsed)
@@ -209,7 +215,7 @@ function message_file_job_finalized(parsed)
             files_remote[i]["finalized"] = true;
             break;
         }
-    files_show("remote", "");
+    files_show();
 }
 
 function message_traffic(parsed)
@@ -217,6 +223,40 @@ function message_traffic(parsed)
     var traffic = document.getElementById("traffic");
     traffic.innerHTML = "Download: " + parsed["payload"]["download"] +
                         " Upload: " + parsed["payload"]["upload"];
+}
+
+function message_tasks_sub(dst, parsed)
+{
+    for (i = 0; i < dst.length; i++) {
+        dst[i]["tasks"] = [];
+        for (t = 0; t < parsed["payload"]["tasks"].length; t++) {
+            console.log(parsed["payload"]["tasks"][t]["name"] + "<>" + dst[i]["name"]);
+            if (parsed["payload"]["tasks"][t]["name"] == dst[i]["name"]) {
+                dst[i]["tasks"].push(parsed["payload"]["tasks"][t]["size"]);
+            }
+        }
+    }
+}
+
+function message_tasks(parsed)
+{
+    message_tasks_sub(files_local, parsed);
+    message_tasks_sub(files_remote, parsed);
+    files_show();
+}
+
+function message_jobs_dump(parsed)
+{
+    for (i = 0; i < files_remote.length; i++) {
+        for (j = 0; j < parsed["payload"]["jobs"].length; j++) {
+            if (files_remote[i]["name"] == parsed["payload"]["jobs"][j]["name"]) {
+                files_remote[i]["jobs"] = parsed["payload"]["jobs"][j]["counter_done"] + "/" +
+                                          parsed["payload"]["jobs"][j]["chunks_size"];
+                break;
+            }
+        }
+    }
+    files_show();
 }
 
 function message(payload)
@@ -227,12 +267,16 @@ function message(payload)
     } else if (parsed["command"] == 3 && "roots" in parsed["payload"]) {
         message_files_remote(parsed);
     } else if (parsed["command"] == 1) {
+    } else if (parsed["command"] == 6) {
+        message_jobs_dump(parsed);
     } else if (parsed["command"] == 7) {
         message_file_job_done(parsed);
     } else if (parsed["command"] == 9) {
         message_file_job_finalized(parsed);
     } else if (parsed["command"] == 16) {
         message_traffic(parsed);
+    } else if (parsed["command"] == 17) {
+        message_tasks(parsed);
     } else {
     }
 }
@@ -288,12 +332,14 @@ function connect(cmd, payload)
         connection_status(true);
         menu_files("remote");
         files_get("remote");
+        files_get("local");
     };
 
     ws.onmessage = function (evt) {
         var json = JSON.parse(evt.data);
         for (var i = 0; i < server.length; i++) {
             if (server[i][0] == json.command) {
+                //console.log(json);
                 server[i][1](json["payload"]);
                 return;
             }

@@ -98,3 +98,18 @@ video, audio {
 .fileShowTags {
     width:200px;
 }
+
+#tasks {
+    overflow-y:auto;
+    height:200px;
+}
+
+#jobs {
+    overflow-y:auto;
+    height:200px;
+}
+
+.taskItem {
+    width:100%;
+    background-color:#800;
+}
