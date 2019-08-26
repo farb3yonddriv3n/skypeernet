@@ -2,6 +2,7 @@ var ws = undefined;
 var files_local = [];
 var files_remote = [];
 var filter = "";
+var outbound = [];
 var server = [
     ["message",              message]
 ];
@@ -87,6 +88,8 @@ function file_onclick(element, desc, type)
             showFile(desc);
         else if (type == "job_add")
             job_add(desc);
+        else if (type == "job_finalize")
+            job_finalize(desc);
     }
 }
 
@@ -130,6 +133,10 @@ function files_show_sub(src)
             complete.setAttribute("class", "filesItemSubClick");
         }
         complete.classList.add("fileShowComplete");
+        var finalize = files_item_sub(transactionDiv, "Finalize");
+        file_onclick(finalize, transaction["name"], "job_finalize");
+        finalize.setAttribute("class", "filesItemSubClick");
+        finalize.classList.add("fileShowSize");
         var finalized;
         if (transaction["finalized"]) {
             finalized = files_item_sub(transactionDiv, "View");
@@ -230,7 +237,6 @@ function message_tasks_sub(dst, parsed)
     for (i = 0; i < dst.length; i++) {
         dst[i]["tasks"] = [];
         for (t = 0; t < parsed["payload"]["tasks"].length; t++) {
-            console.log(parsed["payload"]["tasks"][t]["name"] + "<>" + dst[i]["name"]);
             if (parsed["payload"]["tasks"][t]["name"] == dst[i]["name"]) {
                 dst[i]["tasks"].push(parsed["payload"]["tasks"][t]["size"]);
             }
@@ -309,6 +315,10 @@ function send(cmd, payload)
     json.payload = payload;
     json.version = 1;
     var text = JSON.stringify(json);
+    var obi = new Object();
+    obi.time = 1;
+    obi.json = json;
+    outbound.push(obi);
     ws.send(text);
 }
 
@@ -316,6 +326,23 @@ function status(cmd, payload)
 {
     if (ws == undefined) return "disconnected";
     else                 return "connected";
+}
+
+function confirm_message(payload)
+{
+    var json = JSON.parse(payload);
+    if (!("request" in json)) return;
+    for (i = 0; i < outbound.length; i++) {
+        if (json["request"] == outbound[i].json) {
+            outbound.splice(i, 1);
+            break;
+        }
+    }
+}
+
+function confirmed_check(p1, p2)
+{
+    delayed_request(confirmed_check, "", "", 1000);
 }
 
 function connect(cmd, payload)
@@ -332,14 +359,16 @@ function connect(cmd, payload)
         connection_status(true);
         menu_files("remote");
         files_get("remote");
-        files_get("local");
+        //files_get("local");
+        delayed_request(confirmed_check, "", "", 1000);
     };
 
     ws.onmessage = function (evt) {
         var json = JSON.parse(evt.data);
         for (var i = 0; i < server.length; i++) {
             if (server[i][0] == json.command) {
-                //console.log(json);
+                if ("payload" in json)
+                    confirm_message(json["payload"]);
                 server[i][1](json["payload"]);
                 return;
             }
