@@ -117,3 +117,13 @@ int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc)
     }
     return 0;
 }
+
+void swap_memory(char *dst, int ndst)
+{
+    int i, j;
+    for (i = 0, j = ndst - 1; (i < (ndst / 2) && j > 0); i++, j--) {
+        dst[j] ^= dst[i];
+        dst[i] ^= dst[j];
+        dst[j] ^= dst[i];
+    }
+}

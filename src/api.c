@@ -37,8 +37,8 @@ static void api_ev_write(EV_P_ ev_io *w, int revents)
         if (n != ab->length) return -1;
         return 0;
     }
-    list.map(&p->api.buffer, cb, &p->api.pipes.write);
-    list.clean(&p->api.buffer);
+    list.map(&p->api.write.buffer, cb, &p->api.pipes.write);
+    list.clean(&p->api.write.buffer);
 }
 
 static int write_reopen(struct peer_s *p, bool *success)
@@ -47,7 +47,7 @@ static int write_reopen(struct peer_s *p, bool *success)
     *success = true;
     if (p->api.pipes.write > 2) return 0;
     ifr(os.pipe_open(p, p->cfg.api.pipes.write, O_WRONLY|O_NONBLOCK,
-                     &p->api.pipes.write, &p->api.ev.write, EV_WRITE|EV_READ,
+                     &p->api.pipes.write, &p->api.ev.write, EV_WRITE,
                      api.ev.write));
     if (p->api.pipes.write == -1) *success = false;
     return 0;
@@ -84,7 +84,7 @@ static int api_write(struct peer_s *p, enum api_e cmd, json_object *payload,
     memcpy(ab->buffer, json, len);
     ab->length = len;
     json_object_put(obj);
-    ifr(list.add(&p->api.buffer, ab, ab_clean));
+    ifr(list.add(&p->api.write.buffer, ab, ab_clean));
     ev_io_start(p->ev.loop, &p->api.ev.write);
     return 0;
 }
@@ -334,16 +334,16 @@ static int api_read(struct peer_s *p, const char *json, int len)
     enum api_e cmd;
     json_object *tmp;
     BIND_INT(cmd, "command", tmp, obj);
-    int i, r = -1;
+    int i;
     for (i = 0; i < COUNTOF(cmds); i++) {
         if (cmds[i].cmd == cmd) {
-            r = cmds[i].read(p, obj);
-            break;
+            return cmds[i].read(p, obj);
         }
     }
-    return r;
+    return -1;
 }
 
+// unalligned
 static void api_ev_read(EV_P_ ev_io *w, int revents)
 {
     if (!w) {
@@ -351,9 +351,9 @@ static void api_ev_read(EV_P_ ev_io *w, int revents)
         return;
     }
     struct peer_s *p = w->data;
-    char buffer[512];
-    int n = read(p->api.pipes.read, buffer, sizeof(buffer));
-    if (n == 0) {
+    int n = read(p->api.pipes.read, p->api.read.buffer + p->api.read.size,
+                 sizeof(p->api.read.buffer) - p->api.read.size);
+    if (n <= 0) {
         ev_io_stop(p->ev.loop, &p->api.ev.read);
         if (os.pipe_open(p, p->cfg.api.pipes.read, O_RDONLY|O_NONBLOCK,
                          &p->api.pipes.read, &p->api.ev.read, EV_READ,
@@ -361,8 +361,28 @@ static void api_ev_read(EV_P_ ev_io *w, int revents)
             syslog(LOG_ERR, "Pipe cannot be opened for reading");
         return;
     }
-    if (api_read(p, buffer, n) != 0)
-        syslog(LOG_ERR, "API read error: %d bytes", n);
+
+    p->api.read.size += n;
+    while (p->api.read.size > 0) {
+        if (p->api.read.dst == 0) {
+            p->api.read.dst = *(int *)p->api.read.buffer;
+            swap_memory((void *)&p->api.read.dst, sizeof(p->api.read.dst));
+        }
+        if ((p->api.read.size - sizeof(int)) > p->api.read.dst) {
+            if (api_read(p, p->api.read.buffer + sizeof(int), p->api.read.dst) != 0)
+                syslog(LOG_ERR, "API read error: %d bytes", n);
+            p->api.read.size -= (p->api.read.dst + sizeof(int));
+            memmove(p->api.read.buffer, p->api.read.buffer + p->api.read.dst + sizeof(int),
+                    p->api.read.size);
+            p->api.read.dst = 0;
+        } else if ((p->api.read.size - sizeof(int)) == p->api.read.dst) {
+            if (api_read(p, p->api.read.buffer + sizeof(int), p->api.read.dst) != 0)
+                syslog(LOG_ERR, "API read error: %d bytes", n);
+            p->api.read.dst = p->api.read.size = 0;
+            break;
+        } else
+            break;
+    }
 }
 
 const struct module_api_s api = {

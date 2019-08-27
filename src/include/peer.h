@@ -149,7 +149,14 @@ struct peer_s {
             struct ev_io write;
             struct ev_io read;
         } ev;
-        struct list_s buffer;
+        struct {
+            struct list_s buffer;
+        } write;
+        struct {
+            int dst;
+            int size;
+            char buffer[4096];
+        } read;
     } api;
 };
 
