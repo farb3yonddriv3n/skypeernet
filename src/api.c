@@ -74,6 +74,13 @@ static int api_write(struct peer_s *p, enum api_e cmd, json_object *payload,
     json_object_object_add(obj, "payload", payload);
     json_object_object_add(obj, "error",   err);
     json_object_object_add(obj, "request", request);
+    if (request) {
+        unsigned int request_id;
+        json_object *tmp;
+        BIND_INT(request_id, "request_id", tmp, request);
+        json_object *jrequest_id  = json_object_new_int(request_id);
+        json_object_object_add(obj, "request_id", jrequest_id);
+    }
     const char *json = json_object_to_json_string(obj);
     if (!json) return -1;
     int len = strlen(json);
