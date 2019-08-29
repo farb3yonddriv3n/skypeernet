@@ -44,6 +44,8 @@ msgstart(Fifo, Data) ->
     msgready(Fifo, Rest, Size).
 
 write(Json) ->
+    Size = byte_size(Json),
+    Data = list_to_binary([<<Size:32>>, Json]),
     Fifo = open_port("/tmp/skypeernet_read", [eof]),
-    port_command(Fifo, Json),
+    port_command(Fifo, Data),
     port_close(Fifo).
