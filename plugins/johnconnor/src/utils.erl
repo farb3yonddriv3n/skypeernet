@@ -53,14 +53,14 @@ reply(#proto_camera_response{ error = Error, pid = Pid, image = Image,
 reply(#proto_message{ data = Data }) ->
     Payload = Data,
     encode(<<"message">>, Payload);
-reply(#proto_files_get{ src = <<"local">> }) ->
-    encode(2, {[{<<"test">>, 1}]});
-reply(#proto_files_get{ src = <<"remote">> }) ->
-    encode(3, {[{<<"test">>, 1}]});
-reply(#proto_job_add{ name = Name }) ->
-    encodepipe([{<<"command">>, 8}, {<<"name">>, Name}]);
-reply(#proto_job_finalize{ name = Name }) ->
-    encodepipe([{<<"command">>, 9}, {<<"name">>, Name}]);
+reply(#proto_files_get{ src = <<"local">>, request_id = RequestId }) ->
+    encodepipe([{<<"command">>, 2}, {<<"request_id">>, RequestId}]);
+reply(#proto_files_get{ src = <<"remote">>, request_id = RequestId }) ->
+    encodepipe([{<<"command">>, 3}, {<<"request_id">>, RequestId}]);
+reply(#proto_job_add{ name = Name, request_id = RequestId }) ->
+    encodepipe([{<<"command">>, 8}, {<<"name">>, Name}, {<<"request_id">>, RequestId}]);
+reply(#proto_job_finalize{ name = Name, request_id = RequestId }) ->
+    encodepipe([{<<"command">>, 9}, {<<"name">>, Name}, {<<"request_id">>, RequestId}]);
 reply(_) ->
     error.
 

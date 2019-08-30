@@ -1,4 +1,4 @@
--record(state, {logged :: atom()}).
+-record(state, { logged :: atom(), fifowrite :: port() }).
 -record(db_account, {email    :: binary(),
                      password :: binary(),
                      data     :: binary()}).
@@ -23,6 +23,9 @@
                                 snapshots :: integer(),
                                 temp      :: list()}).
 -record(proto_message, {data :: binary()}).
--record(proto_files_get, {src :: binary()}).
--record(proto_job_add, {name :: binary()}).
--record(proto_job_finalize, {name :: binary()}).
+-record(proto_files_get, {src        :: binary(),
+                          request_id :: integer()}).
+-record(proto_job_add, {name       :: binary(),
+                        request_id :: integer()}).
+-record(proto_job_finalize, {name       :: binary(),
+                             request_id :: integer()}).
