@@ -3,6 +3,7 @@ var files_local = [];
 var files_remote = [];
 var filter = "";
 var outbound = [];
+var request_id = 0;
 var server = [
     ["message",              message]
 ];
@@ -314,11 +315,12 @@ function send(cmd, payload)
     json.command = cmd;
     json.payload = payload;
     json.version = 1;
+    json.request_id = request_id;
     var text = JSON.stringify(json);
-    var obi = new Object();
-    obi.time = 1;
-    obi.json = json;
-    outbound.push(obi);
+    var rq = new Object();
+    rq.id = request_id++;
+    rq.time = Date.now();
+    outbound.push(rq);
     ws.send(text);
 }
 
@@ -333,7 +335,7 @@ function confirm_message(payload)
     var json = JSON.parse(payload);
     if (!("request" in json)) return;
     for (i = 0; i < outbound.length; i++) {
-        if (json["request"] == outbound[i].json) {
+        if (json["request"]["request_id"] == outbound[i].id) {
             outbound.splice(i, 1);
             break;
         }
@@ -342,6 +344,15 @@ function confirm_message(payload)
 
 function confirmed_check(p1, p2)
 {
+    for (i = 0; i < outbound.length; i++) {
+        if (outbound[i].time < (Date.now() - 5000)) {
+            var todiv = document.getElementById("timedout");
+            todiv.innerHTML = "Request id " + outbound[i].id + " timed out.";
+            $("#timedout").fadeIn(2000);
+            $("#timedout").fadeOut(2000);
+            outbound.splice(i, 1);
+        }
+    }
     delayed_request(confirmed_check, "", "", 1000);
 }
 

@@ -96,7 +96,7 @@ video, audio {
 }
 
 .fileShowTags {
-    width:200px;
+    width:150px;
 }
 
 #tasks {
@@ -112,4 +112,17 @@ video, audio {
 .taskItem {
     width:100%;
     background-color:#800;
+}
+
+#timedout {
+    position:fixed;
+    top:10px;
+    left:50%;
+    display:none;
+    background-color:red;
+    font-weight:bold;
+    font-size:16pt;
+    width:200px;
+    border-radius:15px;
+    padding:20px;
 }
