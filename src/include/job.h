@@ -42,6 +42,8 @@ struct job_s {
     } counter;
 };
 
+struct peer_s;
+
 struct module_job_s {
     int (*add)(struct config_s *cfg, struct list_s *jobs, struct group_s *remote,
                unsigned char *file, int nfile, bool *found,
@@ -50,7 +52,7 @@ struct module_job_s {
                   struct list_s *jobs, const char *filename,
                   int host, unsigned short port);
     void (*resume)(struct ev_loop *loop, struct ev_timer *timer, int revents);
-    int (*finalize)(struct config_s *cfg, struct group_s *remote, unsigned char *file,
+    int (*finalize)(struct peer_s *p, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized);
     int (*dump)(struct config_s *cfg, struct list_s *jobs, json_object **obj);
     int (*remove)(struct list_s *jobs, unsigned char *file,

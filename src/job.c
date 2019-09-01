@@ -250,17 +250,21 @@ static int job_clean(struct list_s *jobs, bool *cleaned)
     return list.clean(jobs);
 }
 
-static int finalize(struct config_s *cfg, struct group_s *remote, unsigned char *file,
+static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized)
 {
-    if (!remote || !file || !finalized) return -1;
+    if (!p || !remote || !file || !finalized) return -1;
     if (nfile != SHA256HEX) return -1;
+    struct config_s *cfg = &p->cfg;
+    struct distfs_s *dfs = p->user.data;
     *finalized = false;
-    struct file_s *f    = NULL;
+    struct file_s *f = NULL;
     ifr(group.find.transaction(remote, file, (void **)&f,
                                NULL, NULL));
+    if (!f) {
+        ifr(root.find(dfs->blocks.local, file, (void **)&f));
+    }
     if (!f) return -1;
-
     unsigned char *desc;
     int            ndesc;
     ifr(decode_desc(f, &desc, &ndesc));
