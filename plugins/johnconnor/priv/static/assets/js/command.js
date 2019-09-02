@@ -120,7 +120,7 @@ function files_show_sub(src)
         var transactionDiv = document.createElement("div");
         transactionDiv.setAttribute("class", "filesItem");
         var name;
-        var local = (src == files_local) ? " (local)" : "";
+        var local = (transaction["src"] == "local") ? " (local)" : "";
         if (transaction["decryptable"])
             name = files_item_sub(transactionDiv, transaction["description"] + local);
         else
@@ -177,13 +177,14 @@ function files_show()
     if (!added) files.innerHTML = "No files found.";
 }
 
-function message_files_local(parsed)
+function message_files_local(payload)
 {
     files_local = [];
-    for (i = 0; i < parsed["payload"]["blocks"].length; i++)
-        for (t = 0; t < parsed["payload"]["blocks"][i]["transactions"].length; t++)
-            files_local.push(parsed["payload"]["blocks"][i]["transactions"][t]);
-    files_show();
+    for (i = 0; i < payload["blocks"].length; i++)
+        for (t = 0; t < payload["blocks"][i]["transactions"].length; t++) {
+            payload["blocks"][i]["transactions"][t]["src"] = "local";
+            files_remote.push(payload["blocks"][i]["transactions"][t]);
+        }
 }
 
 function files_item_sub(dst, innerHtml)
@@ -200,8 +201,11 @@ function message_files_remote(parsed)
     files_remote = [];
     for (i = 0; i < parsed["payload"]["roots"].length; i++)
         for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++)
-            for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++)
+            for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++) {
+                parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]["src"] = "remote";
                 files_remote.push(parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]);
+            }
+    message_files_local(parsed["payload"]["local"]);
     files_show();
 }
 
@@ -270,7 +274,7 @@ function message(payload)
 {
     var parsed = JSON.parse(payload);
     if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
-        message_files_local(parsed);
+        message_files_local(parsed["payload"]);
     } else if (parsed["command"] == 3 && "roots" in parsed["payload"]) {
         message_files_remote(parsed);
     } else if (parsed["command"] == 1) {
@@ -333,7 +337,8 @@ function status(cmd, payload)
 function confirm_message(payload)
 {
     var json = JSON.parse(payload);
-    if (!("request" in json)) return;
+    if (!("request" in json) || ("request" in json && json["request"] == null))
+        return;
     for (i = 0; i < outbound.length; i++) {
         if (json["request"]["request_id"] == outbound[i].id) {
             outbound.splice(i, 1);
