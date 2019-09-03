@@ -47,7 +47,7 @@ static int write_reopen(struct peer_s *p, bool *success)
     *success = true;
     if (p->api.pipes.write > 2) return 0;
     ifr(os.pipe_open(p, p->cfg.api.pipes.write, O_WRONLY|O_NONBLOCK,
-                     &p->api.pipes.write, &p->api.ev.write, EV_WRITE,
+                     &p->api.pipes.write, &p->api.ev.write, EV_READ|EV_WRITE,
                      api.ev.write));
     if (p->api.pipes.write == -1) *success = false;
     return 0;
