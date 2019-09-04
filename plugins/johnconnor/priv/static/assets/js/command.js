@@ -222,6 +222,10 @@ function message_file_job_done(parsed)
 
 function message_file_job_finalized(parsed)
 {
+    if (parsed["error"] != 0) {
+        show_error("File not finalized with error " + parsed["error"]);
+        return;
+    }
     for (i = 0; i < files_remote.length; i++)
         if (files_remote[i]["name"] == parsed["request"]["name"]) {
             files_remote[i]["finalized"] = true;
@@ -347,14 +351,19 @@ function confirm_message(payload)
     }
 }
 
+function show_error(msg)
+{
+    var todiv = document.getElementById("timedout");
+    todiv.innerHTML = msg;
+    $("#timedout").fadeIn(2000);
+    $("#timedout").fadeOut(2000);
+}
+
 function confirmed_check(p1, p2)
 {
     for (i = 0; i < outbound.length; i++) {
         if (outbound[i].time < (Date.now() - 5000)) {
-            var todiv = document.getElementById("timedout");
-            todiv.innerHTML = "Request id " + outbound[i].id + " timed out.";
-            $("#timedout").fadeIn(2000);
-            $("#timedout").fadeOut(2000);
+            show_error("Request id " + outbound[i].id + " timed out.");
             outbound.splice(i, 1);
         }
     }
