@@ -128,8 +128,11 @@ int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc,
     if (strlen(argv[1]) != SHA256HEX) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool finalized;
-    ifr(job.finalize(dfs->peer, dfs->blocks.remote, h,
-                     strlen((const char *)h), &finalized));
+    if (job.finalize(dfs->peer, dfs->blocks.remote, h,
+                     strlen((const char *)h), &finalized) != 0) {
+        *dfserr = 2;
+        return 0;
+    };
     if (finalized) *dfserr = 0;
     else           *dfserr = 1;
     return 0;
