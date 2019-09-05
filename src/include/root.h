@@ -12,6 +12,8 @@ struct root_s {
     unsigned char pubkeyhash[SHA256HEX];
 };
 
+struct peer_s;
+
 struct module_root_s {
     int (*init)(struct root_s **r);
     int (*compare)(struct root_s *local, struct root_s *remote,
@@ -23,7 +25,7 @@ struct module_root_s {
     int (*merge)(struct root_s *dst, struct root_s *src,
                  bool *merged);
     int (*find)(struct root_s *r, unsigned char *h, void **found);
-    int (*dump)(struct root_s *r, struct config_s *cfg, json_object **obj);
+    int (*dump)(struct peer_s *p, struct root_s *r, struct config_s *cfg, json_object **obj);
     int (*clean)(struct root_s *r);
     struct {
         int (*add)(struct root_s *r, struct block_s *b);

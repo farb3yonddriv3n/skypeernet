@@ -198,7 +198,7 @@ static int api_listfileslocal_read(struct peer_s *p, json_object *obj)
     if (!p) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     json_object *robj;
-    ifr(root.dump(dfs->blocks.local, &p->cfg, &robj));
+    ifr(root.dump(p, dfs->blocks.local, &p->cfg, &robj));
     return api.write(p, API_LISTFILES_LOCAL, robj, obj, 0);
 }
 
@@ -207,9 +207,9 @@ static int api_listfilesremote_read(struct peer_s *p, json_object *obj)
     if (!p) return -1;
     struct distfs_s *dfs = (struct distfs_s *)p->user.data;
     json_object *gobj;
-    ifr(group.dump(dfs->blocks.remote, &p->cfg, &gobj));
+    ifr(group.dump(p, dfs->blocks.remote, &p->cfg, &gobj));
     json_object *local;
-    ifr(root.dump(dfs->blocks.local, &p->cfg, &local));
+    ifr(root.dump(p, dfs->blocks.local, &p->cfg, &local));
     json_object_object_add(gobj, "local", local);
     return api.write(p, API_LISTFILES_REMOTE, gobj, obj, 0);
 }

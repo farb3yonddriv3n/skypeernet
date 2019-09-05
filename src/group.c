@@ -66,7 +66,8 @@ static int clean(struct group_s *g)
     return 0;
 }
 
-static int dump(struct group_s *g, struct config_s *cfg, json_object **obj)
+static int dump(struct peer_s *p, struct group_s *g, struct config_s *cfg,
+                json_object **obj)
 {
     if (!g || !cfg) return -1;
     int i;
@@ -75,7 +76,7 @@ static int dump(struct group_s *g, struct config_s *cfg, json_object **obj)
     json_object_object_add(*obj, "roots", roots);
     for (i = 0; i < g->roots.size; i++) {
         json_object *robj;
-        if (root.dump(g->roots.array[i], cfg, &robj) != 0) return -1;
+        if (root.dump(p, g->roots.array[i], cfg, &robj) != 0) return -1;
         json_object_array_add(roots, robj);
     }
     return 0;

@@ -229,13 +229,19 @@ static int validate(const struct root_s *r, bool *valid)
     return 0;
 }
 
-static int dump(struct root_s *r, struct config_s *cfg, json_object **obj)
+static int dump(struct peer_s *p, struct root_s *r, struct config_s *cfg, json_object **obj)
 {
-    if (!r || !cfg) return -1;
+    if (!p || !r || !cfg || !obj) return -1;
     *obj = json_object_new_object();
     json_object *owner = json_object_new_string_len((const char *)r->pubkeyhash,
                                                     sizeof(r->pubkeyhash));
     json_object_object_add(*obj, "owner", owner);
+    struct world_peer_s wp  = { .found = NULL };
+    memcpy(wp.pubkeyhash, r->pubkeyhash, sizeof(r->pubkeyhash));
+    ifr(list.map(&p->peers, world.peer.findpubkeyhash, &wp));
+    bool preachable = wp.found ? true : false;
+    json_object *reachable = json_object_new_boolean(preachable);
+    json_object_object_add(*obj, "reachable", reachable);
     json_object *blocks = json_object_new_array();
     json_object_object_add(*obj, "blocks", blocks);
     int i;

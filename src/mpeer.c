@@ -163,10 +163,10 @@ static int dfs_list_files(struct distfs_s *dfs, char **argv, int argc,
     json_object *obj;
     if (strcmp(argv[1], "remote") == 0 ||
         strcmp(argv[1], "r") == 0) {
-        ifr(group.dump(dfs->blocks.remote, &dfs->peer->cfg, &obj));
+        ifr(group.dump(dfs->peer, dfs->blocks.remote, &dfs->peer->cfg, &obj));
     } else if (strcmp(argv[1], "local") == 0 ||
                strcmp(argv[1], "l") == 0) {
-        ifr(root.dump(dfs->blocks.local, &dfs->peer->cfg, &obj));
+        ifr(root.dump(dfs->peer, dfs->blocks.local, &dfs->peer->cfg, &obj));
     } else return -1;
     printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
     json_object_put(obj);

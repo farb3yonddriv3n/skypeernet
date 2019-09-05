@@ -8,13 +8,16 @@ struct group_s {
     } roots;
 };
 
+struct peer_s;
+
 struct module_group_s {
     int (*init)(struct group_s **g);
     int (*compare)(struct group_s *local, struct group_s *remote,
                    bool *equal);
     int (*receive)(struct group_s *g, struct transaction_s *t);
     int (*validate)(struct group_s *g, bool *valid);
-    int (*dump)(struct group_s *g, struct config_s *cfg, json_object **obj);
+    int (*dump)(struct peer_s *p, struct group_s *g, struct config_s *cfg,
+                json_object **obj);
     int (*export)(struct group_s *g, void *ud,
                   int (*cb)(json_object *e, void *ud));
     struct {
