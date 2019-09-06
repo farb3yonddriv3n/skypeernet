@@ -121,10 +121,11 @@ function files_show_sub(src)
         transactionDiv.setAttribute("class", "filesItem");
         var name;
         var local = (transaction["src"] == "local") ? " (local)" : "";
+        var reachable = transaction["reachable"] ? " (r)" : " (u)";
         if (transaction["decryptable"])
-            name = files_item_sub(transactionDiv, transaction["description"] + local);
+            name = files_item_sub(transactionDiv, transaction["description"] + local + reachable);
         else
-            name = files_item_sub(transactionDiv, transaction["name"] + local);
+            name = files_item_sub(transactionDiv, transaction["name"] + local + reachable);
         name.classList.add("fileShowName");
         var size = files_item_sub(transactionDiv, format_size(transaction["size"]));
         size.classList.add("fileShowSize");
@@ -203,6 +204,7 @@ function message_files_remote(parsed)
         for (b = 0; b < parsed["payload"]["roots"][i]["blocks"].length; b++)
             for (t = 0; t < parsed["payload"]["roots"][i]["blocks"][b]["transactions"].length; t++) {
                 parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]["src"] = "remote";
+                parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]["reachable"] = parsed["payload"]["roots"][i]["reachable"];
                 files_remote.push(parsed["payload"]["roots"][i]["blocks"][b]["transactions"][t]);
             }
     message_files_local(parsed["payload"]["local"]);
