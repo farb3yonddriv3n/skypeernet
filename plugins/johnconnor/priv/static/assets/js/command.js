@@ -4,6 +4,7 @@ var files_remote = [];
 var filter = "";
 var outbound = [];
 var request_id = 0;
+var peers = [];
 var server = [
     ["message",              message]
 ];
@@ -123,45 +124,45 @@ function files_show_sub(src)
         var local = (transaction["src"] == "local") ? " (local)" : "";
         var reachable = transaction["reachable"] ? " (r)" : " (u)";
         if (transaction["decryptable"])
-            name = files_item_sub(transactionDiv, transaction["description"] + local + reachable);
+            name = append_bodyclass(transactionDiv, transaction["description"] + local + reachable, "filesItemSub");
         else
-            name = files_item_sub(transactionDiv, transaction["name"] + local + reachable);
+            name = append_bodyclass(transactionDiv, transaction["name"] + local + reachable, "filesItemSub");
         name.classList.add("fileShowName");
-        var size = files_item_sub(transactionDiv, format_size(transaction["size"]));
+        var size = append_bodyclass(transactionDiv, format_size(transaction["size"]), "filesItemSub");
         size.classList.add("fileShowSize");
-        var complete = files_item_sub(transactionDiv, transaction["complete"]);
+        var complete = append_bodyclass(transactionDiv, transaction["complete"], "filesItemSub");
         if (!transaction["complete"]) {
             file_onclick(complete, transaction["name"], "job_add");
             complete.setAttribute("class", "filesItemSubClick");
         }
         complete.classList.add("fileShowComplete");
-        var finalize = files_item_sub(transactionDiv, "Finalize");
+        var finalize = append_bodyclass(transactionDiv, "Finalize", "filesItemSub");
         file_onclick(finalize, transaction["name"], "job_finalize");
         finalize.setAttribute("class", "filesItemSubClick");
         finalize.classList.add("fileShowSize");
         var finalized;
         if (transaction["finalized"]) {
-            finalized = files_item_sub(transactionDiv, "View");
+            finalized = append_bodyclass(transactionDiv, "View", "filesItemSub");
             file_onclick(finalized, transaction["description"], "show_files");
             finalized.setAttribute("class", "filesItemSubClick");
         } else {
-            finalized = files_item_sub(transactionDiv, "Encrypted");
+            finalized = append_bodyclass(transactionDiv, "Encrypted", "filesItemSub");
         }
         finalized.classList.add("fileShowFinalized");
-        var tags = files_item_sub(transactionDiv, transaction["tags"]);
+        var tags = append_bodyclass(transactionDiv, transaction["tags"], "filesItemSub");
         tags.classList.add("fileShowTags");
         var jobs;
         if ("jobs" in transaction)
-            jobs = files_item_sub(transactionDiv, transaction["jobs"]);
+            jobs = append_bodyclass(transactionDiv, transaction["jobs"], "filesItemSub");
         else
-            jobs = files_item_sub(transactionDiv, transaction["chunks_done"] + "/" +
-                                                  transaction["chunks_total"]);
+            jobs = append_bodyclass(transactionDiv, transaction["chunks_done"] + "/" +
+                                                  transaction["chunks_total"], "filesItemSub");
         jobs.classList.add("fileShowTags");
         var tasks;
         if ("tasks" in transaction)
-            tasks = files_item_sub(transactionDiv, transaction["tasks"].length);
+            tasks = append_bodyclass(transactionDiv, transaction["tasks"].length, "filesItemSub");
         else
-            tasks = files_item_sub(transactionDiv, 0);
+            tasks = append_bodyclass(transactionDiv, 0, "filesItemSub");
         tasks.classList.add("fileShowTags");
         files.appendChild(transactionDiv);
     }
@@ -188,10 +189,10 @@ function message_files_local(payload)
         }
 }
 
-function files_item_sub(dst, innerHtml)
+function append_bodyclass(dst, innerHtml, classname)
 {
     var div = document.createElement("div");
-    div.setAttribute("class", "filesItemSub");
+    div.setAttribute("class", classname);
     div.innerHTML = innerHtml;
     dst.appendChild(div);
     return div;
@@ -276,14 +277,53 @@ function message_jobs_dump(parsed)
     files_show();
 }
 
+function peers_show()
+{
+    var peersDiv = document.getElementById("peers");
+    peersDiv.innerHTML = "";
+    for (i = 0; i < peers.length; i++) {
+        append_bodyclass(peersDiv, peers[i]["pubkeyhash"], "peerOnline");
+    }
+}
+
+function message_peers(parsed)
+{
+    peers = parsed["payload"]["peers"];
+    peers_show();
+}
+
+function message_peer_online(parsed)
+{
+    for (i = 0; i < peers.length; i++)
+        if (peers[i]["pubkeyhash"] == parsed["payload"]["pubkeyhash"])
+            return;
+    peers.push(parsed["payload"]);
+    peers_show();
+}
+
+function message_peer_offline(parsed)
+{
+    for (i = 0; i < peers.length; i++)
+        if (peers[i]["pubkeyhash"] == parsed["payload"]["pubkeyhash"]) {
+            peers.splice(i, 1);
+            peers_show();
+            break;
+        }
+}
+
 function message(payload)
 {
     var parsed = JSON.parse(payload);
-    if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
+    if (parsed["command"] == 0) {
+        message_peers(parsed);
+    } else if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
         message_files_local(parsed["payload"]);
     } else if (parsed["command"] == 3 && "roots" in parsed["payload"]) {
         message_files_remote(parsed);
-    } else if (parsed["command"] == 1) {
+    } else if (parsed["command"] == 4) {
+        message_peer_online(parsed);
+    } else if (parsed["command"] == 5) {
+        message_peer_offline(parsed);
     } else if (parsed["command"] == 6) {
         message_jobs_dump(parsed);
     } else if (parsed["command"] == 7) {
@@ -295,7 +335,14 @@ function message(payload)
     } else if (parsed["command"] == 17) {
         message_tasks(parsed);
     } else {
+        console.log("unsupported");
     }
+}
+
+function peers_get()
+{
+    var payload = new Object();
+    send("peers_get", payload);
 }
 
 function files_get(src)
@@ -386,7 +433,7 @@ function connect(cmd, payload)
         connection_status(true);
         menu_files("remote");
         files_get("remote");
-        //files_get("local");
+        peers_get("");
         delayed_request(confirmed_check, "", "", 1000);
     };
 

@@ -53,6 +53,8 @@ reply(#proto_camera_response{ error = Error, pid = Pid, image = Image,
 reply(#proto_message{ data = Data }) ->
     Payload = Data,
     encode(<<"message">>, Payload);
+reply(#proto_peers_get{ request_id = RequestId }) ->
+    encodepipe([{<<"command">>, 0}, {<<"request_id">>, RequestId}]);
 reply(#proto_files_get{ src = <<"local">>, request_id = RequestId }) ->
     encodepipe([{<<"command">>, 2}, {<<"request_id">>, RequestId}]);
 reply(#proto_files_get{ src = <<"remote">>, request_id = RequestId }) ->

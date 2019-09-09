@@ -126,3 +126,12 @@ video, audio {
     border-radius:15px;
     padding:20px;
 }
+
+.peerOnline {
+    width:100%;
+    margin:2px;
+    overflow:hidden;
+    text-align:center;
+    background-color:#008000;
+    cursor: pointer;
+}

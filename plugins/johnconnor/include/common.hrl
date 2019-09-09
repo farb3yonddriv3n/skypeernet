@@ -29,3 +29,4 @@
                         request_id :: integer()}).
 -record(proto_job_finalize, {name       :: binary(),
                              request_id :: integer()}).
+-record(proto_peers_get, {request_id :: integer()}).

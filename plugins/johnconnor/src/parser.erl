@@ -13,6 +13,9 @@ do(Data, State) ->
         Json = jiffy:decode(Data),
         Parsed = parse(Json),
         case Parsed of
+            {<<"peers_get">>, Payload, _Version, RequestId} ->
+                peers:get(Payload, State, RequestId),
+                {reply, nochange};
             {<<"files_get">>, Payload, _Version, RequestId} ->
                 files:get(Payload, State, RequestId),
                 {reply, nochange};
