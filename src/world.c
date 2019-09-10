@@ -115,12 +115,11 @@ static int reachable_set(struct peer_s *p, int host, unsigned short port,
 {
     struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
     ifr(list.map(&p->peers, peer_find, &wp));
-    if (wp.found) {
-        if (!reachable && ++wp.found->unreachable == p->cfg.net.max.peer_unreachable) {
-            if (p->user.cb.offline && p->user.cb.offline(p, wp.found) != 0) return -1;
-            ifr(list.del(&p->peers, wp.found));
-        } else if (reachable) wp.found->unreachable = 0;
-    }
+    if (!wp.found) return 0;
+    if (!reachable && ++wp.found->unreachable == p->cfg.net.max.peer_unreachable) {
+        if (p->user.cb.offline && p->user.cb.offline(p, wp.found) != 0) return -1;
+        ifr(list.del(&p->peers, wp.found));
+    } else if (reachable) wp.found->unreachable = 0;
     return 0;
 }
 
