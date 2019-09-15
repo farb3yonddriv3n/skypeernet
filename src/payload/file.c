@@ -47,7 +47,7 @@ int file_read(struct peer_s *p)
     ifr(list.map(&p->peers, world.peer.find, &wp));
     if (!wp.found) return -1;
     if (finalized && p->user.cb.file) {
-        ifr(p->user.cb.file(p,
+        ifr(p->user.cb.file(p, &p->received.header,
                             ADDR_IP(p->net.remote.addr),
                             ADDR_PORT(p->net.remote.addr),
                             wp.found->pubkeyhash,

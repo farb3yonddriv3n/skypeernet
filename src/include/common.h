@@ -49,6 +49,8 @@
 #include <root.h>
 #include <group.h>
 
+#include <gc.h>
+
 #include <packet.h>
 #include <net.h>
 #include <data.h>
@@ -61,6 +63,8 @@
 #include <os.h>
 #include <rogue.h>
 #include <spn_version.h>
+#include <tunnel.h>
+#include <endpoint.h>
 
 #include <distfs.h>
 #include <job.h>

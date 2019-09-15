@@ -2,7 +2,7 @@
 #define API_H_
 
 enum api_e {
-    API_LISTPEERS,
+    API_LISTPEERS              = 0,
     API_MESSAGE,
     API_LISTFILES_LOCAL,
     API_LISTFILES_REMOTE,
@@ -12,7 +12,7 @@ enum api_e {
     API_JOBDONE,
     API_JOBADD,
     API_JOBFINALIZE,
-    API_TSHARE,
+    API_TSHARE                 = 10,
     API_BMINE,
     API_BADVERTISE,
     API_BMINING,
@@ -20,6 +20,7 @@ enum api_e {
     API_VERSIONDUMP,
     API_TRAFFICDUMP,
     API_TASKDUMP,
+    API_TUNNELOPEN             = 18,
 };
 
 struct module_api_s {

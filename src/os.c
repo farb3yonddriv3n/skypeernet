@@ -331,6 +331,10 @@ static int makedirs(struct config_s *cfg)
     if (stat(cfg->dir.finalized, &st) == -1) {
         if (mkdir(cfg->dir.finalized, 0700) != 0) return -1;
     }
+    memset(&st, 0, sizeof(st));
+    if (stat(cfg->dir.tcp, &st) == -1) {
+        if (mkdir(cfg->dir.tcp, 0700) != 0) return -1;
+    }
     char partsdir[256];
     int i;
     for (i = 0; i < COUNTOF(dirs); i++) {

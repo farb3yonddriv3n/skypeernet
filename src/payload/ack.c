@@ -28,5 +28,6 @@ int ack_reply(struct peer_s *p)
 {
     return payload.send(p, COMMAND_ACK,
                         ADDR_IP(p->net.remote.addr),
-                        ADDR_PORT(p->net.remote.addr), 0, 0, NULL);
+                        ADDR_PORT(p->net.remote.addr),
+                        0, 0, NULL, NULL);
 }

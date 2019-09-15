@@ -115,6 +115,7 @@ static int init_peer(struct peer_s *p)
     p->ev.write.data = (void *)p;
     p->ev.write_instant.data = (void *)p;
     ev_timer_again(p->ev.loop, &p->ev.send);
+    hm_log_open(&p->log, NULL, GCLOG_TRACE);
     backtrace.init();
     return 0;
 }

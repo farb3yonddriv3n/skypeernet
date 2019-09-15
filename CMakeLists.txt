@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.9)
 project(spnpeer C)
 project(spntracker C)
 project(spnvalidate C)
-project(spntest C)
+#project(spntest C)
 
 if(NOT UNIX)
     message(FATAL_ERROR "Only *nix like systems are supported.")
@@ -37,6 +37,7 @@ src/cli.c
 src/config.c
 src/data.c
 src/distfs.c
+src/endpoint.c
 src/file.c
 src/group.c
 src/job.c
@@ -51,6 +52,7 @@ src/rsa.c
 src/task.c
 src/traffic.c
 src/transaction.c
+src/tunnel.c
 src/utils.c
 src/version.c
 src/world.c
@@ -71,35 +73,49 @@ test/t1.c
 test/t2.c
 test/t3.c
 test/t4.c
+test/t5.c
+)
+
+set(srcs_tcp
+src/tcp/src/async_client.c
+src/tcp/src/async_server.c
+src/tcp/src/gcapi.c
+src/tcp/src/hashtable.c
+src/tcp/src/log.c
+src/tcp/src/pool.c
+src/tcp/src/ringbuffer.c
+src/tcp/src/util.c
 )
 
 add_library(skypeernetobj OBJECT ${srcs})
-add_library(skypeernetobjtest OBJECT ${srcs_test})
+add_library(skypeernettcp SHARED ${srcs_tcp})
+#add_library(skypeernetobjtest OBJECT ${srcs_test})
 
 add_executable(spnpeer $<TARGET_OBJECTS:skypeernetobj> src/mpeer.c)
 add_executable(spntracker $<TARGET_OBJECTS:skypeernetobj> src/mtracker.c)
 add_executable(spnvalidate $<TARGET_OBJECTS:skypeernetobj> tools/validate/main.c)
-add_executable(spntest $<TARGET_OBJECTS:skypeernetobj> $<TARGET_OBJECTS:skypeernetobjtest> test/test.c)
+#add_executable(spntest $<TARGET_OBJECTS:skypeernetobj> $<TARGET_OBJECTS:skypeernetobjtest> test/test.c)
 
 include_directories(src/include)
+include_directories(src/tcp/include)
 include_directories(test/)
 
-target_link_libraries(spnpeer m)
-target_link_libraries(spntracker m)
-target_link_libraries(spnvalidate m)
-target_link_libraries(spntest m)
+target_link_libraries(spnpeer m skypeernettcp)
+target_link_libraries(spntracker m skypeernettcp)
+target_link_libraries(spnvalidate m skypeernettcp)
+#target_link_libraries(spntest m)
 
 find_package(Threads REQUIRED)
 target_link_libraries(spnpeer ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(spntracker ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(spnvalidate ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(spntest ${CMAKE_THREAD_LIBS_INIT})
+#target_link_libraries(spntest ${CMAKE_THREAD_LIBS_INIT})
 
 find_package(OpenSSL REQUIRED)
 target_link_libraries(spnpeer ${OPENSSL_LIBRARIES})
 target_link_libraries(spntracker ${OPENSSL_LIBRARIES})
 target_link_libraries(spnvalidate ${OPENSSL_LIBRARIES})
-target_link_libraries(spntest ${OPENSSL_LIBRARIES})
+#target_link_libraries(spntest ${OPENSSL_LIBRARIES})
 include_directories(${OPENSSL_INCLUDE_DIR})
 
 include(libev.cmake)
@@ -110,7 +126,7 @@ include_directories(${LIBEV_INCLUDE_DIR})
 target_link_libraries(spnpeer ${LIBEV_LIBRARY})
 target_link_libraries(spntracker ${LIBEV_LIBRARY})
 target_link_libraries(spnvalidate ${LIBEV_LIBRARY})
-target_link_libraries(spntest ${LIBEV_LIBRARY})
+#target_link_libraries(spntest ${LIBEV_LIBRARY})
 
 include(json-c.cmake)
 if(NOT JSON-C_FOUND)
@@ -120,7 +136,7 @@ include_directories(${JSON-C_INCLUDE_DIR})
 target_link_libraries(spnpeer ${JSON-C_LIBRARY})
 target_link_libraries(spntracker ${JSON-C_LIBRARY})
 target_link_libraries(spnvalidate ${JSON-C_LIBRARY})
-target_link_libraries(spntest ${JSON-C_LIBRARY})
+#target_link_libraries(spntest ${JSON-C_LIBRARY})
 
 include(readline.cmake)
 if(NOT READLINE_FOUND)
@@ -130,14 +146,14 @@ include_directories(${Readline_INCLUDE_DIR})
 target_link_libraries(spnpeer ${Readline_LIBRARY})
 target_link_libraries(spntracker ${Readline_LIBRARY})
 target_link_libraries(spnvalidate ${Readline_LIBRARY})
-target_link_libraries(spntest ${Readline_LIBRARY})
+#target_link_libraries(spntest ${Readline_LIBRARY})
 
 include(cunit.cmake)
 if(NOT CUNIT_FOUND)
     message(FATAL_ERROR "libcunit not found")
 endif()
 include_directories(${CUNIT_INCLUDE_DIR})
-target_link_libraries(spntest ${CUNIT_LIBRARY})
+#target_link_libraries(spntest ${CUNIT_LIBRARY})
 
 install(TARGETS spnpeer spntracker DESTINATION /usr/local/bin/)
 install(FILES config/settings.cfg DESTINATION /etc/skypeernet/

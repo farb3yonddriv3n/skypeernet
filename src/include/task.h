@@ -19,12 +19,13 @@ struct task_s {
     int            host;
     unsigned short port;
     enum task_e    action;
+    struct tcp_s   tcp;
 };
 
 struct module_task_s {
     int (*add)(struct peer_s *p, const char *blockdir, unsigned char *filename,
                int nfilename, int host, unsigned short port, unsigned char *parent,
-               enum task_e action);
+               enum task_e action, struct tcp_s *tcp);
     int (*update)(struct peer_s *p);
     int (*cancel)(struct peer_s *p, unsigned int idx, bool *cancelled);
     int (*dump)(struct peer_s *p, json_object **obj);

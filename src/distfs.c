@@ -257,7 +257,7 @@ int dfs_block_send(struct peer_s *p, struct distfs_s *dfs,
     if (exists) {
         ifr(task.add(p, p->cfg.dir.block, dfs->blocks.file,
                      sizeof(dfs->blocks.file),
-                     host, port, NULL, TASK_FILE_KEEP));
+                     host, port, NULL, TASK_FILE_KEEP, 0));
     }
     return 0;
 }
@@ -270,7 +270,7 @@ int dfs_hello(struct distfs_s *dfs, int host, unsigned short port)
     p->send_buffer.u.message.str = MSG_HELLO;
     return payload.send(p, COMMAND_MESSAGE,
                         host, port, 0, 0,
-                        NULL);
+                        NULL, NULL);
 }
 
 int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,

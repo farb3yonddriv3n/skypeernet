@@ -8,7 +8,8 @@ static int send_message(struct peer_s *p, char **argv, int argc)
     p->send_buffer.type = BUFFER_MESSAGE;
     p->send_buffer.u.message.str = message;
     return payload.send(p, COMMAND_MESSAGE,
-                        host, port, 0, 0, NULL);
+                        host, port, 0, 0,
+                        NULL, NULL);
 }
 
 static int whoami(struct peer_s *p, char **argv, int argc)
@@ -27,7 +28,7 @@ static int send_file(struct peer_s *p, char **argv, int argc)
     long int    port = strtol(argv[2], NULL, 10);
     const char *file = argv[3];
     return task.add(p, p->cfg.dir.download, (unsigned char *)file, strlen(file),
-                    host, port, NULL, TASK_FILE_KEEP);
+                    host, port, NULL, TASK_FILE_KEEP, 0);
 }
 
 static int cli_peers_list(struct peer_s *p, json_object **obj)

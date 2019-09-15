@@ -25,7 +25,7 @@ static int peer_auth(struct peer_s *p, struct world_peer_s *wp)
     p->send_buffer.type = BUFFER_AUTH;
     sn_setr(p->send_buffer.u.auth.str, (char *)authstr, nauthstr);
     ifr(payload.send(p, COMMAND_AUTH,
-                     wp->host, wp->port, 0, 0, NULL));
+                     wp->host, wp->port, 0, 0, NULL, NULL));
     free(authstr);
     RSA_free(tmpkey);
     sn_free(strkey);
@@ -88,7 +88,7 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
             p->send_buffer.u.tracker_peer.host = src;
             p->send_buffer.u.tracker_peer.port = srcport;
             if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_PEER,
-                             dst, dstport, 0, 0, NULL) != 0) return -1;
+                             dst, dstport, 0, 0, NULL, NULL) != 0) return -1;
             return 0;
         }
         ifr(item(wp->host, wp->port, ex->host, ex->port, &ex->pubkey));
@@ -144,7 +144,7 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
         syslog(LOG_DEBUG, "Checking peer's availability: %x:%d", wp->host, wp->port);
         return payload.send(p, COMMAND_PING,
                             wp->host,
-                            wp->port, 0, 0, NULL);
+                            wp->port, 0, 0, NULL, NULL);
     }
     if (list.map(&p->peers, cb, p) != 0)
         syslog(LOG_ERR, "Peers check failed");

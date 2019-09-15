@@ -14,7 +14,7 @@ static int resume(struct peer_s *p)
         p->send_buffer.type = BUFFER_FILE;
         sn_setr(p->send_buffer.u.file.bin, buffer, size);
         ifr(payload.send(p, COMMAND_FILE, t->host, t->port, t->idx,
-                         t->parts, t->file.name));
+                         t->parts, t->file.name, &t->tcp));
         if ((++t->file.iter) * p->cfg.net.max.task_buffer >= t->file.size)
             if (list.del(l, t) != 0) return -1;
         if (buffer) free(buffer);
@@ -29,7 +29,7 @@ static int update(struct peer_s *p)
 {
     if (!p) return -1;
     int send_sz, task_sz;
-    ifr(list.size(&p->send.nbl,  &send_sz));
+    ifr(list.size(&p->send.nbl, &send_sz));
     ifr(list.size(&p->tasks.list, &task_sz));
     if (send_sz <= p->cfg.net.max.send_queue && task_sz != 0) return resume(p);
     return 0;
@@ -76,7 +76,8 @@ static int find(struct list_s *tasks, const char *filename,
 
 static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
                int nfilename, int host, unsigned short port,
-               unsigned char *parent, enum task_e action)
+               unsigned char *parent, enum task_e action,
+               struct tcp_s *tcp)
 {
     if (!p || !filename) return -1;
     if (nfilename != SHA256HEX) return -1;
@@ -91,6 +92,7 @@ static int add(struct peer_s *p, const char *blockdir, unsigned char *filename,
     t->port   = port;
     t->action = action;
     t->idx  = ++(p->tasks.idx);
+    if (tcp) memcpy(&t->tcp, tcp, sizeof(t->tcp));
     if (parent) memcpy(t->file.parent, parent, SHA256HEX);
     memcpy(t->file.name, filename, nfilename);
     snprintf(t->file.fullpath, sizeof(t->file.fullpath), "%s/%.*s",

@@ -183,7 +183,7 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
     p->send_buffer.u.fileask.chunk = jc->chunk;
     return payload.send(p, COMMAND_FILEASK,
                         jc->net.host, jc->net.port, 0, 0,
-                        NULL);
+                        NULL, NULL);
 }
 
 static int chunk_restart(struct distfs_s *dfs, struct job_s *j,

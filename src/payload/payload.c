@@ -24,11 +24,12 @@ static int exec(struct peer_s *parent, enum command_e cmd,
                 int host, unsigned short port,
                 int (*cb_write)(struct data_s*, void*),
                 int (*cb_size)(int*, void*), unsigned int tidx,
-                unsigned int parts, unsigned char *filename)
+                unsigned int parts, unsigned char *filename,
+                struct tcp_s *tcp)
 {
     struct data_s d;
-    if (data.init(&d, cmd, cb_write, cb_size, parent)            != 0) return -1;
-    if (data.send(&d, parent, host, port, tidx, parts, filename) != 0) return -1;
+    if (data.init(&d, cmd, cb_write, cb_size, parent)                 != 0) return -1;
+    if (data.send(&d, parent, host, port, tidx, parts, filename, tcp) != 0) return -1;
     return 0;
 }
 
@@ -47,7 +48,8 @@ static int command_find(int *idx, enum command_e cmd)
 static int payload_send(void *parent, enum command_e cmd,
                         int host, unsigned short port,
                         unsigned int tidx, unsigned int parts,
-                        unsigned char *filename)
+                        unsigned char *filename,
+                        struct tcp_s *tcp)
 {
     int idx;
     ifr(command_find(&idx, cmd));
@@ -55,7 +57,7 @@ static int payload_send(void *parent, enum command_e cmd,
                 cmds[idx].cb_write,
                 cmds[idx].cb_size,
                 tidx, parts,
-                filename);
+                filename, tcp);
 }
 
 static int cache_clean(void *uc)
@@ -151,8 +153,9 @@ static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
     //if (sealed) return 0;
     int i;
     for (i = 0; i < c->packets.received.size; i++)
-        if (c->packets.received.idx[i] == received->header.pidx)
+        if (c->packets.received.idx[i] == received->header.pidx) {
             return 0;
+        }
     struct packet_s *p = malloc(sizeof(*p));
     if (!p) return -1;
     memcpy(p, received, sizeof(*p));

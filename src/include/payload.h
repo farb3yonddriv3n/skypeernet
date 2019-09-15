@@ -10,7 +10,8 @@ struct module_payload_s {
     int (*send)(void *parent, enum command_e cmd,
                 int host, unsigned short port,
                 unsigned int tidx, unsigned int parts,
-                unsigned char *filename);
+                unsigned char *filename,
+                struct tcp_s *tcp);
     int (*recv)(struct peer_s *p);
 };
 

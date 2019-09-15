@@ -13,6 +13,7 @@ enum buffer_e {
     BUFFER_TRACKER_ANNOUNCE_PEER,
     BUFFER_AUTH,
     BUFFER_AUTH_REPLY,
+    BUFFER_TCP,
 };
 
 struct send_buffer_s {
@@ -90,6 +91,10 @@ struct peer_s {
     struct list_s        backtrace;
     struct list_s        rogue;
     struct {
+        struct list_s tunnels;
+        struct list_s endpoints;
+    } tcp;
+    struct {
         char *ptr;
         int   size;
     } miningtarget;
@@ -107,8 +112,8 @@ struct peer_s {
             int (*message)(struct peer_s *p, int host,
                            unsigned short port,
                            char *msg, int len);
-            int (*file)(struct peer_s *p, int host,
-                        unsigned short port,
+            int (*file)(struct peer_s *p, struct header_s *header,
+                        int host, unsigned short port,
                         unsigned char *keyhash,
                         char *fullpath, int nfullpath,
                         char *filename, int nfilename);
@@ -158,6 +163,7 @@ struct peer_s {
             char buffer[4096];
         } read;
     } api;
+    struct hm_log_s log;
 };
 
 struct module_peer_s {

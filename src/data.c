@@ -69,6 +69,14 @@ static int packet_set(snb *dst, struct packet_s *p)
         return -1;
     if (snb_bytes_append(dst, (char *)&p->header.filename, sizeof(p->header.filename)) != 0)
         return -1;
+    if (snb_bytes_append(dst, (char *)&p->header.tcp.reqtype, sizeof(p->header.tcp.reqtype)) != 0)
+        return -1;
+    if (snb_bytes_append(dst, (char *)&p->header.tcp.cidx, sizeof(p->header.tcp.cidx)) != 0)
+        return -1;
+    if (snb_bytes_append(dst, (char *)&p->header.tcp.port.src, sizeof(p->header.tcp.port.src)) != 0)
+        return -1;
+    if (snb_bytes_append(dst, (char *)&p->header.tcp.port.dst, sizeof(p->header.tcp.port.dst)) != 0)
+        return -1;
     if (snb_bytes_append(dst, (char *)&p->buffer.payload, p->header.length)          != 0)
         return -1;
     if (snb_bytes_append(dst, (char *)&p->buffer.hash,    sizeof(p->buffer.hash))    != 0)
@@ -89,22 +97,26 @@ static int packet_get(struct packet_s *p, char *buffer, int nbuffer)
     if (sn_read((void *)&p->header.length,  sizeof(p->header.length),  &b) != 0) return -1;
     if (sn_read((void *)&p->header.command, sizeof(p->header.command), &b) != 0) return -1;
     if (sn_read((void *)&p->header.filename, sizeof(p->header.filename), &b) != 0) return -1;
+    if (sn_read((void *)&p->header.tcp.reqtype, sizeof(p->header.tcp.reqtype), &b) != 0) return -1;
+    if (sn_read((void *)&p->header.tcp.cidx, sizeof(p->header.tcp.cidx), &b) != 0) return -1;
+    if (sn_read((void *)&p->header.tcp.port.src, sizeof(p->header.tcp.port.src), &b) != 0) return -1;
+    if (sn_read((void *)&p->header.tcp.port.dst, sizeof(p->header.tcp.port.dst), &b) != 0) return -1;
     if (sn_read(p->buffer.payload, p->header.length, &b)       != 0) return -1;
     if (sn_read(p->buffer.hash,    sizeof(p->buffer.hash), &b) != 0) return -1;
     return 0;
 }
 
-static int data_send(struct data_s *d, struct peer_s *p,
-                     int host, unsigned short port,
-                     unsigned int tidx, unsigned int parts,
-                     unsigned char *filename)
+static int data_send(struct data_s *d, struct peer_s *p, int host,
+                     unsigned short port, unsigned int tidx,
+                     unsigned int parts, unsigned char *filename,
+                     struct tcp_s *tcp)
 {
     if (!d || !p) return -1;
     struct packet_s *packets;
     int npackets;
     if (packet.serialize.init(d->command, d->payload.s, d->payload.n, &packets,
-                              &npackets, &p->send_buffer,
-                              tidx, parts, filename) != 0) return -1;
+                              &npackets, &p->send_buffer, tidx, parts,
+                              filename, tcp) != 0) return -1;
     sn_bytes_delete(d->payload);
     int i;
     for (i = 0; i < npackets; i++) {

@@ -80,6 +80,10 @@ int config_init(struct config_s *cfg)
     snprintf(cfg->dir.finalized, sizeof(cfg->dir.finalized), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
+    json_object_object_get_ex(obj, "tcp_directory", &tmp);
+    snprintf(cfg->dir.tcp, sizeof(cfg->dir.tcp), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
     json_object_object_get_ex(obj, "pipe_read", &tmp);
     snprintf(cfg->api.pipes.read, sizeof(cfg->api.pipes.read), "%.*s",
              json_object_get_string_len(tmp),

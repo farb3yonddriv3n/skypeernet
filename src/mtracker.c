@@ -13,7 +13,7 @@ static int dfs_auth_reply(struct peer_s *p, int host,
         wp.found->authed = true;
         if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_TRACKER,
                          wp.found->host, wp.found->port,
-                         0, 0, NULL) != 0) return -1;
+                         0, 0, NULL, NULL) != 0) return -1;
         ifr(world.peer.broadcast(p, wp.found));
     }
     return 0;

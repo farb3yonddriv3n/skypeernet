@@ -52,6 +52,7 @@ struct config_s {
         char block[128];
         char keys[128];
         char finalized[128];
+        char tcp[128];
     } dir;
     struct {
         struct {

@@ -17,7 +17,7 @@ struct module_data_s {
     int (*send)(struct data_s *d, struct peer_s *ins,
                 int host, unsigned short port,
                 unsigned int tidx, unsigned int parts,
-                unsigned char *filename);
+                unsigned char *filename, struct tcp_s *tcp);
     int (*get)(struct packet_s *p, char *buffer, int nbuffer);
     int (*size)(struct data_s *d, size_t *sz);
     struct {

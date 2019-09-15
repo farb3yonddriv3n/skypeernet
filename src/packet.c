@@ -4,7 +4,7 @@ static int packet_create(enum command_e cmd, char *buffer, int nbuffer,
                          struct packet_s **packets, int *npackets,
                          uint64_t offset, unsigned int chunks, unsigned int *pidx,
                          unsigned int gidx, unsigned int tidx, unsigned int parts,
-                         unsigned char *filename)
+                         unsigned char *filename, struct tcp_s *tcp)
 {
     if (!packets || !npackets) return -1;
     (*npackets)++;
@@ -20,6 +20,7 @@ static int packet_create(enum command_e cmd, char *buffer, int nbuffer,
     p->header.parts   = parts;
     p->header.length  = nbuffer;
     p->header.command = cmd;
+    if (tcp) memcpy(&p->header.tcp, tcp, sizeof(*tcp));
     if (filename) memcpy(p->header.filename, filename, sizeof(p->header.filename));
     memcpy(p->buffer.payload, buffer, nbuffer);
     unsigned char md[SHA256HEX];
@@ -32,7 +33,7 @@ static int chunk(enum command_e command, char *buffer, size_t nbuffer,
                  struct packet_s **packets, int *npackets,
                  unsigned int *pidx, unsigned int gidx,
                  unsigned int tidx, unsigned int parts,
-                 unsigned char *filename)
+                 unsigned char *filename, struct tcp_s *tcp)
 {
     unsigned int i;
     unsigned int chunks    = nbuffer / UDP_PACKET_PAYLOAD;
@@ -42,11 +43,11 @@ static int chunk(enum command_e command, char *buffer, size_t nbuffer,
         if (i + 1 == chunks && remaining > 0) {
             if (packet_create(command, buffer + (i * UDP_PACKET_PAYLOAD), remaining,
                               packets, npackets, (i * UDP_PACKET_PAYLOAD), chunks, pidx,
-                              gidx, tidx, parts, filename) != 0) return -1;
+                              gidx, tidx, parts, filename, tcp) != 0) return -1;
         } else {
             if (packet_create(command, buffer + (i * UDP_PACKET_PAYLOAD), UDP_PACKET_PAYLOAD,
                               packets, npackets, (i * UDP_PACKET_PAYLOAD), chunks, pidx,
-                              gidx, tidx, parts, filename) != 0) return -1;
+                              gidx, tidx, parts, filename, tcp) != 0) return -1;
         }
     }
     return 0;
@@ -55,14 +56,15 @@ static int chunk(enum command_e command, char *buffer, size_t nbuffer,
 static int serialize_init(enum command_e cmd, char *buffer, int nbuffer,
                           struct packet_s **packets, int *npackets,
                           struct send_buffer_s *sb, unsigned int tidx,
-                          unsigned int parts, unsigned char *filename)
+                          unsigned int parts, unsigned char *filename,
+                          struct tcp_s *tcp)
 {
     if (!buffer || nbuffer < 1) return -1;
     *packets = NULL;
     *npackets = 0;
     if (chunk(cmd, buffer, nbuffer, packets,
               npackets, &sb->pidx, sb->gidx++,
-              tidx, parts, filename) != 0) return -1;
+              tidx, parts, filename, tcp) != 0) return -1;
     return 0;
 }
 

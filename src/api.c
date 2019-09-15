@@ -190,7 +190,7 @@ static int api_message_read(struct peer_s *p, json_object *obj)
     p->send_buffer.type = BUFFER_MESSAGE;
     p->send_buffer.u.message.str = msg;
     return payload.send(p, COMMAND_MESSAGE,
-                        host, port, 0, 0, NULL);
+                        host, port, 0, 0, NULL, NULL);
 }
 
 static int api_listfileslocal_read(struct peer_s *p, json_object *obj)
@@ -307,6 +307,18 @@ static int api_versiondump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_VERSIONDUMP, jobj, obj, 0);
 }
 
+static int api_tunnelopen_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    char pkh[256];
+    json_object *tmp;
+    BIND_STRLEN(pkh, "pubkeyhash", tmp, obj);
+    unsigned short src;
+    unsigned short dst = 22;    // tmp
+    ifr(tunnel.open(p, (unsigned char *)pkh, &src, dst));
+    return api.write(p, API_TUNNELOPEN, NULL, obj, 0);
+}
+
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
     struct peer_s *p = (struct peer_s *)timer->data;
@@ -334,6 +346,7 @@ static struct api_command_s cmds[] = {
     { API_BMINING,          api_bmining_read         },
     { API_ROGUEDUMP,        api_roguedump_read       },
     { API_VERSIONDUMP,      api_versiondump_read     },
+    { API_TUNNELOPEN,       api_tunnelopen_read      },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

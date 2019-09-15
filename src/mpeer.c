@@ -40,7 +40,7 @@ static int dfs_auth(struct peer_s *p, int host,
     sn_setr(p->send_buffer.u.auth.str, (char *)dec, ndec);
     ifr(payload.send(p, COMMAND_AUTH_REPLY,
                      host, port, 0, 0,
-                     NULL));
+                     NULL, NULL));
     free(dec);
     return 0;
 }
@@ -72,14 +72,14 @@ static int dfileask(struct peer_s *p, int host,
             ifr(os.fileexists(chunkfile, &exists));
             if (!exists) return -1;
             return task.add(p, p->cfg.dir.download, chunk, sizeof(chunk),
-                            host, port, filename, TASK_FILE_KEEP);
+                            host, port, filename, TASK_FILE_KEEP, 0);
         }
     }
     return 0;
 }
 
-static int dfile(struct peer_s *p, int host,
-                 unsigned short port,
+static int dfile(struct peer_s *p, struct header_s *header,
+                 int host, unsigned short port,
                  unsigned char *pubkeyhash,
                  char *fullpath, int nfullpath,
                  char *filename, int nfilename)
@@ -90,7 +90,17 @@ static int dfile(struct peer_s *p, int host,
     ifr(os.filesize(fullpath, &size));
     bool humanreadable;
     ifr(os.filereadable(fullpath, &humanreadable));
-    if (humanreadable && root.data.load.file(&src, fullpath) == 0) {
+    if (header->tcp.reqtype != TCP_NONE) {
+        char *dst;
+        sn_initr(snfile, fullpath, nfullpath);
+        int ndst = eioie_fread(&dst, snfile);
+        if (ndst <= 0) return -1;
+        if (header->tcp.reqtype == TCP_REQUEST) {
+            ifr(endpoint.request(p, header, host, port, dst, ndst));
+        } else if (header->tcp.reqtype == TCP_RESPONSE) {
+            ifr(tunnel.response(p, header, dst, ndst));
+        }
+    } else if (humanreadable && root.data.load.file(&src, fullpath) == 0) {
         char fpubkeyhash[128];
         snprintf(fpubkeyhash, sizeof(fpubkeyhash), "%.*s", SHA256HEX, pubkeyhash);
         char blockname[256];
@@ -394,7 +404,8 @@ int main()
     if (init(&p, &dfs) != 0) return -1;
     if (payload.send(&p, COMMAND_PEER_ANNOUNCE_PEER,
                      p.tracker.host,
-                     p.tracker.port, 0, 0, NULL) != 0) return -1;
+                     p.tracker.port,
+                     0, 0, NULL, NULL) != 0) return -1;
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ifr(net.resume(&p.ev));
     ev_timer_again(p.ev.loop, &p.ev.peers_reachable);
