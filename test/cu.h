@@ -18,5 +18,6 @@ void t1_group_mine_block_append_transactions();
 void t2_rsa_encrypt_decrypt();
 void t3_packet();
 void t4_list();
+void t5_aes();
 
 #endif

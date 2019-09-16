@@ -6,6 +6,7 @@ static struct test_s testlist[] = {
     { "rsa encrypt and decrypt",         t2_rsa_encrypt_decrypt },
     { "packet",                          t3_packet },
     { "list",                            t4_list },
+    { "aes",                             t5_aes },
 };
 
 static int init_suite()

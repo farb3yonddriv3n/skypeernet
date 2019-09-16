@@ -2,6 +2,7 @@
 #define TRANSACTION_H_
 
 enum transaction_e {
+    TFILE_NONE,
     TFILE_ADD,
     TFILE_UPDATE,
     TFILE_VOUCH,
