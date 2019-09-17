@@ -11,7 +11,7 @@ struct endpoint_s {
         unsigned short src;
         unsigned short dst;
     } tcp;
-    struct gc_gen_client_s client;
+    struct gc_gen_client_s *client;
     struct endpoint_s      *found;
     struct peer_s          *peer;
 };

@@ -12,7 +12,7 @@ struct tunnel_s {
         unsigned short src;
         unsigned short dst;
     } tcp;
-    struct gc_gen_server_s server;
+    struct gc_gen_server_s *server;
 };
 
 struct module_tunnel_s {

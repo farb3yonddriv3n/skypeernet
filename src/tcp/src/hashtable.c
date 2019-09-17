@@ -170,4 +170,3 @@ void ht_map(struct ht_s** ht, void (*callback)(void*, const int, void*),
         }
     }
 }
-// EOF

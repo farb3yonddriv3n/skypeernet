@@ -52,6 +52,9 @@ int eioie_fread(char **dst, sn fname)
     char *buffer;
     int   result;
 
+    if (!dst) return -1;
+    *dst = NULL;
+
     char fnbuffer[1024];
     snprintf(fnbuffer, sizeof(fnbuffer), "%.*s", sn_p(fname));
     pfile = fopen(fnbuffer, "rb");

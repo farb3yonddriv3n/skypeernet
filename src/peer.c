@@ -170,6 +170,8 @@ static int clean(struct peer_s *p)
     list.clean(&p->recv_buffer.cache);
     list.clean(&p->recv_buffer.sealed);
     list.clean(&p->tasks.list);
+    list.clean(&p->tcp.tunnels);
+    list.clean(&p->tcp.endpoints);
     config_free(&p->cfg);
     if (p->miningtarget.ptr) free(p->miningtarget.ptr);
     backtrace.clean();

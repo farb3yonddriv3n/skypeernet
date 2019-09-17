@@ -14,7 +14,7 @@ static void response(struct gc_gen_client_s *client, char *buf, int len)
     char filenamestr[256];
     snprintf(filenamestr, sizeof(filenamestr), "%s/%.*s", ep->peer->cfg.dir.tcp,
                                                           SHA256HEX, filename);
-    os.filewrite(filenamestr, "w", buf, len);
+    os.filewrite(filenamestr, "wb", buf, len);
     (void )task.add(ep->peer, ep->peer->cfg.dir.tcp, filename, sizeof(filename),
                     ep->remote.host, ep->remote.port, NULL,
                     TASK_FILE_DELETE, &tcp);
@@ -24,12 +24,16 @@ static void response_error(struct gc_gen_client_s *c, enum gcerr_e error)
 {
     hm_log(GCLOG_TRACE, c->base.log, "Client error %d on fd %d, endpoint %p",
                                      error, c->base.fd, c);
-    //endpoint_stop_client(c);
-    async_client_shutdown(c);
+    struct endpoint_s *ep = c->base.endpoint;
+    (void )list.del(&ep->peer->tcp.endpoints, ep);
 }
 
-static int clean(void *ep)
+static int clean(void *ud)
 {
+    if (!ud) return -1;
+    struct endpoint_s *ep = (struct endpoint_s *)ud;
+    async_client_shutdown(ep->client);
+    free(ep);
     return 0;
 }
 
@@ -59,7 +63,7 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     }
     ifr(list.map(&p->tcp.endpoints, find, &fnep));
     if (fnep.found) {
-        gc_gen_ev_send(&fnep.found->client, data, ndata);
+        gc_gen_ev_send(fnep.found->client, data, ndata);
         return 0;
     }
 
@@ -67,24 +71,28 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     if (!ep) return -1;
     memcpy(ep, &fnep, sizeof(*ep));
 
-    ep->client.base.loop = p->ev.loop;
-    ep->client.base.log  = &p->log;
-    ep->client.base.pool = NULL;
+    struct gc_gen_client_s *c = malloc(sizeof(*c));
+    if (!c) return -1;
+    memset(c, 0, sizeof(*c));
+    ep->client = c;
+    c->base.loop = p->ev.loop;
+    c->base.log  = &p->log;
+    c->base.pool = NULL;
 
     sn_initz(ip, "0.0.0.0");
-    snb_cpy_ds(ep->client.base.net.ip, ip);
-    ep->client.base.net.port  = fnep.tcp.dst;
+    snb_cpy_ds(c->base.net.ip, ip);
+    c->base.net.port = fnep.tcp.dst;
 
-    ep->client.callback.data  = response;
-    ep->client.callback.error = response_error;
+    c->callback.data  = response;
+    c->callback.error = response_error;
 
-    ep->client.base.endpoint = ep;
+    c->base.endpoint = ep;
     ep->peer = p;
-    int ret = async_client(&ep->client);
+    int ret = async_client(c);
     if (ret != GC_OK) return ret;
 
     ifr(list.add(&p->tcp.endpoints, ep, clean));
-    gc_gen_ev_send(&ep->client, data, ndata);
+    gc_gen_ev_send(c, data, ndata);
     return 0;
 }
 

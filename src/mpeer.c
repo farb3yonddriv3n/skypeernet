@@ -100,6 +100,7 @@ static int dfile(struct peer_s *p, struct header_s *header,
         } else if (header->tcp.reqtype == TCP_RESPONSE) {
             ifr(tunnel.response(p, header, dst, ndst));
         }
+        if (dst) free(dst);
     } else if (humanreadable && root.data.load.file(&src, fullpath) == 0) {
         char fpubkeyhash[128];
         snprintf(fpubkeyhash, sizeof(fpubkeyhash), "%.*s", SHA256HEX, pubkeyhash);

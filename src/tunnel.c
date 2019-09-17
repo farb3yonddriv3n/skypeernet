@@ -12,10 +12,10 @@ static void tunnel_data(struct gc_gen_client_s *client, char *buf, int len)
     char filenamestr[256];
     snprintf(filenamestr, sizeof(filenamestr), "%s/%.*s", t->peer->cfg.dir.tcp,
                                                           SHA256HEX, filename);
-    os.filewrite(filenamestr, "w", buf, len);
+    os.filewrite(filenamestr, "wb", buf, len);
     int ret = task.add(t->peer, t->peer->cfg.dir.tcp, filename, sizeof(filename),
                     t->remote.host, t->remote.port, NULL,
-                    TASK_FILE_KEEP, &tcp);
+                    TASK_FILE_DELETE, &tcp);
 }
 
 static int find(struct list_s *l, void *ex, void *ud)
@@ -54,10 +54,9 @@ static int response(struct peer_s *p, struct header_s *h, char *buf, int len)
         struct tunnel_s *t = (struct tunnel_s *)ex;
         struct client_find_s *cf = (struct client_find_s *)ud;
         if (t->tcp.src != cf->src) return 0;
-        //if (!(t->server && t->server->clients)) continue;
         char key[16];
         snprintf(key, sizeof(key), "%d", cf->cidx);
-        struct ht_s *kv = ht_get(t->server.clients, key, strlen(key));
+        struct ht_s *kv = ht_get(t->server->clients, key, strlen(key));
         if (!kv) return 0;
         cf->client = (struct gc_gen_client_s *)kv->v;
         return 1;
@@ -77,8 +76,12 @@ static int response(struct peer_s *p, struct header_s *h, char *buf, int len)
     return 0;
 }
 
-static int clean(void *t)
+static int clean(void *ud)
 {
+    if (!ud) return -1;
+    struct tunnel_s *t = (struct tunnel_s *)ud;
+    async_server_shutdown(t->server);
+    free(t);
     return 0;
 }
 
@@ -100,24 +103,27 @@ static int tunnel_open(struct peer_s *p, unsigned char *pubkeyhash,
     t = malloc(sizeof(*t));
     if (!t) return -1;
     memset(t, 0, sizeof(*t));
-    t->peer        = p;
-    t->server.loop = p->ev.loop;
-    t->server.log  = &p->log;
-    t->server.pool = NULL;
-    t->server.callback.data = tunnel_data;
-    t->server.host = "0.0.0.0";
-    t->server.port = "0";
+    struct gc_gen_server_s *server = malloc(sizeof(*server));
+    memset(server, 0, sizeof(*server));
+    t->peer   = p;
+    t->server = server;
+    server->loop = p->ev.loop;
+    server->log  = &p->log;
+    server->pool = NULL;
+    server->callback.data = tunnel_data;
+    server->host = "0.0.0.0";
+    server->port = "0";
     t->remote.host = wp.host;
     t->remote.port = wp.port;
     t->tcp.dst     = dstport;
     memcpy(t->remote.pubkeyhash, pubkeyhash, sizeof(t->remote.pubkeyhash));
     int ret;
-    ret = async_server(&t->server, t);
+    ret = async_server(server, t);
     if (ret != GC_OK) {
         free(t);
         return ret;
     }
-    *port_local = t->tcp.src = t->server.port_local;
+    *port_local = t->tcp.src = server->port_local;
     ifr(list.add(&p->tcp.tunnels, t, clean));
     return 0;
 }

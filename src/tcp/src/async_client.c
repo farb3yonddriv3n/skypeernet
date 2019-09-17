@@ -86,11 +86,9 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
             }
             return;
         }
-
         recv_append_client(c);
-
     } else if (sz == 0) {
-        async_handle_socket_errno(c->base.log);
+        //async_handle_socket_errno(c->base.log);
         if (c->callback.error) {
             c->callback.error(c, GC_READZERO_ERR);
         }

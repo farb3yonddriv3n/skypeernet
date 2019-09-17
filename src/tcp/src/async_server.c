@@ -75,6 +75,7 @@ void async_client_shutdown(struct gc_gen_client_s *c)
         ht_rem(c->parent->clients, key, strlen(key));
     }
 
+    if (c->base.packets) ht_free(c->base.packets);
     //struct gc_s *gc = c->base.gc;
     hm_pfree(p, c);
 
@@ -118,7 +119,7 @@ void async_handle_socket_errno(struct hm_log_s *l)
     } else if (errno == EPIPE) {
         hm_log(GCLOG_TRACE, l, "Client error: broken pipe to backend (EPIPE)");
     } else {
-        hm_log(GCLOG_TRACE, l, "Client error: errno %d", errno);
+        hm_log(GCLOG_TRACE, l, "Client error: errno %d error: %s", errno, strerror(errno));
     }
 }
 
@@ -418,6 +419,8 @@ int async_server(struct gc_gen_server_s *cs, void *tunnel)
 
     if (strcmp(cs->port, "0") == 0)
         cs->port_local = ntohs(sin.sin_port);
+    else
+        cs->port_local = atoi(cs->port);
 
     ev_io_init(&cs->listener, server_async_client, cs->fd, EV_READ);
     cs->listener.data = cs;
@@ -429,12 +432,18 @@ int async_server(struct gc_gen_server_s *cs, void *tunnel)
         return GC_ERROR;
     }
 
-    hm_log(GCLOG_TRACE, cs->log, "Opening async server on %s:%s fd: %d %p",
-                               cs->host, cs->port, cs->fd, cs);
+    hm_log(GCLOG_TRACE, cs->log, "Opening async server on %s:%d fd: %d %p",
+                               cs->host, cs->port_local, cs->fd, cs);
 
     cs->tunnel = tunnel;
 
     return GC_OK;
+}
+
+static void client_rem(void *v, int nv, void *ud)
+{
+    struct gc_gen_client_s *c = (struct gc_gen_client_s *)v;
+    if (c) async_client_shutdown(c);
 }
 
 void async_server_shutdown(struct gc_gen_server_s *s)
@@ -443,18 +452,10 @@ void async_server_shutdown(struct gc_gen_server_s *s)
     struct hm_pool_s *p = s->pool;
 
     ev_io_stop(s->loop, &s->listener);
-    struct gc_gen_client_s *c;
 
     (void )gc_fd_close(s->fd);
 
-    /*
-    int i;
-    for (i = 0; i < HT_SIZE; i++) {
-        if (!s->clients[i]) continue;
-        c = (struct gc_gen_client_s *)s->clients[i]->s;
-        if (c) async_client_shutdown(c);
-    }
-    */
+    ht_map(s->clients, client_rem, NULL);
 
     ht_free(s->clients);
 
