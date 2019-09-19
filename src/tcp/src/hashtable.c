@@ -165,8 +165,10 @@ void ht_map(struct ht_s** ht, void (*callback)(void*, const int, void*),
     int          i;
 
     for(i = 0; i < HT_SIZE; i++) {
-        for(h = ht[i]; h != NULL; h = h->next) {
-            if(callback) callback(h->v, h->nv, userdata);
+        for(h = ht[i]; h != NULL; ) {
+            struct ht_s *item = h;
+            h = h->next;
+            if(callback) callback(item->v, item->nv, userdata);
         }
     }
 }
