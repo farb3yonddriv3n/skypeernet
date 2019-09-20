@@ -16,6 +16,8 @@ API_BADVERTISE       = 12
 API_BMINING          = 13
 API_ROGUEDUMP        = 14
 API_VERSIONDUMP      = 15
+API_TRAFFICDUMP      = 16
+API_TASKDUMP         = 17
 
 async def cmdsend(state, msg, cmd):
     msg["command"] = cmd

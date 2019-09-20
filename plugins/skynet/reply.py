@@ -47,7 +47,7 @@ def listfiles_remote(state, obj):
 
 def jobdump(state, obj):
     state["jobs"] = obj
-    util.colorjson(obj)
+    #util.colorjson(obj)
     return 0
 
 def jobadd(state, obj):
@@ -86,6 +86,14 @@ def versiondump(state, obj):
     util.colorjson(obj)
     return 0
 
+def trafficdump(state, obj):
+    #util.colorjson(obj)
+    return 0
+
+def taskdump(state, obj):
+    #util.colorjson(obj)
+    return 0
+
 cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        },
          { "command" : command.API_MESSAGE,          "func" : message          },
          { "command" : command.API_LISTFILES_LOCAL,  "func" : listfiles_local  },
@@ -103,6 +111,8 @@ cmds = [ { "command" : command.API_LISTPEERS,        "func" : listpeers        }
          { "command" : command.API_BMINING,          "func" : bmining          },
          { "command" : command.API_ROGUEDUMP,        "func" : roguedump        },
          { "command" : command.API_VERSIONDUMP,      "func" : versiondump      },
+         { "command" : command.API_TRAFFICDUMP,      "func" : trafficdump      },
+         { "command" : command.API_TASKDUMP,         "func" : taskdump         },
        ]
 
 def handle(state, recv):
