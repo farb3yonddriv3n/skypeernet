@@ -6,7 +6,6 @@ start() ->
     loop([]).
 
 loop(Devices) ->
-    lager:info("Loop Devices: ~p", [Devices]),
     receive
         {login, {Pid}} ->
             notify:login(Devices, Pid),

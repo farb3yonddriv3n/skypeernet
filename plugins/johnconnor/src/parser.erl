@@ -25,6 +25,9 @@ do(Data, State) ->
             {<<"job_finalize">>, Payload, _Version, RequestId} ->
                 files:job_finalize(Payload, State, RequestId),
                 {reply, nochange};
+            {<<"tunnel_open">>, Payload, _Version, RequestId} ->
+                tunnel:open(Payload, State, RequestId),
+                {reply, nochange};
             {<<"account_login">>, Payload, _Version, _RequestId} ->
                 NewState = account:login(Payload, State),
                 {reply, NewState};
