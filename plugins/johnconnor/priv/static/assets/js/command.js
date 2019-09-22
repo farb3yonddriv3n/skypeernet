@@ -83,6 +83,11 @@ function showFile(file)
     fileItem.style.display = "block";
 }
 
+function tunnel_open(pubhash)
+{
+    console.log(pubhash);
+}
+
 function file_onclick(element, desc, type)
 {
     element.onclick = function() {
@@ -92,6 +97,8 @@ function file_onclick(element, desc, type)
             job_add(desc);
         else if (type == "job_finalize")
             job_finalize(desc);
+        else if (type == "tunnel_open")
+            tunnel_open(desc);
     }
 }
 
@@ -282,7 +289,12 @@ function peers_show()
     var peersDiv = document.getElementById("peers");
     peersDiv.innerHTML = "";
     for (i = 0; i < peers.length; i++) {
-        append_bodyclass(peersDiv, peers[i]["pubkeyhash"], "peerOnline");
+        if (peers[i]["type"] == 1) continue;
+        var np = document.createElement("div");
+        append_bodyclass(np, peers[i]["pubkeyhash"], "peerOnline");
+        type = append_bodyclass(np, peers[i]["type"], "peerOnline");
+        file_onclick(type, peers[i]["pubkeyhash"], "tunnel_open");
+        peersDiv.append(np);
     }
 }
 
@@ -350,6 +362,13 @@ function files_get(src)
     var payload = new Object();
     payload.src = src;
     send("files_get", payload);
+}
+
+function tunnel_open(pubkeyhash)
+{
+    var payload = new Object();
+    payload.pubkeyhash = pubkeyhash;
+    send("tunnel_open", payload);
 }
 
 function job_add(name)
