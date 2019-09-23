@@ -96,6 +96,39 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     return 0;
 }
 
+static int dump(struct peer_s *p, json_object **obj)
+{
+    int cb(struct list_s *l, void *ut, void *ud) {
+        struct endpoint_s  *e = (struct endpoint_s *)ut;
+        json_object      *eps = (json_object *)ud;
+        json_object *port = json_object_new_int(e->remote.port);
+        json_object     *cidx = json_object_new_int(e->tcp.cidx);
+        json_object *src_port = json_object_new_int(e->tcp.src);
+        json_object *dst_port = json_object_new_int(e->tcp.dst);
+        json_object *jt = json_object_new_object();
+        char hostbuf[32];
+        snprintf(hostbuf, sizeof(hostbuf), "%x", e->remote.host);
+        json_object *jhost = json_object_new_string_len(hostbuf, strlen(hostbuf));
+        json_object_object_add(jt, "host", jhost);
+        json_object_object_add(jt, "port", port);
+        json_object_object_add(jt, "cidx", cidx);
+        json_object_object_add(jt, "src_port", src_port);
+        json_object_object_add(jt, "dst_port", dst_port);
+        json_object_array_add(eps, jt);
+        return 0;
+    }
+    if (!p) return -1;
+    *obj = json_object_new_object();
+    json_object *jep = json_object_new_array();
+    json_object_object_add(*obj, "endpoints", jep);
+    int count;
+    ifr(list.size(&p->tcp.endpoints, &count));
+    json_object *jcount = json_object_new_int(count);
+    json_object_object_add(*obj, "count", jcount);
+    return list.map(&p->tcp.endpoints, cb, jep);
+}
+
 struct module_endpoint_s endpoint = {
-    .request = request
+    .request = request,
+    .dump    = dump
 };

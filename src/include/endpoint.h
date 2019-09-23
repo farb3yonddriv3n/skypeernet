@@ -19,6 +19,7 @@ struct endpoint_s {
 struct module_endpoint_s {
     int (*request)(struct peer_s *p, struct header_s *header, int host,
                    unsigned short port, char *data, int ndata);
+    int (*dump)(struct peer_s *p, json_object **obj);
 };
 
 extern struct module_endpoint_s endpoint;
