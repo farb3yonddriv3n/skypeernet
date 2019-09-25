@@ -17,22 +17,32 @@
 #define HT_GETL(mht, mkey)\
     ht_get(mht, mkey, strlen(mkey))
 
-struct ht_s {
+struct ht_item_s {
     char*        k;
     int          nk;
     char*        v;
     int          nv;
     unsigned int flag;
-    struct ht_s* next;
+    struct ht_item_s *next;
 };
 
-struct ht_s** ht_init();
-void ht_free(struct ht_s** ht);
-int ht_add(struct ht_s** ht, const char* key, const int nkey,
+struct ht_s {
+    struct {
+        int size;
+        int items;
+    } meta;
+    struct ht_item_s **ht;
+};
+
+struct ht_s *ht_init();
+void ht_free(struct ht_s *ht);
+int ht_add(struct ht_s *ht, const char *key, const int nkey,
            const void* value, const int nvalue, const int alloc);
-int ht_rem(struct ht_s** ht, const char* key, const int nkey);
-struct ht_s *ht_get(struct ht_s** ht, const char* key, const int nkey);
-void ht_dump_index(struct ht_s** ht, const char* key, const int nkey);
-void ht_map(struct ht_s** ht, void (*callback)(void*, const int, void*),
+int ht_rem(struct ht_s *ht, const char *key, const int nkey);
+struct ht_item_s *ht_get(struct ht_s *ht, const char *key, const int nkey);
+void ht_dump_index(struct ht_s *ht, const char *key, const int nkey);
+void ht_map(struct ht_s *ht, void (*callback)(void*, const int, void*),
             void* userdata);
+int ht_items(struct ht_s *ht, int *items);
+
 #endif
