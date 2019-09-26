@@ -251,6 +251,28 @@ static int dfs_version_dump(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+static int dfs_tunnel_dump(struct distfs_s *dfs, char **argv, int argc,
+                           int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    json_object *obj;
+    ifr(tunnel.dump(dfs->peer, &obj));
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
+}
+
+static int dfs_endpoint_dump(struct distfs_s *dfs, char **argv, int argc,
+                             int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    json_object *obj;
+    ifr(endpoint.dump(dfs->peer, &obj));
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
+}
+
 static int dfs_task_cancel(struct distfs_s *dfs, char **argv, int argc,
                            int *dfserr)
 {
@@ -292,6 +314,8 @@ static const struct { const char *alias[8];
     { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
     { { "ac", "taskcancel" },   2, 1, dfs_task_cancel       },
     { { "v",  "versiondump" },  2, 0, dfs_version_dump      },
+    { { "ud", "tunneldump" },   2, 0, dfs_tunnel_dump       },
+    { { "ed", "endpointdump" }, 2, 0, dfs_endpoint_dump     },
 };
 
 static int find_cmd(char *argv, int argc, int *idx)

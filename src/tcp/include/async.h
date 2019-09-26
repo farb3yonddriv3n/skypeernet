@@ -69,7 +69,7 @@ struct gc_gen_server_s {
     const char         *port;         /**< Listening port. */
     unsigned short     port_local;
 
-    struct ht_s        **clients;     /**< Hashtable of clients. */
+    struct ht_s        *clients;      /**< Hashtable of clients. */
 
     void               *tunnel;       /**< Tunnel structure. */
 
@@ -110,7 +110,7 @@ struct gc_client_s {
 
     int                    reqidx;      /**< Request index. */
 
-    struct ht_s            **packets;
+    struct ht_s            *packets;    /**< Client's TCP packets. */
 };
 
 struct gc_gen_client_s {

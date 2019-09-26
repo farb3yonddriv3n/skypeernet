@@ -20,6 +20,7 @@ struct module_tunnel_s {
                 unsigned short *port_local,
                 unsigned short dstport);
     int (*response)(struct peer_s *p, struct header_s *h, char *buf, int len);
+    int (*dump)(struct peer_s *p, json_object **obj);
 };
 
 extern const struct module_tunnel_s tunnel;

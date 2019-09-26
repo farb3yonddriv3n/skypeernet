@@ -13,9 +13,9 @@ static void tunnel_data(struct gc_gen_client_s *client, char *buf, int len)
     snprintf(filenamestr, sizeof(filenamestr), "%s/%.*s", t->peer->cfg.dir.tcp,
                                                           SHA256HEX, filename);
     os.filewrite(filenamestr, "wb", buf, len);
-    int ret = task.add(t->peer, t->peer->cfg.dir.tcp, filename, sizeof(filename),
-                    t->remote.host, t->remote.port, NULL,
-                    TASK_FILE_DELETE, &tcp);
+    task.add(t->peer, t->peer->cfg.dir.tcp, filename, sizeof(filename),
+             t->remote.host, t->remote.port, NULL,
+             TASK_FILE_DELETE, &tcp);
 }
 
 static int find(struct list_s *l, void *ex, void *ud)
@@ -31,13 +31,13 @@ static int find(struct list_s *l, void *ex, void *ud)
     return 0;
 }
 // replace this with "queue" and keep only last 100-ish packets
-static int packet_sent(struct ht_s **ht, int pidx, bool *sent)
+static int packet_sent(struct ht_s *ht, int pidx, bool *sent)
 {
     if (!ht || !sent) return 0;
     *sent = false;
     char key[32];
     snprintf(key, sizeof(key), "%d", pidx);
-    struct ht_s *kv = ht_get(ht, key, strlen(key));
+    struct ht_item_s *kv = ht_get(ht, key, strlen(key));
     if (!kv) return 0;
     *sent = true;
     return 0;
@@ -56,7 +56,7 @@ static int response(struct peer_s *p, struct header_s *h, char *buf, int len)
         if (t->tcp.src != cf->src) return 0;
         char key[16];
         snprintf(key, sizeof(key), "%d", cf->cidx);
-        struct ht_s *kv = ht_get(t->server->clients, key, strlen(key));
+        struct ht_item_s *kv = ht_get(t->server->clients, key, strlen(key));
         if (!kv) return 0;
         cf->client = (struct gc_gen_client_s *)kv->v;
         return 1;
@@ -128,7 +128,45 @@ static int tunnel_open(struct peer_s *p, unsigned char *pubkeyhash,
     return 0;
 }
 
+static int dump(struct peer_s *p, json_object **obj)
+{
+    int cb(struct list_s *l, void *ut, void *ud) {
+        struct tunnel_s *t     = (struct tunnel_s *)ut;
+        json_object   *tunnels = (json_object *)ud;
+        json_object *port = json_object_new_int(t->remote.port);
+        json_object *pkh  = json_object_new_string_len((const char *)t->remote.pubkeyhash,
+                                                       sizeof(t->remote.pubkeyhash));
+        json_object *src_port = json_object_new_int(t->tcp.src);
+        json_object *dst_port = json_object_new_int(t->tcp.dst);
+        int clients;
+        ifr(ht_items(t->server->clients, &clients));
+        json_object *jclients = json_object_new_int(clients);
+        json_object *jt = json_object_new_object();
+        char hostbuf[32];
+        snprintf(hostbuf, sizeof(hostbuf), "%x", t->remote.host);
+        json_object *jhost = json_object_new_string_len(hostbuf, strlen(hostbuf));
+        json_object_object_add(jt, "host", jhost);
+        json_object_object_add(jt, "port", port);
+        json_object_object_add(jt, "pubkeyhash", pkh);
+        json_object_object_add(jt, "src_port", src_port);
+        json_object_object_add(jt, "dst_port", dst_port);
+        json_object_object_add(jt, "clients", jclients);
+        json_object_array_add(tunnels, jt);
+        return 0;
+    }
+    if (!p) return -1;
+    *obj = json_object_new_object();
+    json_object *jtunnels = json_object_new_array();
+    json_object_object_add(*obj, "tunnels", jtunnels);
+    int count;
+    ifr(list.size(&p->tcp.tunnels, &count));
+    json_object *jcount = json_object_new_int(count);
+    json_object_object_add(*obj, "count", jcount);
+    return list.map(&p->tcp.tunnels, cb, jtunnels);
+}
+
 const struct module_tunnel_s tunnel = {
     .open     = tunnel_open,
-    .response = response
+    .response = response,
+    .dump     = dump,
 };
