@@ -71,6 +71,7 @@ static void sig_handler(int signo)
 
 static int init_peer(struct peer_s *p)
 {
+    if (!p) return -1;
     memset(p, 0, sizeof(*p));
     psig = p;
     p->type = INSTANCE_PEER;

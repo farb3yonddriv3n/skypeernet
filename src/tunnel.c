@@ -33,7 +33,7 @@ static int find(struct list_s *l, void *ex, void *ud)
 // replace this with "queue" and keep only last 100-ish packets
 static int packet_sent(struct ht_s *ht, int pidx, bool *sent)
 {
-    if (!ht || !sent) return 0;
+    if (!ht || !sent) return -1;
     *sent = false;
     char key[32];
     snprintf(key, sizeof(key), "%d", pidx);
