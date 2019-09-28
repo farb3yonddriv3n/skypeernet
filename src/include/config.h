@@ -60,6 +60,9 @@ struct config_s {
             char write[256];
         } pipes;
     } api;
+    struct {
+        struct list_s ports;
+    } tcp;
     int miningtarget;
 };
 

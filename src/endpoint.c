@@ -37,10 +37,25 @@ static int clean(void *ud)
     return 0;
 }
 
+struct allowed_s {
+    int port;
+    struct allowed_s *found;
+};
+
 static int request(struct peer_s *p, struct header_s *header, int host,
                    unsigned short port, char *data, int ndata)
 {
     if (!p || !header || !data) return -1;
+    struct allowed_s ap = { .port  = header->tcp.port.dst,
+                            .found = NULL };
+    LMAP(allowed, allowed_s)
+        LCOND(dst->port == src->port)
+    LMAPE
+    ifr(list.map(&p->cfg.tcp.ports, allowed, &ap));
+    if (!ap.found) {
+        SEND_MSG(p, host, port, "Port not allowed")
+        return 0;
+    }
     struct endpoint_s fnep = { .remote.host = host,
                                .remote.port = port,
                                .tcp.cidx    = header->tcp.cidx,

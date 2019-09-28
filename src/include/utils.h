@@ -44,6 +44,28 @@
         json_object_object_get_ex(m_obj, m_name, &m_src);\
         m_dst = json_object_get_double(m_src);
 
+#define LMAP(m_func, m_struct)\
+    int m_func(struct list_s *m_l, void *m_ex, void *m_ud) {\
+        struct m_struct *dst = (struct m_struct *)m_ex;\
+        struct m_struct *src = (struct m_struct *)m_ud;
+
+#define LMAPE\
+        return 0;\
+    }
+
+#define LCOND(m_cond)\
+    if (m_cond) {\
+        src->found = dst;\
+        return 1;\
+    }
+
+#define SEND_MSG(m_peer, m_host, m_port, m_msg)\
+    m_peer->send_buffer.type = BUFFER_MESSAGE;\
+    m_peer->send_buffer.u.message.str = m_msg;\
+    ifr(payload.send(m_peer, COMMAND_MESSAGE,\
+                     m_host, m_port, 0, 0,\
+                     NULL, NULL));
+
 int eioie_fwrite(const char *fname, const char *mode, char *content, int ncontent);
 int eioie_fread(char **dst, sn fname);
 void bin2hexstr(char *dst, size_t dstlen,

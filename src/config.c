@@ -31,6 +31,13 @@ int config_keysdump(struct config_s *cfg)
     return 0;
 }
 
+static int port_clean(void *ptr)
+{
+    if (!ptr) return -1;
+    free(ptr);
+    return 0;
+}
+
 int config_init(struct config_s *cfg)
 {
     if (!cfg) return -1;
@@ -92,6 +99,19 @@ int config_init(struct config_s *cfg)
     snprintf(cfg->api.pipes.write, sizeof(cfg->api.pipes.write), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
+    json_object *allowed_ports;
+    json_object_object_get_ex((json_object *)obj, "tcp_allowed_ports", &allowed_ports);
+    if (json_object_get_type(allowed_ports) == json_type_array) {
+       array_list *ap_array = json_object_get_array(allowed_ports);
+       int i;
+       for (i = 0; i < array_list_length(ap_array); i++) {
+            json_object *ap_item = array_list_get_idx(ap_array, i);
+            int *port = malloc(sizeof(*port));
+            if (!port) return -1;
+            *port = json_object_get_int(ap_item);
+            ifr(list.add(&cfg->tcp.ports, port, port_clean));
+       }
+    }
     json_object_put(obj);
     if (rsa_load(cfg) != 0) {
         if (rsa_generate() != 0) return -1;
@@ -135,6 +155,7 @@ void config_free(struct config_s *cfg)
         }
         free(cfg->keys.shared.array);
     }
+    list.clean(&cfg->tcp.ports);
     RSA_free(cfg->keys.local.rsa.public);
     RSA_free(cfg->keys.local.rsa.private);
     sn_free(cfg->keys.local.str.public);
