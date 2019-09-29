@@ -66,7 +66,7 @@ static int wp_clean(void *uwp)
 static int peer_add(struct peer_s *p, struct world_peer_s *wp,
                     bool *added)
 {
-    if (!p || !wp) return -1;
+    if (!p || !wp || !added) return -1;
     wp->found = NULL;
     *added = false;
     ifr(list.map(&p->peers, world.peer.find, wp));
