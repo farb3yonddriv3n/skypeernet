@@ -21,11 +21,12 @@ static void tunnel_data(struct gc_gen_client_s *client, char *buf, int len)
 static int find(struct list_s *l, void *ex, void *ud)
 {
     if (!l || !ex) return -1;
-    struct tunnel_s *tunnel = (struct tunnel_s *)ex;
-    struct world_peer_s *wp = (struct world_peer_s *)ud;
-    if (wp->host == tunnel->remote.host &&
-        wp->port == tunnel->remote.port) {
-        wp->found = wp;
+    struct tunnel_s *et = (struct tunnel_s *)ex;
+    struct tunnel_s *nt = (struct tunnel_s *)ud;
+    if (et->remote.host == nt->remote.host &&
+        et->remote.port == nt->remote.port &&
+        et->tcp.dst     == nt->tcp.dst) {
+        nt->found = et;
         return 1;
     }
     return 0;
@@ -87,18 +88,22 @@ static int clean(void *ud)
 
 static int tunnel_open(struct peer_s *p, unsigned char *pubkeyhash,
                        unsigned short *port_local,
-                       unsigned short dstport)
+                       unsigned short dstport, bool *success)
 {
-    if (!p || !pubkeyhash) return -1;
+    if (!p || !pubkeyhash || !port_local || !success) return -1;
+    *success = false;
     struct world_peer_s wp = { .found = NULL };
     memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
     ifr(list.map(&p->peers, world.peer.findpubkeyhash, &wp));
     if (!wp.found) return -1;
+    struct tunnel_s ft = { .remote.host = wp.found->host,
+                           .remote.port = wp.found->port,
+                           .tcp.dst     = dstport,
+                           .found       = NULL };
     wp.host = wp.found->host;
     wp.port = wp.found->port;
-    wp.found = NULL;
-    ifr(list.map(&p->tcp.tunnels, find, &wp));
-    if (wp.found) return 0; // tunnel already opened
+    ifr(list.map(&p->tcp.tunnels, find, &ft));
+    if (ft.found) return 0; // tunnel already opened
     struct tunnel_s *t;
     t = malloc(sizeof(*t));
     if (!t) return -1;
@@ -125,6 +130,27 @@ static int tunnel_open(struct peer_s *p, unsigned char *pubkeyhash,
     }
     *port_local = t->tcp.src = server->port_local;
     ifr(list.add(&p->tcp.tunnels, t, clean));
+    *success = true;
+    return 0;
+}
+
+static int tunnel_close(struct peer_s *p, unsigned char *pubkeyhash,
+                        unsigned short dstport, bool *closed)
+{
+    if (!p || !pubkeyhash || !closed) return -1;
+    *closed = false;
+    struct world_peer_s wp = { .found = NULL };
+    memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
+    ifr(list.map(&p->peers, world.peer.findpubkeyhash, &wp));
+    if (!wp.found) return -1;
+    struct tunnel_s ft = { .remote.host = wp.found->host,
+                           .remote.port = wp.found->port,
+                           .tcp.dst     = dstport,
+                           .found       = NULL };
+    ifr(list.map(&p->tcp.tunnels, find, &ft));
+    if (!ft.found) return 0;
+    ifr(list.del(&p->tcp.tunnels, ft.found));
+    *closed = true;
     return 0;
 }
 
@@ -167,6 +193,7 @@ static int dump(struct peer_s *p, json_object **obj)
 
 const struct module_tunnel_s tunnel = {
     .open     = tunnel_open,
+    .close    = tunnel_close,
     .response = response,
     .dump     = dump,
 };

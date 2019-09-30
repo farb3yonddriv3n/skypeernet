@@ -13,12 +13,15 @@ struct tunnel_s {
         unsigned short dst;
     } tcp;
     struct gc_gen_server_s *server;
+    struct tunnel_s *found;
 };
 
 struct module_tunnel_s {
     int (*open)(struct peer_s *p, unsigned char *pubkeyhash,
                 unsigned short *port_local,
-                unsigned short dstport);
+                unsigned short dstport, bool *success);
+    int (*close)(struct peer_s *p, unsigned char *pubkeyhash,
+                 unsigned short dstport, bool *closed);
     int (*response)(struct peer_s *p, struct header_s *h, char *buf, int len);
     int (*dump)(struct peer_s *p, json_object **obj);
 };
