@@ -53,7 +53,12 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     LMAPE
     ifr(list.map(&p->cfg.tcp.ports, allowed, &ap));
     if (!ap.found) {
-        SEND_MSG(p, host, port, "Port not allowed")
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Port %d not allowed on peer %.*s..",
+                                   header->tcp.port.dst,
+                                   10,
+                                   p->cfg.keys.local.hash.public);
+        SEND_MSG(p, host, port, msg)
         return 0;
     }
     struct endpoint_s fnep = { .remote.host = host,
