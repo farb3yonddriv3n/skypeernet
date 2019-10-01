@@ -311,12 +311,47 @@ static int api_tunnelopen_read(struct peer_s *p, json_object *obj)
 {
     if (!p) return -1;
     char pkh[256];
+    char portstr[32];
     json_object *tmp;
     BIND_STRLEN(pkh, "pubkeyhash", tmp, obj);
+    BIND_STRLEN(portstr, "port", tmp, obj);
     unsigned short src;
-    unsigned short dst = 22;    // tmp
-    ifr(tunnel.open(p, (unsigned char *)pkh, &src, dst));
-    return api.write(p, API_TUNNELOPEN, NULL, obj, 0);
+    unsigned short dst = atoi(portstr);
+    bool success;
+    ifr(tunnel.open(p, (unsigned char *)pkh, &src, dst, &success));
+    json_object *reply = json_object_new_object();
+    json_object *port = json_object_new_int(dst);
+    json_object_object_add(reply, "port", port);
+    json_object *jsuccess = json_object_new_boolean(success);
+    json_object_object_add(reply, "success", jsuccess);
+    return api.write(p, API_TUNNELOPEN, reply, obj, 0);
+}
+
+static int api_tunnelclose_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    char pkh[256];
+    char portstr[32];
+    json_object *tmp;
+    BIND_STRLEN(pkh, "pubkeyhash", tmp, obj);
+    BIND_STRLEN(portstr, "port", tmp, obj);
+    unsigned short src;
+    unsigned short dst = atoi(portstr);
+    bool closed;
+    ifr(tunnel.close(p, (unsigned char *)pkh, dst, &closed));
+    json_object *reply = json_object_new_object();
+    json_object *port = json_object_new_int(dst);
+    json_object_object_add(reply, "port", port);
+    json_object *jclosed = json_object_new_boolean(closed);
+    json_object_object_add(reply, "closed", jclosed);
+    return api.write(p, API_TUNNELCLOSE, reply, obj, 0);
+}
+
+static int api_tunneldump_read(struct peer_s *p, json_object *obj)
+{
+    json_object *jobj;
+    ifr(tunnel.dump(p, &jobj));
+    return api.write(p, API_TUNNELDUMP, jobj, NULL, 0);
 }
 
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents)
@@ -347,6 +382,8 @@ static struct api_command_s cmds[] = {
     { API_ROGUEDUMP,        api_roguedump_read       },
     { API_VERSIONDUMP,      api_versiondump_read     },
     { API_TUNNELOPEN,       api_tunnelopen_read      },
+    { API_TUNNELCLOSE,      api_tunnelclose_read     },
+    { API_TUNNELDUMP,       api_tunneldump_read      },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)
