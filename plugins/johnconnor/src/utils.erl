@@ -63,8 +63,8 @@ reply(#proto_job_add{ name = Name, request_id = RequestId }) ->
     encodepipe([{<<"command">>, 8}, {<<"name">>, Name}, {<<"request_id">>, RequestId}]);
 reply(#proto_job_finalize{ name = Name, request_id = RequestId }) ->
     encodepipe([{<<"command">>, 9}, {<<"name">>, Name}, {<<"request_id">>, RequestId}]);
-reply(#proto_tunnel_open{ pubkeyhash = PubKeyHash, request_id = RequestId }) ->
-    encodepipe([{<<"command">>, 18}, {<<"pubkeyhash">>, PubKeyHash}, {<<"request_id">>, RequestId}]);
+reply(#proto_tunnel_open{ pubkeyhash = PubKeyHash, port = Port, request_id = RequestId }) ->
+    encodepipe([{<<"command">>, 18}, {<<"pubkeyhash">>, PubKeyHash}, {<<"port">>, Port}, {<<"request_id">>, RequestId}]);
 reply(_) ->
     error.
 

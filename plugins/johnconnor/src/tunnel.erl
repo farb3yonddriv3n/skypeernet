@@ -4,5 +4,7 @@
 -include("proto.hrl").
 -include("common.hrl").
 
-open([{ <<"pubkeyhash">>, PubKeyHash }], _State, RequestId) ->
-    utils:sendpipe(#proto_tunnel_open{ pubkeyhash = PubKeyHash, request_id = RequestId }).
+open([{ <<"pubkeyhash">>, PubKeyHash }, { <<"port">>, Port }], _State, RequestId) ->
+    utils:sendpipe(#proto_tunnel_open{ pubkeyhash = PubKeyHash,
+                                       port       = Port,
+                                       request_id = RequestId }).

@@ -31,4 +31,5 @@
                              request_id :: integer()}).
 -record(proto_peers_get, {request_id :: integer()}).
 -record(proto_tunnel_open, {pubkeyhash :: binary(),
+                            port       :: binary(),
                             request_id :: integer()}).
