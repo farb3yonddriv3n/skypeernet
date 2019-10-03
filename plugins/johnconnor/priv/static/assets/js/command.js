@@ -83,11 +83,6 @@ function showFile(file)
     fileItem.style.display = "block";
 }
 
-function tunnel_open(pubhash)
-{
-    console.log(pubhash);
-}
-
 function file_onclick(element, desc, type)
 {
     element.onclick = function() {
@@ -291,8 +286,13 @@ function peers_show()
     for (i = 0; i < peers.length; i++) {
         if (peers[i]["type"] == 1) continue;
         var np = document.createElement("div");
-        append_bodyclass(np, peers[i]["pubkeyhash"], "peerOnline");
-        type = append_bodyclass(np, peers[i]["type"], "peerOnline");
+        np.setAttribute("class", "tunnelUser");
+        append_bodyclass(np, peers[i]["pubkeyhash"].substring(0, 10) + "..", "peerOnline");
+        var input = document.createElement("input");
+        input.setAttribute("class", "tunnelPort");
+        input.setAttribute("id", "port_" + peers[i]["pubkeyhash"]);
+        np.appendChild(input);
+        type = append_bodyclass(np, "Open tunnel", "peerOnline");
         file_onclick(type, peers[i]["pubkeyhash"], "tunnel_open");
         peersDiv.append(np);
     }
@@ -323,11 +323,19 @@ function message_peer_offline(parsed)
         }
 }
 
+function message_message(parsed)
+{
+    if ("message" in parsed["payload"])
+        show_error(parsed["payload"]["message"]);
+}
+
 function message(payload)
 {
     var parsed = JSON.parse(payload);
     if (parsed["command"] == 0) {
         message_peers(parsed);
+    } else if (parsed["command"] == 1) {
+        message_message(parsed);
     } else if (parsed["command"] == 2 && "blocks" in parsed["payload"]) {
         message_files_local(parsed["payload"]);
     } else if (parsed["command"] == 3 && "roots" in parsed["payload"]) {
@@ -368,6 +376,9 @@ function tunnel_open(pubkeyhash)
 {
     var payload = new Object();
     payload.pubkeyhash = pubkeyhash;
+    var input = document.getElementById("port_" + pubkeyhash);
+    if (!input) return;
+    payload.port = input.value;
     send("tunnel_open", payload);
 }
 

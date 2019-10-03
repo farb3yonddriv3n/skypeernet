@@ -132,3 +132,13 @@ video, audio {
     background-color:#008000;
     float:left;
 }
+
+.tunnelPort {
+    width:30px;
+    float:left;
+}
+
+.tunnelUser {
+    width:100%;
+    overflow:hidden;
+}
