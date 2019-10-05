@@ -4,8 +4,8 @@ int announce_pwp(struct data_s *d, void *userdata)
 {
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
-    if (data.write.integer(d, ADDR_IP(p->net.self.addr))            != 0) return -1;
-    if (data.write.shortint(d, ADDR_PORT(p->net.self.addr))         != 0) return -1;
+    if (data.write.integer(d, ADDR_IP(p->net.self.addr))    != 0) return -1;
+    if (data.write.shortint(d, ADDR_PORT(p->net.self.addr)) != 0) return -1;
     if (data.write.raw(d, p->cfg.keys.local.str.public.s,
                        p->cfg.keys.local.str.public.n) != 0) return -1;
     return 0;

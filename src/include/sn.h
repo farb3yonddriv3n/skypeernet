@@ -220,7 +220,7 @@ typedef struct snb_s {
 } snb;
 
 inline static int sn_bytes_append_raw(char *buffer, int *offset, int size,
-                                  char *src, int nsrc)
+                                      char *src, int nsrc)
 {
     if (nsrc + *offset > size) return -1;
     memcpy(buffer + *offset, src, nsrc);
