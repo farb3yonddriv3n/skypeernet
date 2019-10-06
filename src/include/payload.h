@@ -1,6 +1,8 @@
 #ifndef PAYLOAD_H_
 #define PAYLOAD_H_
 
+#define MAX_ANNOUNCED_PORTS 8 /* Prevent (un)intentional ports floding */
+
 struct module_handler_s {
     int (*write)(struct data_s *d, void *userdata);
     int (*size)(struct data_s *d, void *userdata);

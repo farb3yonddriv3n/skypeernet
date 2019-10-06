@@ -1,13 +1,31 @@
 #include <common.h>
 
+static int tcp_ports(struct peer_s *p, struct data_s *d)
+{
+    if (!p || !d) return -1;
+    if (data.write.integer(d, strlen(p->cfg.tcp.description)) != 0) return -1;
+    if (data.write.raw(d, (char *)p->cfg.tcp.description,
+                       strlen(p->cfg.tcp.description)) != 0) return -1;
+    int append(struct list_s *l, void *ex, void *ud) {
+        int port = *(int *)ex;
+        struct data_s *d = (struct data_s *)ud;
+        if (data.write.integer(d, port) != 0) return -1;
+        return 0;
+    }
+    ifr(list.map(&p->cfg.tcp.ports, append, d));
+    return 0;
+}
+
 int announce_pwp(struct data_s *d, void *userdata)
 {
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
-    if (data.write.integer(d, ADDR_IP(p->net.self.addr))    != 0) return -1;
-    if (data.write.shortint(d, ADDR_PORT(p->net.self.addr)) != 0) return -1;
+    if (data.write.integer(d, ADDR_IP(p->net.self.addr))      != 0) return -1;
+    if (data.write.shortint(d, ADDR_PORT(p->net.self.addr))   != 0) return -1;
+    if (data.write.integer(d, p->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, p->cfg.keys.local.str.public.s,
                        p->cfg.keys.local.str.public.n) != 0) return -1;
+    ifr(tcp_ports(p, d));
     return 0;
 }
 
@@ -16,10 +34,12 @@ int announce_twp(struct data_s *d, void *userdata)
     struct peer_s *t = (struct peer_s *)userdata;
     if (!t || !d) return -1;
     if (t->send_buffer.type != BUFFER_TRACKER_ANNOUNCE_PEER) return -1;
-    if (data.write.integer(d, t->send_buffer.u.tracker_peer.host)  != 0) return -1;
-    if (data.write.shortint(d, t->send_buffer.u.tracker_peer.port) != 0) return -1;
+    if (data.write.integer(d, t->send_buffer.u.tracker_peer.host)   != 0) return -1;
+    if (data.write.shortint(d, t->send_buffer.u.tracker_peer.port)  != 0) return -1;
+    if (data.write.integer(d, t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
     if (data.write.raw(d, (char *)t->send_buffer.u.tracker_peer.key->s,
                        t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
+    ifr(tcp_ports(t, d));
     return 0;
 }
 
@@ -29,8 +49,17 @@ int announce_twt(struct data_s *d, void *userdata)
     if (!t || !d) return -1;
     if (data.write.integer(d, ADDR_IP(t->net.remote.addr))    != 0) return -1;
     if (data.write.shortint(d, ADDR_PORT(t->net.remote.addr)) != 0) return -1;
+    if (data.write.integer(d, t->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, t->cfg.keys.local.str.public.s,
                        t->cfg.keys.local.str.public.n) != 0) return -1;
+    ifr(tcp_ports(t, d));
+    return 0;
+}
+
+static int port_clean(void *ud)
+{
+    if (!ud) return -1;
+    free(ud);
     return 0;
 }
 
@@ -39,10 +68,24 @@ static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
     sn_initr(bf, src, nsrc);
     if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
     if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
-    int keysize = nsrc - sizeof(wp->host) - sizeof(wp->port);
-    sn_bytes_init_new(wp->pubkey, keysize);
-    if (sn_read((void *)wp->pubkey.s, keysize, &bf) != 0) return -1;
-    sha256hex((unsigned char *)wp->pubkey.s, keysize, wp->pubkeyhash);
+    int nkey;
+    if (sn_read((void *)&nkey, sizeof(nkey), &bf) != 0) return -1;
+    sn_bytes_init_new(wp->pubkey, nkey);
+    if (sn_read((void *)wp->pubkey.s, nkey, &bf) != 0) return -1;
+    sha256hex((unsigned char *)wp->pubkey.s, nkey, wp->pubkeyhash);
+    int ndesc;
+    if (sn_read((void *)&ndesc, sizeof(ndesc), &bf) != 0) return -1;
+    if (ndesc > sizeof(wp->tcp.description)) return -1;
+    if (sn_read((void *)wp->tcp.description, ndesc, &bf) != 0) return -1;
+    int i, added;
+    for (i = bf.offset, added = 0;
+         (i < bf.n && added < MAX_ANNOUNCED_PORTS);
+         i += DATA_SIZE_INT, added++) {
+        int *tcpport = malloc(sizeof(*tcpport));
+        if (!tcpport) return -1;
+        if (sn_read((void *)tcpport, sizeof(*tcpport), &bf) != 0) return -1;
+        ifr(list.add(&wp->tcp.ports, tcpport, port_clean));
+    }
     return 0;
 }
 
@@ -50,7 +93,12 @@ int announce_size(int *sz, void *userdata)
 {
     if (!sz || !userdata) return -1;
     struct peer_s *p = (struct peer_s *)userdata;
-    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT + p->cfg.keys.local.str.public.n;
+    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT;
+    *sz += p->cfg.keys.local.str.public.n + DATA_SIZE_INT;
+    *sz += strlen(p->cfg.tcp.description) + DATA_SIZE_INT;
+    int portsz;
+    ifr(list.size(&p->cfg.tcp.ports, &portsz));
+    *sz += (DATA_SIZE_INT * portsz);
     return 0;
 }
 

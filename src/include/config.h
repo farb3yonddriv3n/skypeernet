@@ -62,6 +62,7 @@ struct config_s {
     } api;
     struct {
         struct list_s ports;
+        char description[256];
     } tcp;
     int miningtarget;
 };

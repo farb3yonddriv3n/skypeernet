@@ -54,6 +54,17 @@ static int cli_peers_list(struct peer_s *p, json_object **obj)
         json_object *pubkeyhash = json_object_new_string_len((const char *)wp->pubkeyhash,
                                                              sizeof(wp->pubkeyhash));
         json_object_object_add(obj, "pubkeyhash", pubkeyhash);
+        json_object *tcpdesc = json_object_new_string((const char *)wp->tcp.description);
+        json_object_object_add(obj, "tcpdescription", tcpdesc);
+        json_object *ports = json_object_new_array();
+        json_object_object_add(obj, "ports", ports);
+        int fill(struct list_s *l, void *ex, void *ud) {
+            json_object *ports = (json_object *)ud;
+            json_object *port = json_object_new_int(*(int *)ex);
+            json_object_array_add(ports, port);
+            return 0;
+        }
+        ifr(list.map(&wp->tcp.ports, fill, ports));
         json_object_array_add(peers, obj);
         return 0;
     }

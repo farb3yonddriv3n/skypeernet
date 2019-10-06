@@ -99,6 +99,10 @@ int config_init(struct config_s *cfg)
     snprintf(cfg->api.pipes.write, sizeof(cfg->api.pipes.write), "%.*s",
              json_object_get_string_len(tmp),
              json_object_get_string(tmp));
+    json_object_object_get_ex(obj, "tcp_ports_description", &tmp);
+    snprintf(cfg->tcp.description, sizeof(cfg->tcp.description), "%.*s",
+             json_object_get_string_len(tmp),
+             json_object_get_string(tmp));
     json_object *allowed_ports;
     json_object_object_get_ex((json_object *)obj, "tcp_allowed_ports", &allowed_ports);
     if (json_object_get_type(allowed_ports) == json_type_array) {
