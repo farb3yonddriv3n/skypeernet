@@ -151,6 +151,29 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
     ev_timer_again(p->ev.loop, &p->ev.peers_reachable);
 }
 
+static int wp_clean(void *uwp)
+{
+    if (!uwp) return -1;
+    struct world_peer_s *wp = (struct world_peer_s *)uwp;
+    if (wp->pubkey.s) free(wp->pubkey.s);
+    ifr(list.clean(&wp->tcp.ports));
+    free(wp);
+    return 0;
+}
+
+static int peer_add(struct peer_s *p, struct world_peer_s *wp,
+                    bool *added)
+{
+    if (!p || !wp || !added) return -1;
+    wp->found = NULL;
+    *added = false;
+    ifr(list.map(&p->peers, world.peer.find, wp));
+    if (wp->found) return wp_clean(wp);
+    ifr(list.add(&p->peers, wp, wp_clean));
+    *added = true;
+    return 0;
+}
+
 const struct module_world_s world = {
     .peer.reachable      = peer_reachable,
     .peer.unreachable    = peer_unreachable,
@@ -161,4 +184,5 @@ const struct module_world_s world = {
     .peer.findauthstr    = peer_findauthstr,
     .peer.broadcast      = peer_broadcast,
     .peer.auth           = peer_auth,
+    .peer.add            = peer_add,
 };

@@ -35,6 +35,8 @@ struct module_world_s {
         int (*find)(struct list_s *l, void *existing, void *uwp);
         int (*broadcast)(struct peer_s *p, struct world_peer_s *wp);
         int (*auth)(struct peer_s *p, struct world_peer_s *wp);
+        int (*add)(struct peer_s *p, struct world_peer_s *wp,
+                   bool *added);
     } peer;
 };
 

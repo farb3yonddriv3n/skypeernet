@@ -102,28 +102,6 @@ int announce_size(int *sz, void *userdata)
     return 0;
 }
 
-static int wp_clean(void *uwp)
-{
-    if (!uwp) return -1;
-    struct world_peer_s *wp = (struct world_peer_s *)uwp;
-    if (wp->pubkey.s) free(wp->pubkey.s);
-    free(wp);
-    return 0;
-}
-
-static int peer_add(struct peer_s *p, struct world_peer_s *wp,
-                    bool *added)
-{
-    if (!p || !wp || !added) return -1;
-    wp->found = NULL;
-    *added = false;
-    ifr(list.map(&p->peers, world.peer.find, wp));
-    if (wp->found) return wp_clean(wp);
-    ifr(list.add(&p->peers, wp, wp_clean));
-    *added = true;
-    return 0;
-}
-
 int announce_trt(struct peer_s *p)
 {
     struct world_peer_s *wp = malloc(sizeof(*wp));
@@ -138,7 +116,7 @@ int announce_trt(struct peer_s *p)
     wp->host = ADDR_IP(p->net.remote.addr);
     wp->port = ADDR_PORT(p->net.remote.addr);
     bool added;
-    ifr(peer_add(p, wp, &added));
+    ifr(world.peer.add(p, wp, &added));
     if (added && p->user.cb.online)
         ifr(p->user.cb.online(p, wp));
     return 0;
@@ -154,7 +132,7 @@ int announce_trp(struct peer_s *p)
                       p->recv_buffer.available->data.n));
     wp->type = WORLD_PEER_PEER;
     bool added;
-    ifr(peer_add(p, wp, &added));
+    ifr(world.peer.add(p, wp, &added));
     if (added && p->user.cb.online)
         ifr(p->user.cb.online(p, wp));
     return 0;
@@ -172,7 +150,7 @@ int announce_prp(struct peer_s *p)
     wp->host = ADDR_IP(p->net.remote.addr);
     wp->port = ADDR_PORT(p->net.remote.addr);
     bool added;
-    ifr(peer_add(p, wp, &added));
+    ifr(world.peer.add(p, wp, &added));
     if (added) {
         ifr(world.peer.auth(p, wp));
     }
