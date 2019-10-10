@@ -28,6 +28,9 @@ do(Data, State) ->
             {<<"tunnel_open">>, Payload, _Version, RequestId} ->
                 tunnel:open(Payload, State, RequestId),
                 {reply, nochange};
+            {<<"tunnel_dump">>, Payload, _Version, RequestId} ->
+                tunnel:dump(Payload, State, RequestId),
+                {reply, nochange};
             {<<"account_login">>, Payload, _Version, _RequestId} ->
                 NewState = account:login(Payload, State),
                 {reply, NewState};

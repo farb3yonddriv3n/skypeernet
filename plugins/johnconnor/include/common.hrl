@@ -33,3 +33,4 @@
 -record(proto_tunnel_open, {pubkeyhash :: binary(),
                             port       :: binary(),
                             request_id :: integer()}).
+-record(proto_tunnel_dump, {request_id :: integer()}).
