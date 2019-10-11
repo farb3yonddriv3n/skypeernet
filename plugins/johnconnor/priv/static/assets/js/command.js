@@ -5,6 +5,7 @@ var filter = "";
 var outbound = [];
 var request_id = 0;
 var peers = [];
+var tunnels = [];
 var server = [
     ["message",              message]
 ];
@@ -265,6 +266,35 @@ function message_tasks(parsed)
     files_show();
 }
 
+function tunnels_show()
+{
+    var tunnelsDiv = document.getElementById("tunnels");
+    tunnelsDiv.innerHTML = "";
+    for (i = 0; i < tunnels.length; i++) {
+        var t = document.createElement("div");
+        t.setAttribute("class", "tunnelUser");
+        append_bodyclass(t, "localhost:" + tunnels[i]["src_port"] + " -> " + tunnels[i]["pubkeyhash"].substring(0, 40) + "..:" + tunnels[i]["dst_port"], "none");
+        tunnelsDiv.append(t);
+    }
+}
+
+function message_tunnel_dump(parsed)
+{
+    if (!("tunnels" in parsed["payload"])) return;
+    tunnels = parsed["payload"]["tunnels"];
+    tunnels_show();
+}
+
+function message_tunnel_open(parsed)
+{
+    if (parsed["payload"]["success"] != true) {
+        show_error("Cannot create tunnel " + parsed["payload"]["pubkeyhash"].substring(0, 5) + "..:" + parsed["payload"]["dst_port"]);
+        return;
+    }
+    tunnels.push(parsed["payload"]);
+    tunnels_show();
+}
+
 function message_jobs_dump(parsed)
 {
     for (i = 0; i < files_remote.length; i++) {
@@ -287,12 +317,12 @@ function peers_show()
         if (peers[i]["type"] == 1) continue;
         var np = document.createElement("div");
         np.setAttribute("class", "tunnelUser");
-        append_bodyclass(np, peers[i]["pubkeyhash"].substring(0, 10) + "..", "peerOnline");
+        append_bodyclass(np, peers[i]["pubkeyhash"].substring(0, 40) + "..", "peerOnline");
         var input = document.createElement("input");
         input.setAttribute("class", "tunnelPort");
         input.setAttribute("id", "port_" + peers[i]["pubkeyhash"]);
         np.appendChild(input);
-        type = append_bodyclass(np, "Open tunnel", "peerOnline");
+        type = append_bodyclass(np, "OPEN", "tunnelOpen");
         file_onclick(type, peers[i]["pubkeyhash"], "tunnel_open");
         peersDiv.append(np);
     }
@@ -354,6 +384,10 @@ function message(payload)
         message_traffic(parsed);
     } else if (parsed["command"] == 17) {
         message_tasks(parsed);
+    } else if (parsed["command"] == 18) {
+        message_tunnel_open(parsed);
+    } else if (parsed["command"] == 20) {
+        message_tunnel_dump(parsed);
     } else {
         console.log("unsupported");
     }
@@ -363,6 +397,12 @@ function peers_get()
 {
     var payload = new Object();
     send("peers_get", payload);
+}
+
+function tunnels_get()
+{
+    var payload = new Object();
+    send("tunnel_dump", payload);
 }
 
 function files_get(src)
@@ -464,6 +504,7 @@ function connect(cmd, payload)
         menu_files("remote");
         files_get("remote");
         peers_get("");
+        tunnels_get("");
         delayed_request(confirmed_check, "", "", 1000);
     };
 

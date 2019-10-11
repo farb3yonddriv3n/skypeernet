@@ -128,17 +128,33 @@ video, audio {
 }
 
 .peerOnline {
+    margin-top:2px;
+    width:70%;
     text-align:center;
-    background-color:#008000;
     float:left;
 }
 
 .tunnelPort {
     width:30px;
     float:left;
+    height:4pt;
+    font-size:8pt;
 }
 
 .tunnelUser {
     width:100%;
     overflow:hidden;
+    font-size:8pt;
+    background-color:#800;
+    margin-bottom:1px;
+    padding-top:2px;
+}
+
+.tunnelOpen {
+    margin-top:2px;
+    float:left;
+    cursor:pointer;
+    font-weight:bold;
+    text-align:center;
+    width:15%;
 }
