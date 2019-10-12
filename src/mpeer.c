@@ -262,6 +262,24 @@ static int dfs_tunnel_dump(struct distfs_s *dfs, char **argv, int argc,
     return 0;
 }
 
+static int dfs_tunnel_add(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr)
+{
+    if (!dfs || !argv || !dfserr) return -1;
+    if (argc != 3) return -1;
+    if (strlen(argv[1]) != SHA256HEX) return -1;
+    int dstport = atoi(argv[2]);
+    unsigned short srcport;
+    bool success;
+    json_object *obj = json_object_new_object();
+    ifr(tunnel.open(dfs->peer, (unsigned char *)argv[1], &srcport, dstport, &success));
+    json_object *jsuccess = json_object_new_boolean(success);
+    json_object_object_add(obj, "success", jsuccess);
+    printf("%s\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PRETTY));
+    json_object_put(obj);
+    return 0;
+}
+
 static int dfs_endpoint_dump(struct distfs_s *dfs, char **argv, int argc,
                              int *dfserr)
 {
@@ -314,6 +332,7 @@ static const struct { const char *alias[8];
     { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
     { { "ac", "taskcancel" },   2, 1, dfs_task_cancel       },
     { { "v",  "versiondump" },  2, 0, dfs_version_dump      },
+    { { "ua", "tunneladd" },    2, 2, dfs_tunnel_add        },
     { { "ud", "tunneldump" },   2, 0, dfs_tunnel_dump       },
     { { "ed", "endpointdump" }, 2, 0, dfs_endpoint_dump     },
 };

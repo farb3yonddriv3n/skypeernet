@@ -320,8 +320,12 @@ static int api_tunnelopen_read(struct peer_s *p, json_object *obj)
     bool success;
     ifr(tunnel.open(p, (unsigned char *)pkh, &src, dst, &success));
     json_object *reply = json_object_new_object();
-    json_object *port = json_object_new_int(dst);
-    json_object_object_add(reply, "port", port);
+    json_object *jdst = json_object_new_int(dst);
+    json_object *jsrc = json_object_new_int(src);
+    json_object *pubkeyhash = json_object_new_string(pkh);
+    json_object_object_add(reply, "pubkeyhash", pubkeyhash);
+    json_object_object_add(reply, "dst_port", jdst);
+    json_object_object_add(reply, "src_port", jsrc);
     json_object *jsuccess = json_object_new_boolean(success);
     json_object_object_add(reply, "success", jsuccess);
     return api.write(p, API_TUNNELOPEN, reply, obj, 0);

@@ -92,6 +92,7 @@ static int tunnel_open(struct peer_s *p, unsigned char *pubkeyhash,
 {
     if (!p || !pubkeyhash || !port_local || !success) return -1;
     *success = false;
+    *port_local = 0;
     struct world_peer_s wp = { .found = NULL };
     memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
     ifr(list.map(&p->peers, world.peer.findpubkeyhash, &wp));

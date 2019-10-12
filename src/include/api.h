@@ -22,7 +22,9 @@ enum api_e {
     API_TASKDUMP,
     API_TUNNELOPEN             = 18,
     API_TUNNELCLOSE,
-    API_TUNNELDUMP
+    API_TUNNELDUMP,
+    API_ENDPOINTOPEN,
+    API_ENDPOINTDUMP,
 };
 
 struct module_api_s {
