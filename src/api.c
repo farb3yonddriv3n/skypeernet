@@ -115,6 +115,18 @@ static int api_peer_change(struct peer_s *p, struct world_peer_s *wp,
     return api.write(p, change, obj, NULL, 0);
 }
 
+int api_endpoint_change(struct peer_s *p, unsigned short dst, unsigned short src,
+                        enum api_e change)
+{
+    if (!p) return -1;
+    json_object *obj = json_object_new_object();
+    json_object *sport = json_object_new_int(src);
+    json_object_object_add(obj, "src_port", sport);
+    json_object *dport = json_object_new_int(dst);
+    json_object_object_add(obj, "dst_port", dport);
+    return api.write(p, change, obj, NULL, 0);
+}
+
 int api_peer_online(struct peer_s *p, struct world_peer_s *wp)
 {
     return api_peer_change(p, wp, API_PEER_ONLINE);
@@ -358,6 +370,13 @@ static int api_tunneldump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_TUNNELDUMP, jobj, NULL, 0);
 }
 
+static int api_endpointdump_read(struct peer_s *p, json_object *obj)
+{
+    json_object *jobj;
+    ifr(endpoint.dump(p, &jobj));
+    return api.write(p, API_ENDPOINTDUMP, jobj, NULL, 0);
+}
+
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
     struct peer_s *p = (struct peer_s *)timer->data;
@@ -388,6 +407,7 @@ static struct api_command_s cmds[] = {
     { API_TUNNELOPEN,       api_tunnelopen_read      },
     { API_TUNNELCLOSE,      api_tunnelclose_read     },
     { API_TUNNELDUMP,       api_tunneldump_read      },
+    { API_ENDPOINTDUMP,     api_endpointdump_read    },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

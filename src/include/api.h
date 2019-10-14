@@ -17,14 +17,15 @@ enum api_e {
     API_BADVERTISE,
     API_BMINING,
     API_ROGUEDUMP,
-    API_VERSIONDUMP,
+    API_VERSIONDUMP            = 15,
     API_TRAFFICDUMP,
     API_TASKDUMP,
-    API_TUNNELOPEN             = 18,
+    API_TUNNELOPEN,
     API_TUNNELCLOSE,
-    API_TUNNELDUMP,
+    API_TUNNELDUMP             = 20,
     API_ENDPOINTOPEN,
     API_ENDPOINTDUMP,
+    API_ENDPOINTCLOSE,
 };
 
 struct module_api_s {
@@ -45,6 +46,8 @@ int api_peer_offline(struct peer_s *p, struct world_peer_s *wp);
 int api_job_done(struct peer_s *p, unsigned char *filename,
                  int nfilename);
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents);
+int api_endpoint_change(struct peer_s *p, unsigned short dst, unsigned short src,
+                        enum api_e change);
 
 extern const struct module_api_s api;
 

@@ -32,6 +32,7 @@ static int clean(void *ud)
 {
     if (!ud) return -1;
     struct endpoint_s *ep = (struct endpoint_s *)ud;
+    ifr(api_endpoint_change(ep->peer, ep->tcp.dst, ep->tcp.src, API_ENDPOINTCLOSE));
     async_client_shutdown(ep->client);
     free(ep);
     return 0;
@@ -113,7 +114,7 @@ static int request(struct peer_s *p, struct header_s *header, int host,
 
     ifr(list.add(&p->tcp.endpoints, ep, clean));
     gc_gen_ev_send(c, data, ndata);
-    return 0;
+    return api_endpoint_change(p, fnep.tcp.dst, fnep.tcp.src, API_ENDPOINTOPEN);
 }
 
 static int dump(struct peer_s *p, json_object **obj)
