@@ -34,3 +34,4 @@
                             port       :: binary(),
                             request_id :: integer()}).
 -record(proto_tunnel_dump, {request_id :: integer()}).
+-record(proto_endpoint_dump, {request_id :: integer()}).

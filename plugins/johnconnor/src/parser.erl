@@ -31,6 +31,9 @@ do(Data, State) ->
             {<<"tunnel_dump">>, Payload, _Version, RequestId} ->
                 tunnel:dump(Payload, State, RequestId),
                 {reply, nochange};
+            {<<"endpoint_dump">>, Payload, _Version, RequestId} ->
+                endpoint:dump(Payload, State, RequestId),
+                {reply, nochange};
             {<<"account_login">>, Payload, _Version, _RequestId} ->
                 NewState = account:login(Payload, State),
                 {reply, NewState};
