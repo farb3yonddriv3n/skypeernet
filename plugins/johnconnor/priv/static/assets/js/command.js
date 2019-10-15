@@ -6,6 +6,7 @@ var outbound = [];
 var request_id = 0;
 var peers = [];
 var tunnels = [];
+var endpoints = [];
 var server = [
     ["message",              message]
 ];
@@ -278,11 +279,48 @@ function tunnels_show()
     }
 }
 
+function endpoints_show()
+{
+    var endpointsDiv = document.getElementById("endpoints");
+    endpointsDiv.innerHTML = "";
+    for (i = 0; i < endpoints.length; i++) {
+        var e = document.createElement("div");
+        e.setAttribute("class", "tunnelUser");
+        append_bodyclass(e, endpoints[i]["src_port"] + " -> localhost:" + endpoints[i]["dst_port"]);
+        endpointsDiv.append(e);
+    }
+}
+
 function message_tunnel_dump(parsed)
 {
     if (!("tunnels" in parsed["payload"])) return;
     tunnels = parsed["payload"]["tunnels"];
     tunnels_show();
+}
+
+function message_endpoint_dump(parsed)
+{
+    if (!("endpoints" in parsed["payload"])) return;
+    endpoints = parsed["payload"]["endpoints"];
+    endpoints_show();
+}
+
+function message_endpoint_open(parsed)
+{
+    endpoints.push(parsed["payload"]);
+    endpoints_show();
+}
+
+function message_endpoint_close(parsed)
+{
+    for (i = 0; i < endpoints.length; i++) {
+        if (endpoints[i]["dst_port"] == parsed["payload"]["dst_port"] &&
+            endpoints[i]["src_port"] == parsed["payload"]["src_port"]) {
+            endpoints.splice(i, 1);
+            endpoints_show();
+            break;
+        }
+    }
 }
 
 function message_tunnel_open(parsed)
@@ -388,6 +426,12 @@ function message(payload)
         message_tunnel_open(parsed);
     } else if (parsed["command"] == 20) {
         message_tunnel_dump(parsed);
+    } else if (parsed["command"] == 22) {
+        message_endpoint_dump(parsed);
+    } else if (parsed["command"] == 21) {
+        message_endpoint_open(parsed);
+    } else if (parsed["command"] == 23) {
+        message_endpoint_close(parsed);
     } else {
         console.log("unsupported");
     }
@@ -403,6 +447,12 @@ function tunnels_get()
 {
     var payload = new Object();
     send("tunnel_dump", payload);
+}
+
+function endpoints_get()
+{
+    var payload = new Object();
+    send("endpoint_dump", payload);
 }
 
 function files_get(src)
@@ -505,6 +555,7 @@ function connect(cmd, payload)
         files_get("remote");
         peers_get("");
         tunnels_get("");
+        endpoints_get("");
         delayed_request(confirmed_check, "", "", 1000);
     };
 
