@@ -367,14 +367,14 @@ static int api_tunneldump_read(struct peer_s *p, json_object *obj)
 {
     json_object *jobj;
     ifr(tunnel.dump(p, &jobj));
-    return api.write(p, API_TUNNELDUMP, jobj, NULL, 0);
+    return api.write(p, API_TUNNELDUMP, jobj, obj, 0);
 }
 
 static int api_endpointdump_read(struct peer_s *p, json_object *obj)
 {
     json_object *jobj;
     ifr(endpoint.dump(p, &jobj));
-    return api.write(p, API_ENDPOINTDUMP, jobj, NULL, 0);
+    return api.write(p, API_ENDPOINTDUMP, jobj, obj, 0);
 }
 
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents)
