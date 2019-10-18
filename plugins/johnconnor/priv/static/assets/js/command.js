@@ -42,13 +42,13 @@ function getdate(ts)
 
 function menu_files(src)
 {
-    var filesLocalList  = document.getElementById("filesLocalList");
+    var menuList        = document.getElementById("menu");
     var filesRemoteList = document.getElementById("filesRemoteList");
-    filesLocalList.style.display = "none";
+    menuList.style.display        = "none";
     filesRemoteList.style.display = "none";
 
-    if (src == "local")       filesLocalList.style.display = "block";
-    else if (src == "remote") filesRemoteList.style.display = "block";
+    //if (src == "local")       filesLocalList.style.display = "block";
+    if (src == "remote") filesRemoteList.style.display = "block";
 
 
     var fileItemBody = document.getElementById("fileItemBody");
@@ -60,8 +60,8 @@ function menu_files(src)
 
 function showFile(file)
 {
-    var filesLocalList = document.getElementById("filesLocalList");
-    filesLocalList.style.display = "none";
+    var menuList = document.getElementById("menu");
+    menuList.style.display = "block";
     var filesRemoteList = document.getElementById("filesRemoteList");
     filesRemoteList.style.display = "none";
     var fileItemBody = document.getElementById("fileItemBody");
@@ -274,7 +274,7 @@ function tunnels_show()
     for (i = 0; i < tunnels.length; i++) {
         var t = document.createElement("div");
         t.setAttribute("class", "tunnelUser");
-        append_bodyclass(t, "localhost:" + tunnels[i]["src_port"] + " -> " + tunnels[i]["pubkeyhash"].substring(0, 40) + "..:" + tunnels[i]["dst_port"], "none");
+        append_bodyclass(t, "localhost:" + tunnels[i]["src_port"] + " -> " + tunnels[i]["pubkeyhash"] + ":" + tunnels[i]["dst_port"], "none");
         tunnelsDiv.append(t);
     }
 }
@@ -355,7 +355,7 @@ function peers_show()
         if (peers[i]["type"] == 1) continue;
         var np = document.createElement("div");
         np.setAttribute("class", "tunnelUser");
-        append_bodyclass(np, peers[i]["pubkeyhash"].substring(0, 40) + "..", "peerOnline");
+        append_bodyclass(np, peers[i]["pubkeyhash"], "peerOnline");
         var input = document.createElement("input");
         input.setAttribute("class", "tunnelPort");
         input.setAttribute("id", "port_" + peers[i]["pubkeyhash"]);
@@ -497,6 +497,7 @@ function send(cmd, payload)
     var rq = new Object();
     rq.id = request_id++;
     rq.time = Date.now();
+    rq.json = json;
     outbound.push(rq);
     ws.send(text);
 }

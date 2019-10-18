@@ -96,7 +96,7 @@ video, audio {
 }
 
 .fileShowTags {
-    width:150px;
+    width:135px;
 }
 
 #tasks {
@@ -129,7 +129,7 @@ video, audio {
 
 .peerOnline {
     margin-top:2px;
-    width:70%;
+    width:75%;
     text-align:center;
     float:left;
 }
