@@ -14,11 +14,9 @@ var server = [
 function connection_status(status)
 {
     var cn = document.getElementById("connected");
-    if(status) {
-        cn.innerHTML = "Connected";
-    } else {
-        cn.innerHTML = "Disconnected";
-    }
+    if(status) cn.innerHTML = "Connected";
+    else       cn.innerHTML = "Disconnected";
+    show_msg(cn.innerHTML);
 }
 
 function delayed_request(func, cmd, payload, delay)
@@ -221,6 +219,7 @@ function message_file_job_done(parsed)
     for (i = 0; i < files_remote.length; i++)
         if (files_remote[i]["name"] == parsed["payload"]["name"]) {
             files_remote[i]["complete"] = true;
+            show_msg("Job done: " + files_remote[i]["name"]);
             job_finalize(files_remote[i]["name"]);
             break;
         }
@@ -230,11 +229,12 @@ function message_file_job_done(parsed)
 function message_file_job_finalized(parsed)
 {
     if (parsed["error"] != 0) {
-        show_error("File not finalized with error " + parsed["error"]);
+        show_msg("File not finalized with error " + parsed["error"]);
         return;
     }
     for (i = 0; i < files_remote.length; i++)
         if (files_remote[i]["name"] == parsed["request"]["name"]) {
+            show_msg("Job finalized: " + files_remote[i]["name"]);
             files_remote[i]["finalized"] = true;
             break;
         }
@@ -326,9 +326,10 @@ function message_endpoint_close(parsed)
 function message_tunnel_open(parsed)
 {
     if (parsed["payload"]["success"] != true) {
-        show_error("Cannot create tunnel " + parsed["payload"]["pubkeyhash"].substring(0, 5) + "..:" + parsed["payload"]["dst_port"]);
+        show_msg("Cannot create tunnel " + parsed["payload"]["pubkeyhash"] + ":" + parsed["payload"]["dst_port"]);
         return;
     }
+    show_msg("Tunnel open: " + parsed["payload"]["pubkeyhash"] + ":" + parsed["payload"]["dst_port"]);
     tunnels.push(parsed["payload"]);
     tunnels_show();
 }
@@ -378,6 +379,7 @@ function message_peer_online(parsed)
         if (peers[i]["pubkeyhash"] == parsed["payload"]["pubkeyhash"])
             return;
     peers.push(parsed["payload"]);
+    show_msg("Peer online: " + parsed["payload"]["pubkeyhash"]);
     peers_show();
 }
 
@@ -385,6 +387,7 @@ function message_peer_offline(parsed)
 {
     for (i = 0; i < peers.length; i++)
         if (peers[i]["pubkeyhash"] == parsed["payload"]["pubkeyhash"]) {
+            show_msg("Peer offline: " + parsed["payload"]["pubkeyhash"]);
             peers.splice(i, 1);
             peers_show();
             break;
@@ -394,7 +397,7 @@ function message_peer_offline(parsed)
 function message_message(parsed)
 {
     if ("message" in parsed["payload"])
-        show_error(parsed["payload"]["message"]);
+        show_msg(parsed["payload"]["message"]);
 }
 
 function message(payload)
@@ -521,19 +524,23 @@ function confirm_message(payload)
     }
 }
 
-function show_error(msg)
+function show_msg(msg)
 {
+    term.echo(getdate(Date.now()) + " " + msg);
+    /*
     var todiv = document.getElementById("timedout");
     todiv.innerHTML = msg;
     $("#timedout").fadeIn(2000);
     $("#timedout").fadeOut(2000);
+    */
 }
 
 function confirmed_check(p1, p2)
 {
     for (i = 0; i < outbound.length; i++) {
         if (outbound[i].time < (Date.now() - 5000)) {
-            show_error("Request id " + outbound[i].id + " timed out.");
+            show_msg("Request id " + outbound[i].id + " timed out.");
+            show_msg(JSON.stringify(outbound[i].json));
             outbound.splice(i, 1);
         }
     }

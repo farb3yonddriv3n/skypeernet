@@ -57,6 +57,7 @@ video, audio {
     width:100%;
     font-weight:bold;
     font-size:24pt;
+    text-align:center;
 }
 
 .fileItemBody {
