@@ -396,6 +396,7 @@ static int pipe_open(struct peer_s *p, const char *fullpath, unsigned int flags,
                      void (*cb)(EV_P_ ev_io *w, int revents))
 {
     if (!p || !fullpath || !fd || !ev || !cb) return -1;
+    if (*fd > STDERR_FILENO) close(*fd);
     *fd = open(fullpath, flags);
     if (*fd == -1) return 0;
     ev_io_init(ev, cb, *fd, evflags);
