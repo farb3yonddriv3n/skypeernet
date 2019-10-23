@@ -4,5 +4,5 @@
 -include("proto.hrl").
 -include("common.hrl").
 
-dump(_Payload, _State, RequestId) ->
-    utils:sendpipe(#proto_endpoint_dump{ request_id = RequestId }).
+dump(_Payload, State, RequestId) ->
+    utils:sendpipe(State#state.fifowrite, #proto_endpoint_dump{ request_id = RequestId }).

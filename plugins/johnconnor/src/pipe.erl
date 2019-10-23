@@ -1,8 +1,8 @@
 -module(pipe).
--export([read/0, write/1]).
+-export([read/0, write/2]).
 
 read() ->
-    Fifo = open_port("/tmp/skypeernet_write", [eof]),
+    Fifo = open_port("/tmp/skypeernet_write", [eof, in]),
     loop(Fifo, 0, []).
 
 dispatch(Data) ->
@@ -43,9 +43,7 @@ msgstart(Fifo, Data) ->
     <<Size:32>> = list_to_binary(lists:reverse(ListSize)),
     msgready(Fifo, Rest, Size).
 
-write(Json) ->
+write(Fifo, Json) ->
     Size = byte_size(Json),
     Data = list_to_binary([<<Size:32>>, Json]),
-    Fifo = open_port("/tmp/skypeernet_read", [eof]),
-    port_command(Fifo, Data),
-    port_close(Fifo).
+    true = port_command(Fifo, Data).

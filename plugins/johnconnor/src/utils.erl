@@ -1,5 +1,5 @@
 -module(utils).
--export([send/1, send/2, sendpipe/1]).
+-export([send/1, send/2, sendpipe/2]).
 
 -include("proto.hrl").
 -include("common.hrl").
@@ -72,9 +72,9 @@ reply(#proto_endpoint_dump{ request_id = RequestId }) ->
 reply(_) ->
     error.
 
-sendpipe(Proto) ->
+sendpipe(Fifo, Proto) ->
     Reply = reply(Proto),
-    pipe:write(Reply).
+    pipe:write(Fifo, Reply).
 send(Pid, Proto) ->
     Reply = reply(Proto),
     Pid ! {dispatch, Reply},

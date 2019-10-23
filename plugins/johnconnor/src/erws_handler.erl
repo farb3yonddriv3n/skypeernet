@@ -20,7 +20,8 @@ handle(Req, State) ->
 
 websocket_init(_TransportName, Req, _Opts) ->
     account:login(),
-    {ok, Req, #state{ logged = true }}.
+    Fifo = open_port("/tmp/skypeernet_read", [eof, out]),
+    {ok, Req, #state{ logged = true, fifowrite = Fifo }}.
 
 websocket_handle({text, Msg}, Req, State) ->
     case parser:do(Msg, State) of
@@ -44,7 +45,8 @@ websocket_info(_Info, Req, State) ->
 websocket_terminate(Reason, Req, State) ->
     terminate(Reason, Req, State).
 
-terminate(_Reason, _Req, #state{logged = Logged}) ->
+terminate(_Reason, _Req, #state{ logged = Logged, fifowrite = Fifo }) ->
     lager:info("terminate: ~p", [self()]),
+    port_close(Fifo),
     devices ! {logout, {self(), Logged}},
     ok.

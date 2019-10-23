@@ -4,5 +4,5 @@
 -include("proto.hrl").
 -include("common.hrl").
 
-get(_Payload, _State, RequestId) ->
-    utils:sendpipe(#proto_peers_get{ request_id = RequestId }).
+get(_Payload, State, RequestId) ->
+    utils:sendpipe(State#state.fifowrite, #proto_peers_get{ request_id = RequestId }).
