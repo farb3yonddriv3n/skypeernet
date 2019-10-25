@@ -1,18 +1,20 @@
 #include <common.h>
 
-static int tcp_ports(struct peer_s *p, struct data_s *d)
+static int tcp_ports(struct peer_s *p, struct data_s *d, struct list_s *tcpports,
+                     char *tcpdesc, int ntcpdesc)
 {
     if (!p || !d) return -1;
-    if (data.write.integer(d, strlen(p->cfg.tcp.description)) != 0) return -1;
-    if (data.write.raw(d, (char *)p->cfg.tcp.description,
-                       strlen(p->cfg.tcp.description)) != 0) return -1;
+    if (data.write.integer(d, ntcpdesc) != 0) return -1;
+    if (ntcpdesc > 0) {
+        if (data.write.raw(d, tcpdesc, ntcpdesc) != 0) return -1;
+    }
     int append(struct list_s *l, void *ex, void *ud) {
         int port = *(int *)ex;
         struct data_s *d = (struct data_s *)ud;
         if (data.write.integer(d, port) != 0) return -1;
         return 0;
     }
-    ifr(list.map(&p->cfg.tcp.ports, append, d));
+    ifr(list.map(tcpports, append, d));
     return 0;
 }
 
@@ -25,7 +27,8 @@ int announce_pwp(struct data_s *d, void *userdata)
     if (data.write.integer(d, p->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, p->cfg.keys.local.str.public.s,
                        p->cfg.keys.local.str.public.n) != 0) return -1;
-    ifr(tcp_ports(p, d));
+    ifr(tcp_ports(p, d, &p->cfg.tcp.ports,
+                  p->cfg.tcp.description, strlen(p->cfg.tcp.description)));
     return 0;
 }
 
@@ -39,7 +42,9 @@ int announce_twp(struct data_s *d, void *userdata)
     if (data.write.integer(d, t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
     if (data.write.raw(d, (char *)t->send_buffer.u.tracker_peer.key->s,
                        t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
-    ifr(tcp_ports(t, d));
+    ifr(tcp_ports(t, d, t->send_buffer.u.tracker_peer.tcpports,
+                  t->send_buffer.u.tracker_peer.tcpdesc.s,
+                  t->send_buffer.u.tracker_peer.tcpdesc.n));
     return 0;
 }
 
@@ -52,7 +57,8 @@ int announce_twt(struct data_s *d, void *userdata)
     if (data.write.integer(d, t->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, t->cfg.keys.local.str.public.s,
                        t->cfg.keys.local.str.public.n) != 0) return -1;
-    ifr(tcp_ports(t, d));
+    ifr(tcp_ports(t, d, &t->cfg.tcp.ports,
+                  t->cfg.tcp.description, strlen(t->cfg.tcp.description)));
     return 0;
 }
 
@@ -93,11 +99,17 @@ int announce_size(int *sz, void *userdata)
 {
     if (!sz || !userdata) return -1;
     struct peer_s *p = (struct peer_s *)userdata;
+    int portsz;
     *sz = DATA_SIZE_INT + DATA_SIZE_SHORT;
     *sz += p->cfg.keys.local.str.public.n + DATA_SIZE_INT;
-    *sz += strlen(p->cfg.tcp.description) + DATA_SIZE_INT;
-    int portsz;
-    ifr(list.size(&p->cfg.tcp.ports, &portsz));
+    if (p->send_buffer.type == BUFFER_TRACKER_ANNOUNCE_PEER) {
+        *sz += DATA_SIZE_INT;
+        *sz += p->send_buffer.u.tracker_peer.tcpdesc.n;
+        ifr(list.size(p->send_buffer.u.tracker_peer.tcpports, &portsz));
+    } else {
+        *sz += strlen(p->cfg.tcp.description) + DATA_SIZE_INT;
+        ifr(list.size(&p->cfg.tcp.ports, &portsz));
+    }
     *sz += (DATA_SIZE_INT * portsz);
     return 0;
 }

@@ -82,17 +82,23 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
         }
         int item(int dst, unsigned short dstport,
                  int src, unsigned short srcport,
-                 sn *key) {
+                 sn *key, struct list_s *tcpports,
+                 char *tcpdesc) {
             p->send_buffer.type = BUFFER_TRACKER_ANNOUNCE_PEER;
             p->send_buffer.u.tracker_peer.key  = key;
             p->send_buffer.u.tracker_peer.host = src;
             p->send_buffer.u.tracker_peer.port = srcport;
+            sn_setr(p->send_buffer.u.tracker_peer.tcpdesc,
+                    tcpdesc, strlen(tcpdesc));
+            p->send_buffer.u.tracker_peer.tcpports = tcpports;
             if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_PEER,
                              dst, dstport, 0, 0, NULL, NULL) != 0) return -1;
             return 0;
         }
-        ifr(item(wp->host, wp->port, ex->host, ex->port, &ex->pubkey));
-        ifr(item(ex->host, ex->port, wp->host, wp->port, &wp->pubkey));
+        ifr(item(wp->host, wp->port, ex->host, ex->port, &ex->pubkey,
+                 &ex->tcp.ports, ex->tcp.description));
+        ifr(item(ex->host, ex->port, wp->host, wp->port, &wp->pubkey,
+                 &wp->tcp.ports, wp->tcp.description));
         return 0;
     }
     ifr(list.map(&p->peers, cb, wp));

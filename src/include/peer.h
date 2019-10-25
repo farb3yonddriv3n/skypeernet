@@ -7,6 +7,7 @@ enum instance_e {
 };
 
 enum buffer_e {
+    BUFFER_NONE,
     BUFFER_MESSAGE,
     BUFFER_FILE,
     BUFFER_FILEASK,
@@ -35,6 +36,8 @@ struct send_buffer_s {
             int host;
             unsigned short port;
             sn *key;
+            sn tcpdesc;
+            struct list_s *tcpports;
         } tracker_peer;
         struct {
             sn str;

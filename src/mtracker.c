@@ -11,6 +11,7 @@ static int dfs_auth_reply(struct peer_s *p, int host,
     ifr(list.map(&p->peers, world.peer.findauthstr, &wp));
     if (wp.found && wp.found->authed != true) {
         wp.found->authed = true;
+        p->send_buffer.type = BUFFER_NONE;
         if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_TRACKER,
                          wp.found->host, wp.found->port,
                          0, 0, NULL, NULL) != 0) return -1;
