@@ -45,9 +45,9 @@ struct job_s {
 struct peer_s;
 
 struct module_job_s {
-    int (*add)(struct config_s *cfg, struct list_s *jobs, struct group_s *remote,
-               unsigned char *file, int nfile, bool *found,
-               bool *added, bool *exists);
+    int (*add)(struct peer_s *p, struct config_s *cfg, struct list_s *jobs,
+               struct group_s *remote, unsigned char *file, int nfile,
+               bool *found, bool *added, bool *exists);
     int (*update)(struct peer_s *p, const char *downloaddir,
                   struct list_s *jobs, const char *filename,
                   int host, unsigned short port);
@@ -55,7 +55,7 @@ struct module_job_s {
     int (*finalize)(struct peer_s *p, struct group_s *remote, unsigned char *file,
                     int nfile, bool *finalized);
     int (*dump)(struct config_s *cfg, struct list_s *jobs, json_object **obj);
-    int (*remove)(struct list_s *jobs, unsigned char *file,
+    int (*remove)(struct peer_s *p, struct list_s *jobs, unsigned char *file,
                   int nfile, bool *removed);
     int (*clean)(struct list_s *jobs, bool *cleaned);
     struct {

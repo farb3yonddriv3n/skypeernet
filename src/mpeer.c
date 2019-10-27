@@ -191,7 +191,7 @@ static int dfs_job_remove(struct distfs_s *dfs, char **argv, int argc,
     if (!dfs || !argv || !dfserr) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool removed;
-    ifr(job.remove(&dfs->jobs, h, strlen((const char *)h), &removed));
+    ifr(job.remove(dfs->peer, &dfs->jobs, h, strlen((const char *)h), &removed));
     if (removed) printf ("Job %s removed\n", h);
     else         printf ("Unable to remove job %s\n", h);
     return 0;

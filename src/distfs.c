@@ -99,7 +99,7 @@ int dfs_job_add(struct distfs_s *dfs, char **argv, int argc,
     if (strlen(argv[1]) != SHA256HEX) return -1;
     unsigned char *h = (unsigned char *)argv[1];
     bool added, found, exists;
-    ifr(job.add(&dfs->peer->cfg, &dfs->jobs, dfs->blocks.remote, h,
+    ifr(job.add(dfs->peer, &dfs->peer->cfg, &dfs->jobs, dfs->blocks.remote, h,
                 strlen((const char *)h), &found,
                 &added, &exists));
     if (exists) {

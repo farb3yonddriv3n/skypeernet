@@ -59,9 +59,9 @@ static int find_job(struct list_s *l, void *uj, void *ud)
     return 0;
 }
 
-static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote,
-               unsigned char *file, int nfile, bool *found,
-               bool *added, bool *exists)
+static int add(struct peer_s *p, struct config_s *cfg, struct list_s *jobs,
+               struct group_s *remote, unsigned char *file, int nfile,
+               bool *found, bool *added, bool *exists)
 {
     if (!jobs || !remote || !file || !found) return -1;
     if (nfile != SHA256HEX) return -1;
@@ -104,6 +104,7 @@ static int add(struct config_s *cfg, struct list_s *jobs, struct group_s *remote
     }
     ifr(list.add(jobs, j, clean));
     *added = true;
+    ifr(api_jobsdump(p));
     return 0;
 }
 
@@ -176,6 +177,7 @@ static int chunk_start(struct distfs_s *dfs, struct job_s *j,
     if (exists) return chunk_state(j, jc, JOBCHUNK_DONE);
     if (jc->net.host == 0 && jc->net.port == 0)
         return chunk_state(j, jc, JOBCHUNK_NOTFOUND);
+    ifr(api_jobsdump(p));
     ifr(chunk_state(j, jc, JOBCHUNK_RECEIVING));
     ifr(os.gettimems(&jc->updated));
     p->send_buffer.type            = BUFFER_FILEASK;
@@ -228,7 +230,7 @@ static void resume(struct ev_loop *loop, struct ev_timer *timer, int revents)
         syslog(LOG_ERR, "Resuming jobs failed");
 }
 
-static int job_remove(struct list_s *jobs, unsigned char *file,
+static int job_remove(struct peer_s *p, struct list_s *jobs, unsigned char *file,
                       int nfile, bool *removed)
 {
     if (!jobs || !file) return -1;
@@ -239,6 +241,7 @@ static int job_remove(struct list_s *jobs, unsigned char *file,
     if (jf.found) {
         ifr(list.del(jobs, jf.found));
         *removed = true;
+        ifr(api_jobsdump(p));
     }
     return 0;
 }
@@ -302,6 +305,7 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
         free(buffer);
         free(decrypted);
     }
+    ifr(api_jobsdump(p));
     *finalized = true;
     return 0;
 }
@@ -347,6 +351,7 @@ static int update(struct peer_s *p, const char *downloaddir,
             return -1;
         printf("Job done: %.*s\n", (int )sizeof(cf.foundj->file.name),
                                    cf.foundj->file.name);
+        ifr(api_jobsdump(p));
     }
     return 0;
 }

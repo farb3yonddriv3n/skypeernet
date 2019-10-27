@@ -22,6 +22,7 @@ static int resume(struct peer_s *p)
     }
     if (!p) return -1;
     ifr(list.map(&p->tasks.list, cb, p));
+    ifr(api_taskdump(p));
     return 0;
 }
 
@@ -146,7 +147,8 @@ static int cancel(struct peer_s *p, unsigned int idx,
     ifr(list.map(&p->tasks.list, find_by_id, &ti));
     if (ti.found) {
         *cancelled = true;
-        return list.del(&p->tasks.list, ti.found);
+        ifr(list.del(&p->tasks.list, ti.found));
+        return api_taskdump(p);
     }
     return 0;
 }

@@ -48,6 +48,9 @@ int api_job_done(struct peer_s *p, unsigned char *filename,
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents);
 int api_endpoint_change(struct peer_s *p, unsigned short dst, unsigned short src,
                         enum api_e change);
+int api_taskdump(struct peer_s *p);
+int api_jobsdump(struct peer_s *p);
+int api_trafficdump(struct peer_s *p);
 
 extern const struct module_api_s api;
 

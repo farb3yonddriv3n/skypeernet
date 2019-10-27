@@ -377,17 +377,34 @@ static int api_endpointdump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_ENDPOINTDUMP, jobj, obj, 0);
 }
 
+int api_jobsdump(struct peer_s *p)
+{
+    json_object *jobj;
+    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
+    ifr(job.dump(&p->cfg, &dfs->jobs, &jobj));
+    return api.write(p, API_JOBSDUMP, jobj, NULL, 0);
+}
+
+int api_taskdump(struct peer_s *p)
+{
+    json_object *jobj;
+    ifr(task.dump(p, &jobj));
+    return api.write(p, API_TASKDUMP, jobj, NULL, 0);
+}
+
+int api_trafficdump(struct peer_s *p)
+{
+    json_object *jobj;
+    ifr(traffic.dump(p, &jobj));
+    return api.write(p, API_TRAFFICDUMP, jobj, NULL, 0);
+}
+
 void api_update(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
     struct peer_s *p = (struct peer_s *)timer->data;
     json_object *jobj;
     traffic.dump(p, &jobj);
     api.write(p, API_TRAFFICDUMP, jobj, NULL, 0);
-    task.dump(p, &jobj);
-    api.write(p, API_TASKDUMP, jobj, NULL, 0);
-    struct distfs_s *dfs = (struct distfs_s *)p->user.data;
-    job.dump(&p->cfg, &dfs->jobs, &jobj);
-    api.write(p, API_JOBSDUMP, jobj, NULL, 0);
 }
 
 static struct api_command_s cmds[] = {
