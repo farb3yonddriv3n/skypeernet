@@ -2,6 +2,7 @@
 #define UTILS_H_
 
 #define FLAG(m_n)     (1 << m_n)
+#define CMPFLAG(m_src, m_f) ((m_src & m_f) == m_f)
 
 #define MAX_FILE_SIZE (1024 * 1024 * 1024) // 1GB
 

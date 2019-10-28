@@ -268,7 +268,7 @@ static int dump(struct transaction_s *t, json_object **obj)
     }
 
     bool bdecryptable = false;
-    if (f->meta.description.flag & (DESC_TRYDEC|DESC_DECODED)) {
+    if (CMPFLAG(f->meta.description.flag, (DESC_TRYDEC|DESC_DECODED))) {
         json_object *description = json_object_new_string(f->meta.description.dec);
         json_object_object_add(*obj, "description", description);
         ifr(isfinalized(f->meta.description.dec, strlen(f->meta.description.dec),
