@@ -373,7 +373,7 @@ int async_server(struct gc_gen_server_s *cs, void *tunnel)
     const int gai_err = getaddrinfo(cs->host, cs->port, &hints, &ai);
 
     if (gai_err != GC_OK) {
-        hm_log(GCLOG_CRIT, cs->log, "Server get address info failed with [%s]", gai_strerror(gai_err));
+        hm_log(GCLOG_CRIT, cs->log, "Server get address info failed with [%s] %s:%s", gai_strerror(gai_err), cs->host, cs->port);
         return GC_ERROR;
     }
 
