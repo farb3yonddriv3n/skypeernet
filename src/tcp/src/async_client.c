@@ -187,6 +187,8 @@ int async_client(struct gc_gen_client_s *client)
     client->base.write.data = client;
     gc_timestring(client->base.date, sizeof(client->base.date));
 
+    client->base.packets = ht_init(client->base.pool);
+
     ev_io_start(client->base.loop, &client->base.read);
     if (connect(client->base.fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != -1
        && errno != EINPROGRESS) {

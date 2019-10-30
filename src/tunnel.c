@@ -31,18 +31,6 @@ static int find(struct list_s *l, void *ex, void *ud)
     }
     return 0;
 }
-// replace this with "queue" and keep only last 100-ish packets
-static int packet_sent(struct ht_s *ht, int pidx, bool *sent)
-{
-    if (!ht || !sent) return -1;
-    *sent = false;
-    char key[32];
-    snprintf(key, sizeof(key), "%d", pidx);
-    struct ht_item_s *kv = ht_get(ht, key, strlen(key));
-    if (!kv) return 0;
-    *sent = true;
-    return 0;
-}
 
 static int response(struct peer_s *p, struct header_s *h, char *buf, int len)
 {
@@ -68,13 +56,9 @@ static int response(struct peer_s *p, struct header_s *h, char *buf, int len)
     ifr(list.map(&p->tcp.tunnels, client_find, &cf));
     if (!cf.client) return 0;
     bool sent;
-    ifr(packet_sent(cf.client->base.packets, h->pidx, &sent));
+    ifr(packet.tcpsent(cf.client->base.packets, h->tidx, &sent));
     if (sent) return 0;
-    char key[32];
-    snprintf(key, sizeof(key), "%d", h->pidx);
-    HT_ADD_WA(cf.client->base.packets, key, strlen(key), key, strlen(key));
-    gc_gen_ev_send(cf.client, buf, len);
-    return 0;
+    return packet.tcpsend(cf.client, buf, len, h->tidx);
 }
 
 static int clean(void *ud)

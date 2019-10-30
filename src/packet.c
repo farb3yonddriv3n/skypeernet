@@ -115,6 +115,29 @@ static int deserialize_init(char *buffer, size_t nbuffer, bool *valid)
     return 0;
 }
 
+// TODO: replace this with "queue" and keep only last 100-ish packets
+static int tcpsent(struct ht_s *ht, int pidx, bool *sent)
+{
+    if (!ht || !sent) return -1;
+    *sent = false;
+    char key[32];
+    snprintf(key, sizeof(key), "%d", pidx);
+    struct ht_item_s *kv = ht_get(ht, key, strlen(key));
+    if (!kv) return 0;
+    *sent = true;
+    return 0;
+}
+
+static int tcpsend(struct gc_gen_client_s *c, char *buf, int len, int idx)
+{
+    if (!c || !buf) return -1;
+    char key[32];
+    snprintf(key, sizeof(key), "%d", idx);
+    HT_ADD_WA(c->base.packets, key, strlen(key), key, strlen(key));
+    gc_gen_ev_send(c, buf, len);
+    return 0;
+}
+
 static void dump(struct packet_s *p)
 {
     printf("Index: %d\n",   p->header.pidx);
@@ -134,4 +157,6 @@ const struct module_packet_s packet = {
     .serialize.init     = serialize_init,
     .serialize.validate = serialize_validate,
     .deserialize.init   = deserialize_init,
+    .tcpsent            = tcpsent,
+    .tcpsend            = tcpsend
 };

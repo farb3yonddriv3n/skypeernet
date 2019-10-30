@@ -84,8 +84,10 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     }
     ifr(list.map(&p->tcp.endpoints, find, &fnep));
     if (fnep.found) {
-        gc_gen_ev_send(fnep.found->client, data, ndata);
-        return 0;
+        bool sent;
+        ifr(packet.tcpsent(fnep.found->client->base.packets, header->tidx, &sent));
+        if (sent) return 0;
+        return packet.tcpsend(fnep.found->client, data, ndata, header->tidx);
     }
 
     struct endpoint_s *ep = malloc(sizeof(*ep));
@@ -113,7 +115,7 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     if (ret != GC_OK) return ret;
 
     ifr(list.add(&p->tcp.endpoints, ep, clean));
-    gc_gen_ev_send(c, data, ndata);
+    ifr(packet.tcpsend(c, data, ndata, header->tidx));
     return api_endpoint_change(p, fnep.tcp.dst, fnep.tcp.src, API_ENDPOINTOPEN);
 }
 

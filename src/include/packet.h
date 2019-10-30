@@ -67,6 +67,8 @@ struct module_packet_s {
     int (*validate)(char *buffer, size_t nbuffer, bool *valid,
                     int host, unsigned short port, struct packet_s *p);
     int (*clean)(void *p);
+    int (*tcpsent)(struct ht_s *ht, int pidx, bool *sent);
+    int (*tcpsend)(struct gc_gen_client_s *c, char *buf, int len, int idx);
     void (*dump)(struct packet_s *p);
     struct {
         int (*init)(enum command_e, char *buffer, int nbuffer,
