@@ -51,4 +51,14 @@ void t4_list()
     free(vt);
     A(list.map(&l, cb, NULL), 0);
     A(list.clean(&l), 0);
+
+    A(list.init(&l), 0);
+    for (i = 0; i < 200; i++) {
+        int *n = malloc(sizeof(*n));
+        *n = i;
+        A(list.queue_add(&l, n, clean), 0);
+    }
+    A(list.size(&l, &size), 0);
+    A(size, 100);
+    A(list.clean(&l), 0);
 }

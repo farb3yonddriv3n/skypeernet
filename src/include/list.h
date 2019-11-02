@@ -23,6 +23,7 @@ struct module_list_s {
     int (*toarray_sort)(struct list_s *l, void ***dst, int *ndst,
                         enum list_array_sort_e las);
     int (*clean)(struct list_s *l);
+    int (*queue_add)(struct list_s *l, void *userdata, int (*clean)(void *ptr));
 };
 
 extern const struct module_list_s list;

@@ -1,5 +1,7 @@
 #include <common.h>
 
+#define QUEUE_SIZE 100
+
 struct list_internal_s {
     struct list_internal_s *prev;
     struct list_internal_s *next;
@@ -59,23 +61,37 @@ static int add_head(struct list_s *l, void *userdata, int (*clean)(void *ptr))
     return 0;
 }
 
+static int del_item(struct list_s *l, struct list_internal_s *li)
+{
+    if (!l || !li) return -1;
+    if (li->prev) li->prev->next = li->next;
+    else l->head = li->next;
+    if (li->next) li->next->prev = li->prev;
+    else l->tail = li->prev;
+    l->size--;
+    if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
+    free(li);
+    return 0;
+}
+
 static int del(struct list_s *l, void *userdata)
 {
     if (!l || !userdata) return -1;
     struct list_internal_s *li;
     for (li = l->head; li != NULL; li = li->next) {
         if (li->data.ptr == userdata) {
-            if (li->prev) li->prev->next = li->next;
-            else l->head = li->next;
-            if (li->next) li->next->prev = li->prev;
-            else l->tail = li->prev;
-            l->size--;
-            if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
-            free(li);
-            return 0;
+            return del_item(l, li);
         }
     }
     return -1;
+}
+
+static int del_tail(struct list_s *l)
+{
+    if (!l) return -1;
+    struct list_internal_s *li = l->tail;
+    if (!li) return -1;
+    return del_item(l, li);
 }
 
 static int map(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
@@ -154,6 +170,17 @@ static int toarray_sort(struct list_s *l, void ***dst, int *ndst,
     return 0;
 }
 
+static int queue_add(struct list_s *l, void *userdata, int (*clean)(void *ptr))
+{
+    if (!l || !userdata) return -1;
+    int sz;
+    ifr(size(l, &sz));
+    if (l->tail && sz >= QUEUE_SIZE) {
+        ifr(del_tail(l));
+    }
+    return add_head(l, userdata, clean);
+}
+
 const struct module_list_s list = {
     .init         = init,
     .add          = add,
@@ -164,4 +191,5 @@ const struct module_list_s list = {
     .toarray      = toarray,
     .toarray_sort = toarray_sort,
     .clean        = clean,
+    .queue_add    = queue_add,
 };
