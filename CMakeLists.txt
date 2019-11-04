@@ -41,7 +41,6 @@ src/endpoint.c
 src/file.c
 src/group.c
 src/job.c
-src/list.c
 src/net.c
 src/os.c
 src/packet.c
@@ -85,6 +84,7 @@ src/tcp/src/log.c
 src/tcp/src/pool.c
 src/tcp/src/ringbuffer.c
 src/tcp/src/util.c
+src/tcp/src/list.c
 )
 
 add_library(skypeernetobj OBJECT ${srcs})

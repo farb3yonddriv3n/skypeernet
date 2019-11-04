@@ -116,24 +116,46 @@ static int deserialize_init(char *buffer, size_t nbuffer, bool *valid)
 }
 
 // TODO: replace this with "queue" and keep only last 100-ish packets
-static int tcpsent(struct ht_s *ht, int pidx, bool *sent)
+static int tcpsent(struct gc_gen_client_s *c, int tidx, bool *sent)
 {
-    if (!ht || !sent) return -1;
+    if (!c || !sent) return -1;
+    struct tcpidx_s {
+        int  tidx;
+        bool *sent;
+    };
+    struct tcpidx_s ti = { .tidx = tidx, .sent = sent };
     *sent = false;
-    char key[32];
-    snprintf(key, sizeof(key), "%d", pidx);
-    struct ht_item_s *kv = ht_get(ht, key, strlen(key));
-    if (!kv) return 0;
-    *sent = true;
+    int find(struct list_s *l, void *ex, void *ud) {
+        struct tcpidx_s *tis = (struct tcpidx_s *)ud;
+        if (*(int *)ex == tis->tidx) {
+            *tis->sent = true;
+            return 1;
+        }
+        return 0;
+    }
+    ifr(list.map(&c->base.packets, find, (void *)&ti));
     return 0;
 }
 
-static int tcpsend(struct gc_gen_client_s *c, char *buf, int len, int idx)
+static int cleanidx(void *idx)
+{
+    if (!idx) return -1;
+    free(idx);
+    return 0;
+}
+
+static int tcpsend(struct gc_gen_client_s *c, char *buf, int len, int tidx)
 {
     if (!c || !buf) return -1;
+    /*
     char key[32];
-    snprintf(key, sizeof(key), "%d", idx);
+    snprintf(key, sizeof(key), "%d", tidx);
     HT_ADD_WA(c->base.packets, key, strlen(key), key, strlen(key));
+    */
+    int *idx = malloc(sizeof(*idx));
+    if (!idx) return -1;
+    *idx = tidx;
+    ifr(list.queue_add(&c->base.packets, idx, cleanidx));
     gc_gen_ev_send(c, buf, len);
     return 0;
 }

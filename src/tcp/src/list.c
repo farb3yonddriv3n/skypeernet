@@ -143,7 +143,7 @@ static int toarray(struct list_s *l, void ***dst, int *ndst)
     *dst = malloc(sizeof(void *) * l->size);
     if (!dst) return -1;
     struct toarray_s ta = { .dst = *dst, .i = 0 };
-    ifr(list.map(l, cb, &ta));
+    if (list.map(l, cb, &ta) != 0) return -1;
     *ndst = l->size;
     return 0;
 }
@@ -159,7 +159,7 @@ static int toarray_sort(struct list_s *l, void ***dst, int *ndst,
                         enum list_array_sort_e las)
 {
     if (!l || !dst || !ndst) return -1;
-    ifr(toarray(l, dst, ndst));
+    if (toarray(l, dst, ndst) != 0) return -1;
     switch (las) {
         case LIST_ARRAY_SORT_STR:
             qsort((char **)(*dst), *ndst, sizeof(char *), sort_str);
@@ -174,9 +174,9 @@ static int queue_add(struct list_s *l, void *userdata, int (*clean)(void *ptr))
 {
     if (!l || !userdata) return -1;
     int sz;
-    ifr(size(l, &sz));
+    if (size(l, &sz) != 0) return -1;
     if (l->tail && sz >= QUEUE_SIZE) {
-        ifr(del_tail(l));
+        if (del_tail(l) != 0) return -1;
     }
     return add_head(l, userdata, clean);
 }

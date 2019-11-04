@@ -85,7 +85,7 @@ static int request(struct peer_s *p, struct header_s *header, int host,
     ifr(list.map(&p->tcp.endpoints, find, &fnep));
     if (fnep.found) {
         bool sent;
-        ifr(packet.tcpsent(fnep.found->client->base.packets, header->tidx, &sent));
+        ifr(packet.tcpsent(fnep.found->client, header->tidx, &sent));
         if (sent) return 0;
         return packet.tcpsend(fnep.found->client, data, ndata, header->tidx);
     }

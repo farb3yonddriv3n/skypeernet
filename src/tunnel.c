@@ -56,7 +56,7 @@ static int response(struct peer_s *p, struct header_s *h, char *buf, int len)
     ifr(list.map(&p->tcp.tunnels, client_find, &cf));
     if (!cf.client) return 0;
     bool sent;
-    ifr(packet.tcpsent(cf.client->base.packets, h->tidx, &sent));
+    ifr(packet.tcpsent(cf.client, h->tidx, &sent));
     if (sent) return 0;
     return packet.tcpsend(cf.client, buf, len, h->tidx);
 }

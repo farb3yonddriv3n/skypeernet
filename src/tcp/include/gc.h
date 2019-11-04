@@ -56,6 +56,7 @@
 #include <pool.h>
 #include <util.h>
 
+#include <list.h>
 #include <ringbuffer.h>
 #include <hashtable.h>
 #include <async.h>

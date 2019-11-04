@@ -34,12 +34,13 @@
 #include <ev.h>
 #include <pthread.h>
 
+#include <gc.h>
+
 #include <version.h>
 #include <aes.h>
 #include <base64.h>
 #include <sn.h>
 #include <utils.h>
-#include <list.h>
 #include <backtrace.h>
 #include <config.h>
 #include <rsa.h>
@@ -48,8 +49,6 @@
 #include <block.h>
 #include <root.h>
 #include <group.h>
-
-#include <gc.h>
 
 #include <packet.h>
 #include <net.h>
