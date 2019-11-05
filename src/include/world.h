@@ -17,6 +17,7 @@ struct world_peer_s {
     unsigned char        pubkeyhash[SHA256HEX];
     unsigned char        authstr[SHA256HEX];
     bool                 authed;
+    int                  version;
     struct {
         char description[256];
         struct list_s ports;

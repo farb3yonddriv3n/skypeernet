@@ -37,6 +37,7 @@ struct send_buffer_s {
             unsigned short port;
             sn *key;
             sn tcpdesc;
+            int version;
             struct list_s *tcpports;
         } tracker_peer;
         struct {

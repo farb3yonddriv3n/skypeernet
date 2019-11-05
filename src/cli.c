@@ -54,6 +54,8 @@ static int cli_peers_list(struct peer_s *p, json_object **obj)
         json_object *pubkeyhash = json_object_new_string_len((const char *)wp->pubkeyhash,
                                                              sizeof(wp->pubkeyhash));
         json_object_object_add(obj, "pubkeyhash", pubkeyhash);
+        json_object *version = json_object_new_int(wp->version);
+        json_object_object_add(obj, "version", version);
         json_object *tcpdesc = json_object_new_string((const char *)wp->tcp.description);
         json_object_object_add(obj, "tcpdescription", tcpdesc);
         json_object *ports = json_object_new_array();

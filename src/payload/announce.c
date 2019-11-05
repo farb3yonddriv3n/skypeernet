@@ -27,6 +27,7 @@ int announce_pwp(struct data_s *d, void *userdata)
     if (data.write.integer(d, p->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, p->cfg.keys.local.str.public.s,
                        p->cfg.keys.local.str.public.n) != 0) return -1;
+    if (data.write.integer(d, SPN_VERSION) != 0) return -1;
     ifr(tcp_ports(p, d, &p->cfg.tcp.ports,
                   p->cfg.tcp.description, strlen(p->cfg.tcp.description)));
     return 0;
@@ -42,6 +43,7 @@ int announce_twp(struct data_s *d, void *userdata)
     if (data.write.integer(d, t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
     if (data.write.raw(d, (char *)t->send_buffer.u.tracker_peer.key->s,
                        t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
+    if (data.write.integer(d, t->send_buffer.u.tracker_peer.version) != 0) return -1;
     ifr(tcp_ports(t, d, t->send_buffer.u.tracker_peer.tcpports,
                   t->send_buffer.u.tracker_peer.tcpdesc.s,
                   t->send_buffer.u.tracker_peer.tcpdesc.n));
@@ -57,6 +59,7 @@ int announce_twt(struct data_s *d, void *userdata)
     if (data.write.integer(d, t->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, t->cfg.keys.local.str.public.s,
                        t->cfg.keys.local.str.public.n) != 0) return -1;
+    if (data.write.integer(d, SPN_VERSION) != 0) return -1;
     ifr(tcp_ports(t, d, &t->cfg.tcp.ports,
                   t->cfg.tcp.description, strlen(t->cfg.tcp.description)));
     return 0;
@@ -79,6 +82,7 @@ static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
     sn_bytes_init_new(wp->pubkey, nkey);
     if (sn_read((void *)wp->pubkey.s, nkey, &bf) != 0) return -1;
     sha256hex((unsigned char *)wp->pubkey.s, nkey, wp->pubkeyhash);
+    if (sn_read((void *)&wp->version, sizeof(wp->version), &bf) != 0) return -1;
     int ndesc;
     if (sn_read((void *)&ndesc, sizeof(ndesc), &bf) != 0) return -1;
     if (ndesc > sizeof(wp->tcp.description)) return -1;
@@ -102,6 +106,7 @@ int announce_size(int *sz, void *userdata)
     int portsz;
     *sz = DATA_SIZE_INT + DATA_SIZE_SHORT;
     *sz += p->cfg.keys.local.str.public.n + DATA_SIZE_INT;
+    *sz += DATA_SIZE_INT;
     if (p->send_buffer.type == BUFFER_TRACKER_ANNOUNCE_PEER) {
         *sz += DATA_SIZE_INT;
         *sz += p->send_buffer.u.tracker_peer.tcpdesc.n;
