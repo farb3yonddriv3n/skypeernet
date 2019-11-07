@@ -55,6 +55,14 @@ int authrpl_write(struct data_s *d, void *userdata);
 int authrpl_read(struct peer_s *p);
 int authrpl_size(int *sz, void *userdata);
 
+int query_write(struct data_s *d, void *userdata);
+int query_read(struct peer_s *p);
+int query_size(int *sz, void *userdata);
+
+int queryrpl_write(struct data_s *d, void *userdata);
+int queryrpl_read(struct peer_s *p);
+int queryrpl_size(int *sz, void *userdata);
+
 extern const struct module_payload_s payload;
 
 #endif

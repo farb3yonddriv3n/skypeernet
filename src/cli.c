@@ -49,8 +49,12 @@ static int cli_peers_list(struct peer_s *p, json_object **obj)
         json_object_object_add(obj, "type", type);
         json_object *unreachable = json_object_new_int(wp->unreachable);
         json_object_object_add(obj, "unreachable", unreachable);
-        json_object *authed = json_object_new_int(wp->authed);
+        json_object *authed = json_object_new_boolean(wp->flags & WORLD_PEER_AUTHED);
         json_object_object_add(obj, "authed", authed);
+        json_object *shadow = json_object_new_boolean(wp->flags & WORLD_PEER_SHADOW);
+        json_object_object_add(obj, "shadow", shadow);
+        json_object *offline = json_object_new_boolean(wp->flags & WORLD_PEER_OFFLINE);
+        json_object_object_add(obj, "offline", offline);
         json_object *pubkeyhash = json_object_new_string_len((const char *)wp->pubkeyhash,
                                                              sizeof(wp->pubkeyhash));
         json_object_object_add(obj, "pubkeyhash", pubkeyhash);

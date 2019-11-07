@@ -9,8 +9,8 @@ static int dfs_auth_reply(struct peer_s *p, int host,
     if (len != sizeof(wp.authstr)) return -1;
     memcpy(wp.authstr, data, len);
     ifr(list.map(&p->peers, world.peer.findauthstr, &wp));
-    if (wp.found && wp.found->authed != true) {
-        wp.found->authed = true;
+    if (wp.found && !(wp.found->flags & WORLD_PEER_AUTHED)) {
+        wp.found->flags |= WORLD_PEER_AUTHED;
         p->send_buffer.type = BUFFER_NONE;
         if (payload.send(p, COMMAND_TRACKER_ANNOUNCE_TRACKER,
                          wp.found->host, wp.found->port,
@@ -24,9 +24,11 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
 {
     if (!p || !dfs) return -1;
     memset(dfs, 0, sizeof(*dfs));
-    p->user.cb.authrpl = dfs_auth_reply;
-    p->user.data       = dfs;
-    dfs->peer          = p;
+    p->user.cb.authrpl     = dfs_auth_reply;
+    p->user.cb.query       = dfs_query;
+    p->user.cb.query_reply = dfs_query_reply;
+    p->user.data           = dfs;
+    dfs->peer              = p;
     return 0;
 }
 

@@ -18,6 +18,8 @@ enum command_e {
     COMMAND_AUTH_REPLY,
     COMMAND_PING,
     COMMAND_TCP,
+    COMMAND_QUERY,
+    COMMAND_QUERY_REPLY,
 };
 
 #define TCP_NONE     0

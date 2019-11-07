@@ -15,6 +15,8 @@ enum buffer_e {
     BUFFER_AUTH,
     BUFFER_AUTH_REPLY,
     BUFFER_TCP,
+    BUFFER_QUERY,
+    BUFFER_QUERY_REPLY
 };
 
 struct send_buffer_s {
@@ -43,6 +45,15 @@ struct send_buffer_s {
         struct {
             sn str;
         } auth;
+        struct {
+            int host;
+            unsigned short port;
+        } query;
+        struct {
+            int host;
+            unsigned short port;
+            bool reachable;
+        } query_reply;
     } u;
 };
 
@@ -136,6 +147,13 @@ struct peer_s {
             int (*authrpl)(struct peer_s *p, int host,
                            unsigned short port,
                            char *msg, int len);
+            int (*query)(struct peer_s *p, int host,
+                         unsigned short port,
+                         int query_host, unsigned short query_port);
+            int (*query_reply)(struct peer_s *p, int host,
+                               unsigned short port,
+                               int query_host, unsigned short query_port,
+                               bool reachable);
         } cb;
         void *data;
     } user;

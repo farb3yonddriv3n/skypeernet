@@ -3,6 +3,7 @@
 
 #define DATA_SIZE_INT   (sizeof(int))
 #define DATA_SIZE_SHORT (sizeof(short))
+#define DATA_SIZE_BYTE  (sizeof(char))
 
 struct data_s {
     enum command_e command;
@@ -23,6 +24,7 @@ struct module_data_s {
     struct {
         int (*integer)(struct data_s *d, const int src);
         int (*shortint)(struct data_s *d, const short src);
+        int (*byte)(struct data_s *d, const char src);
         int (*raw)(struct data_s *d, char *src, const int nsrc);
     } write;
 };

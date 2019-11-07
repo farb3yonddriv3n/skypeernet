@@ -19,6 +19,12 @@ static int data_write_shortint(struct data_s *d, const short src)
     return 0;
 }
 
+static int data_write_byte(struct data_s *d, const char src)
+{
+    if (append(&d->payload, (char *)&src, sizeof(src)) != 0) return -1;
+    return 0;
+}
+
 static int data_write_raw(struct data_s *d, char *src, const int nsrc)
 {
     if (append(&d->payload, src, nsrc) != 0) return -1;
@@ -153,5 +159,6 @@ const struct module_data_s data = {
     .size           = size,
     .write.integer  = data_write_int,
     .write.shortint = data_write_shortint,
+    .write.byte     = data_write_byte,
     .write.raw      = data_write_raw,
 };

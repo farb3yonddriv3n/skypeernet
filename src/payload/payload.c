@@ -7,17 +7,19 @@ static const struct { enum command_e cmd;
                       int (*cb_reply)(struct peer_s*);
                     } cmds[] =
 {
-    { COMMAND_NONE,                     NULL,          NULL,          NULL,         NULL      },
-    { COMMAND_ACK,                      ack_write,     ack_size,      ack_read,     NULL      },
-    { COMMAND_TRACKER_ANNOUNCE_TRACKER, announce_twt,  announce_size, announce_trt, ack_reply },
-    { COMMAND_TRACKER_ANNOUNCE_PEER,    announce_twp,  announce_size, announce_trp, ack_reply },
-    { COMMAND_PEER_ANNOUNCE_PEER,       announce_pwp,  announce_size, announce_prp, ack_reply },
-    { COMMAND_MESSAGE,                  message_write, message_size,  message_read, ack_reply },
-    { COMMAND_FILE,                     file_write,    file_size,     file_read,    ack_reply },
-    { COMMAND_FILEASK,                  fileask_write, fileask_size,  fileask_read, ack_reply },
-    { COMMAND_AUTH,                     auth_write,    auth_size,     auth_read,    ack_reply },
-    { COMMAND_AUTH_REPLY,               authrpl_write, authrpl_size,  authrpl_read, ack_reply },
-    { COMMAND_PING,                     ping_write,    ping_size,     ping_read,    ack_reply },
+    { COMMAND_NONE,                     NULL,           NULL,          NULL,          NULL      },
+    { COMMAND_ACK,                      ack_write,      ack_size,      ack_read,      NULL      },
+    { COMMAND_TRACKER_ANNOUNCE_TRACKER, announce_twt,   announce_size, announce_trt,  ack_reply },
+    { COMMAND_TRACKER_ANNOUNCE_PEER,    announce_twp,   announce_size, announce_trp,  ack_reply },
+    { COMMAND_PEER_ANNOUNCE_PEER,       announce_pwp,   announce_size, announce_prp,  ack_reply },
+    { COMMAND_MESSAGE,                  message_write,  message_size,  message_read,  ack_reply },
+    { COMMAND_FILE,                     file_write,     file_size,     file_read,     ack_reply },
+    { COMMAND_FILEASK,                  fileask_write,  fileask_size,  fileask_read,  ack_reply },
+    { COMMAND_AUTH,                     auth_write,     auth_size,     auth_read,     ack_reply },
+    { COMMAND_AUTH_REPLY,               authrpl_write,  authrpl_size,  authrpl_read,  ack_reply },
+    { COMMAND_PING,                     ping_write,     ping_size,     ping_read,     ack_reply },
+    { COMMAND_QUERY,                    query_write,    query_size,    query_read,    ack_reply },
+    { COMMAND_QUERY_REPLY,              queryrpl_write, queryrpl_size, queryrpl_read, ack_reply },
 };
 
 static int exec(struct peer_s *parent, enum command_e cmd,

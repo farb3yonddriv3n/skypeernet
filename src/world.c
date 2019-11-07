@@ -77,7 +77,7 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
         struct world_peer_s *wp = (struct world_peer_s *)uwp;
         if ((wp->host == ex->host &&
             wp->port == ex->port) ||
-            wp->authed == false) {
+            !(wp->flags & WORLD_PEER_AUTHED)) {
             return 0;
         }
         int item(int dst, unsigned short dstport,
@@ -124,8 +124,18 @@ static int reachable_set(struct peer_s *p, int host, unsigned short port,
     ifr(list.map(&p->peers, peer_find, &wp));
     if (!wp.found) return 0;
     if (!reachable && ++wp.found->unreachable == p->cfg.net.max.peer_unreachable) {
-        if (p->user.cb.offline && p->user.cb.offline(p, wp.found) != 0) return -1;
-        ifr(list.del(&p->peers, wp.found));
+        if (p->type == INSTANCE_PEER) {
+            wp.found->flags |= WORLD_PEER_QUERIED;
+            p->send_buffer.type = BUFFER_QUERY;
+            p->send_buffer.u.query.host = host;
+            p->send_buffer.u.query.port = port;
+            return payload.send(p, COMMAND_QUERY,
+                                p->tracker.host, p->tracker.port,
+                                0, 0, NULL, NULL);
+        } else {
+            if (p->user.cb.offline && p->user.cb.offline(p, wp.found) != 0) return -1;
+            ifr(list.del(&p->peers, wp.found));
+        }
     } else if (reachable) wp.found->unreachable = 0;
     return 0;
 }

@@ -322,3 +322,37 @@ int dfs_block_mining(struct distfs_s *dfs, bool *locked)
     ifr(pthread_mutex_unlock(&dfs->mining.mutex));
     return 0;
 }
+
+int dfs_query(struct peer_s *p, int host, unsigned short port,
+              int query_host, unsigned short query_port)
+{
+    if (!p) return -1;
+    struct world_peer_s wp = { .host  = query_host,
+                               .port  = query_port,
+                               .found = NULL };
+    ifr(list.map(&p->peers, world.peer.find, &wp));
+    bool reachable = (wp.found && wp.found->unreachable == 0);
+    p->send_buffer.type = BUFFER_QUERY_REPLY;
+    p->send_buffer.u.query_reply.host = query_host;
+    p->send_buffer.u.query_reply.port = query_port;
+    p->send_buffer.u.query_reply.reachable = reachable;
+    return payload.send(p, COMMAND_QUERY_REPLY,
+                        host, port, 0, 0,
+                        NULL, NULL);
+}
+
+int dfs_query_reply(struct peer_s *p, int host, unsigned short port,
+                    int query_host, unsigned short query_port, bool reachable)
+{
+    if (!p) return -1;
+    struct world_peer_s wp = { .host  = query_host,
+                               .port  = query_port,
+                               .found = NULL };
+    ifr(list.map(&p->peers, world.peer.find, &wp));
+    if (!wp.found) return 0;
+    if (!(wp.found->flags & WORLD_PEER_QUERIED)) return 0;
+    wp.found->flags &= ~WORLD_PEER_QUERIED;
+    if (reachable) wp.found->flags |= WORLD_PEER_SHADOW;
+    else           wp.found->flags |= WORLD_PEER_OFFLINE;
+    return 0;
+}

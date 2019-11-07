@@ -7,6 +7,11 @@ enum world_peer_e {
     WORLD_PEER_PEER,
 };
 
+#define WORLD_PEER_AUTHED  0x1
+#define WORLD_PEER_QUERIED 0x2
+#define WORLD_PEER_SHADOW  0x4
+#define WORLD_PEER_OFFLINE 0x8
+
 struct world_peer_s {
     enum world_peer_e    type;
     int                  host;
@@ -16,8 +21,8 @@ struct world_peer_s {
     sn                   pubkey;
     unsigned char        pubkeyhash[SHA256HEX];
     unsigned char        authstr[SHA256HEX];
-    bool                 authed;
     int                  version;
+    unsigned int         flags;
     struct {
         char description[256];
         struct list_s ports;

@@ -83,7 +83,7 @@ static int dispatch(struct list_s *l)
             return 0;
         }
 
-        struct nb_s     *nb = (struct nb_s *)unb;
+        struct nb_s *nb = (struct nb_s *)unb;
         bool skip;
         ifr(attempts(l, nb, &skip));
         if (skip) return 0;
