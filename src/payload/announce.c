@@ -24,6 +24,7 @@ int announce_pwp(struct data_s *d, void *userdata)
     if (!p || !d) return -1;
     if (data.write.integer(d, ADDR_IP(p->net.self.addr))      != 0) return -1;
     if (data.write.shortint(d, ADDR_PORT(p->net.self.addr))   != 0) return -1;
+    if (data.write.byte(d, p->cfg.net.proxy)                  != 0) return -1;
     if (data.write.integer(d, p->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, p->cfg.keys.local.str.public.s,
                        p->cfg.keys.local.str.public.n) != 0) return -1;
@@ -40,6 +41,7 @@ int announce_twp(struct data_s *d, void *userdata)
     if (t->send_buffer.type != BUFFER_TRACKER_ANNOUNCE_PEER) return -1;
     if (data.write.integer(d, t->send_buffer.u.tracker_peer.host)   != 0) return -1;
     if (data.write.shortint(d, t->send_buffer.u.tracker_peer.port)  != 0) return -1;
+    if (data.write.byte(d, t->send_buffer.u.tracker_peer.proxy)     != 0) return -1;
     if (data.write.integer(d, t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
     if (data.write.raw(d, (char *)t->send_buffer.u.tracker_peer.key->s,
                        t->send_buffer.u.tracker_peer.key->n) != 0) return -1;
@@ -56,6 +58,7 @@ int announce_twt(struct data_s *d, void *userdata)
     if (!t || !d) return -1;
     if (data.write.integer(d, ADDR_IP(t->net.remote.addr))    != 0) return -1;
     if (data.write.shortint(d, ADDR_PORT(t->net.remote.addr)) != 0) return -1;
+    if (data.write.byte(d, t->cfg.net.proxy)                  != 0) return -1;
     if (data.write.integer(d, t->cfg.keys.local.str.public.n) != 0) return -1;
     if (data.write.raw(d, t->cfg.keys.local.str.public.s,
                        t->cfg.keys.local.str.public.n) != 0) return -1;
@@ -77,6 +80,9 @@ static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
     sn_initr(bf, src, nsrc);
     if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
     if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
+    char proxy;
+    if (sn_read((void *)&proxy, sizeof(proxy), &bf) != 0) return -1;
+    if (proxy) wp->flags |= WORLD_PEER_PROXY;
     int nkey;
     if (sn_read((void *)&nkey, sizeof(nkey), &bf) != 0) return -1;
     sn_bytes_init_new(wp->pubkey, nkey);
@@ -104,7 +110,7 @@ int announce_size(int *sz, void *userdata)
     if (!sz || !userdata) return -1;
     struct peer_s *p = (struct peer_s *)userdata;
     int portsz;
-    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT;
+    *sz = DATA_SIZE_INT + DATA_SIZE_SHORT + DATA_SIZE_BYTE;
     *sz += p->cfg.keys.local.str.public.n + DATA_SIZE_INT;
     *sz += DATA_SIZE_INT;
     if (p->send_buffer.type == BUFFER_TRACKER_ANNOUNCE_PEER) {

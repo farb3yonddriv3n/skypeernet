@@ -51,6 +51,8 @@ int config_init(struct config_s *cfg)
              json_object_get_string(tmp));
     json_object_object_get_ex(obj, "tracker_port", &tmp);
     cfg->net.tracker.port = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "proxy", &tmp);
+    cfg->net.proxy = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "interval_retry", &tmp);
     cfg->net.interval.retry = json_object_get_double(tmp);
     json_object_object_get_ex(obj, "interval_peers_reachable", &tmp);

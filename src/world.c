@@ -83,11 +83,12 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
         int item(int dst, unsigned short dstport,
                  int src, unsigned short srcport,
                  sn *key, struct list_s *tcpports,
-                 char *tcpdesc, int version) {
+                 char *tcpdesc, int version, unsigned int flags) {
             p->send_buffer.type = BUFFER_TRACKER_ANNOUNCE_PEER;
             p->send_buffer.u.tracker_peer.key  = key;
             p->send_buffer.u.tracker_peer.host = src;
             p->send_buffer.u.tracker_peer.port = srcport;
+            p->send_buffer.u.tracker_peer.proxy = (flags & WORLD_PEER_PROXY);
             sn_setr(p->send_buffer.u.tracker_peer.tcpdesc,
                     tcpdesc, strlen(tcpdesc));
             p->send_buffer.u.tracker_peer.version = version;
@@ -97,9 +98,11 @@ static int peer_broadcast(struct peer_s *p, struct world_peer_s *wp)
             return 0;
         }
         ifr(item(wp->host, wp->port, ex->host, ex->port, &ex->pubkey,
-                 &ex->tcp.ports, ex->tcp.description, ex->version));
+                 &ex->tcp.ports, ex->tcp.description, ex->version,
+                 ex->flags));
         ifr(item(ex->host, ex->port, wp->host, wp->port, &wp->pubkey,
-                 &wp->tcp.ports, wp->tcp.description, wp->version));
+                 &wp->tcp.ports, wp->tcp.description, wp->version,
+                 wp->flags));
         return 0;
     }
     ifr(list.map(&p->peers, cb, wp));

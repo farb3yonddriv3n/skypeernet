@@ -45,6 +45,8 @@ static int cli_peers_list(struct peer_s *p, json_object **obj)
         json_object_object_add(obj, "host", host);
         json_object *port = json_object_new_int(wp->port);
         json_object_object_add(obj, "port", port);
+        json_object *proxy = json_object_new_boolean(wp->flags & WORLD_PEER_PROXY);
+        json_object_object_add(obj, "proxy", proxy);
         json_object *type = json_object_new_int(wp->type);
         json_object_object_add(obj, "type", type);
         json_object *unreachable = json_object_new_int(wp->unreachable);

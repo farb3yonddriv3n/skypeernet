@@ -10,7 +10,8 @@ enum world_peer_e {
 #define WORLD_PEER_AUTHED  0x1
 #define WORLD_PEER_QUERIED 0x2
 #define WORLD_PEER_SHADOW  0x4
-#define WORLD_PEER_OFFLINE 0x8
+#define WORLD_PEER_PROXY   0x8
+#define WORLD_PEER_OFFLINE 0x10
 
 struct world_peer_s {
     enum world_peer_e    type;

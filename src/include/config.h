@@ -46,6 +46,7 @@ struct config_s {
             int peer_unreachable;
             int chunk_size;
         } max;
+        int proxy;
     } net;
     struct {
         char download[128];

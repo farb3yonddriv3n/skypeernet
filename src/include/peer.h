@@ -41,6 +41,7 @@ struct send_buffer_s {
             sn tcpdesc;
             int version;
             struct list_s *tcpports;
+            char proxy;
         } tracker_peer;
         struct {
             sn str;
