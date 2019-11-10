@@ -32,10 +32,6 @@ static int ack(struct net_send_s *ns, int idx)
         struct nb_s *nb  = (struct nb_s *)unb;
         int          idx = *(int *)dcb;
         if (idx == nb->pidx) {
-            if (nb->cmd == COMMAND_PING)
-                ifr(world.peer.reachable(nb->peer,
-                                         ADDR_IP(nb->remote.addr),
-                                         ADDR_PORT(nb->remote.addr)));
             ifr(list.del(l, nb));
             return 1;
         }
@@ -51,10 +47,6 @@ static int attempts(struct list_s *l, struct nb_s *nb, bool *skip)
     if (!l || !nb || !skip) return -1;
     *skip = false;
     if (++nb->attempt > nb->peer->cfg.net.max.send_retry) {
-        if (nb->cmd == COMMAND_PING)
-            ifr(world.peer.unreachable(nb->peer,
-                                       ADDR_IP(nb->remote.addr),
-                                       ADDR_PORT(nb->remote.addr)));
         *skip = true;
         return list.del(l, nb);
     }
@@ -73,11 +65,11 @@ static int dispatch(struct list_s *l)
                                    0,
                                    (struct sockaddr *)&nb->remote.addr,
                                    nb->remote.len);
-            //syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d\n",
-            //                  nb->pidx, nb->gidx, bytes,
-            //                  ADDR_IP(nb->remote.addr),
-            //                  ADDR_PORT(nb->remote.addr),
-            //                  nb->attempt);
+            syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d\n",
+                              nb->pidx, nb->gidx, bytes,
+                              ADDR_IP(nb->remote.addr),
+                              ADDR_PORT(nb->remote.addr),
+                              nb->attempt);
             if (nb->status == NET_ONESHOT) return list.del(l, nb);
             if (bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
             return 0;

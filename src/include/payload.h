@@ -15,6 +15,9 @@ struct module_payload_s {
                 unsigned char *filename,
                 struct tcp_s *tcp);
     int (*recv)(struct peer_s *p);
+    struct {
+        int (*reply)(struct peer_s *p);
+    } proxy;
 };
 
 int announce_peer_write_peer(struct data_s *d, void *userdata);
@@ -46,6 +49,10 @@ int fileask_size(int *sz, void *userdata);
 int ping_write(struct data_s *d, void *userdata);
 int ping_size(int *sz, void *userdata);
 int ping_read(struct peer_s *p);
+
+int pong_write(struct data_s *d, void *userdata);
+int pong_read(struct peer_s *p);
+int pong_size(int *sz, void *userdata);
 
 int auth_write(struct data_s *d, void *userdata);
 int auth_read(struct peer_s *p);

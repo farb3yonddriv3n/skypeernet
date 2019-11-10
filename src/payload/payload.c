@@ -18,6 +18,7 @@ static const struct { enum command_e cmd;
     { COMMAND_AUTH,                     auth_write,     auth_size,     auth_read,     ack_reply },
     { COMMAND_AUTH_REPLY,               authrpl_write,  authrpl_size,  authrpl_read,  ack_reply },
     { COMMAND_PING,                     ping_write,     ping_size,     ping_read,     ack_reply },
+    { COMMAND_PONG,                     pong_write,     pong_size,     pong_read,     ack_reply },
     { COMMAND_QUERY,                    query_write,    query_size,    query_read,    ack_reply },
     { COMMAND_QUERY_REPLY,              queryrpl_write, queryrpl_size, queryrpl_read, ack_reply },
 };
@@ -74,6 +75,7 @@ static int cache_clean(void *uc)
     return 0;
 }
 
+/*
 static int seal_clean(void *us)
 {
     struct seal_s *s = (struct seal_s *)us;
@@ -145,6 +147,7 @@ static int seal_check(struct list_s *l, struct packet_s *p,
     }
     return 0;
 }
+*/
 
 static int packet_recv_cache(struct recv_buffer_s *rb, struct cache_s *c,
                              struct packet_s *received, struct cache_s **available)
@@ -207,8 +210,8 @@ static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
         return 0;
     }
     struct cache_find_s cf = { .group = received->header.gidx,
-                               .host  = received->internal.host,
-                               .port  = received->internal.port,
+                               .host  = received->header.dst.host,
+                               .port  = received->header.dst.port,
                                .cache = NULL };
     ifr(list.map(&rb->cache, find, &cf));
     if (!cf.cache) {
@@ -217,11 +220,21 @@ static int packet_recv(struct recv_buffer_s *rb, struct packet_s *received,
         memset(cf.cache, 0, sizeof(*(cf.cache)));
         cf.cache->group = received->header.gidx;
         cf.cache->packets.total = received->header.chunks;
-        cf.cache->host  = received->internal.host;
-        cf.cache->port  = received->internal.port;
+        cf.cache->host  = received->header.dst.host;
+        cf.cache->port  = received->header.dst.port;
         if (list.add(&rb->cache, cf.cache, cache_clean) != 0) return -1;
     }
     return packet_recv_cache(rb, cf.cache, received, available);
+}
+
+static int payload_proxy_reply(struct peer_s *p)
+{
+    if (!p) return -1;
+    int idx;
+    ifr(command_find(&idx, p->received.header.command));
+    if (cmds[idx].cb_reply)
+        ifr(cmds[idx].cb_reply(p));
+    return 0;
 }
 
 static int payload_recv(struct peer_s *p)
@@ -241,6 +254,7 @@ static int payload_recv(struct peer_s *p)
 }
 
 const struct module_payload_s payload = {
-    .send = payload_send,
-    .recv = payload_recv,
+    .send        = payload_send,
+    .recv        = payload_recv,
+    .proxy.reply = payload_proxy_reply,
 };

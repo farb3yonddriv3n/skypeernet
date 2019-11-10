@@ -11,8 +11,10 @@ void t3_packet()
     int parts = 0;
     struct send_buffer_s sb;
     memset(&sb, 0, sizeof(sb));
-    A(packet.serialize.init(COMMAND_MESSAGE, tblock, sizeof(tblock), &packets,
-                            &npackets, &sb, tidx, parts, NULL, NULL), 0);
+    struct peer_s p;
+    memset(&p, 0, sizeof(p));
+    A(packet.serialize.init(&p, COMMAND_MESSAGE, tblock, sizeof(tblock), &packets,
+                            &npackets, &sb, tidx, parts, NULL, NULL, 0, 0), 0);
     bool valid;
     A(packet.serialize.validate(packets, npackets, &valid), 0);
     A(valid, true);

@@ -155,6 +155,8 @@ struct peer_s {
                                unsigned short port,
                                int query_host, unsigned short query_port,
                                bool reachable);
+            int (*pong)(struct peer_s *p, int host,
+                        unsigned short port);
         } cb;
         void *data;
     } user;

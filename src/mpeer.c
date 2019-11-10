@@ -412,6 +412,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->user.cb.auth    = dfs_auth;
     p->user.cb.query   = dfs_query;
     p->user.cb.query_reply = dfs_query_reply;
+    p->user.cb.pong    = dfs_pong_reply;
     p->user.data       = dfs;
     p->api.cb.message  = api_message_write;
     p->api.cb.online   = api_peer_online;
@@ -452,7 +453,10 @@ int main()
     if (payload.send(&p, COMMAND_PEER_ANNOUNCE_PEER,
                      p.tracker.host,
                      p.tracker.port,
-                     0, 0, NULL, NULL) != 0) return -1;
+                     0, 0, NULL, NULL) != 0) {
+        backtrace.show();
+        return -1;
+    }
     ev_io_start(p.ev.loop, &p.ev.stdinwatch);
     ifr(net.resume(&p.ev));
     ev_timer_again(p.ev.loop, &p.ev.peers_reachable);

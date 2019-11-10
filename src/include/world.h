@@ -28,12 +28,14 @@ struct world_peer_s {
         char description[256];
         struct list_s ports;
     } tcp;
+    struct {
+        unsigned int sent;
+    } stats;
 };
 
 struct module_world_s {
     struct {
         int (*reachable)(struct peer_s *p, int host, unsigned short port);
-        int (*unreachable)(struct peer_s *p, int host, unsigned short port);
         void (*check)(struct ev_loop *loop, struct ev_timer *timer, int revents);
         int (*isreachable)(struct peer_s *p, int host, unsigned short port,
                            bool *reachable);
@@ -44,6 +46,8 @@ struct module_world_s {
         int (*auth)(struct peer_s *p, struct world_peer_s *wp);
         int (*add)(struct peer_s *p, struct world_peer_s *wp,
                    bool *added);
+        int (*shadow)(struct peer_s *p, int *host, unsigned short *port);
+        int (*findproxy)(struct list_s *l, void *existing, void *ud);
     } peer;
 };
 

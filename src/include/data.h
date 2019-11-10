@@ -1,9 +1,10 @@
 #ifndef DATA_H_
 #define DATA_H_
 
-#define DATA_SIZE_INT   (sizeof(int))
-#define DATA_SIZE_SHORT (sizeof(short))
-#define DATA_SIZE_BYTE  (sizeof(char))
+#define DATA_SIZE_DOUBLE (sizeof(double))
+#define DATA_SIZE_INT    (sizeof(int))
+#define DATA_SIZE_SHORT  (sizeof(short))
+#define DATA_SIZE_BYTE   (sizeof(char))
 
 struct data_s {
     enum command_e command;
@@ -21,7 +22,10 @@ struct module_data_s {
                 unsigned char *filename, struct tcp_s *tcp);
     int (*get)(struct packet_s *p, char *buffer, int nbuffer);
     int (*size)(struct data_s *d, size_t *sz);
+    int (*submit)(struct peer_s *p, struct packet_s *pck,
+                  int host, unsigned short port);
     struct {
+        int (*tdouble)(struct data_s *d, const double src);
         int (*integer)(struct data_s *d, const int src);
         int (*shortint)(struct data_s *d, const short src);
         int (*byte)(struct data_s *d, const char src);

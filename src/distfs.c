@@ -283,7 +283,7 @@ int dfs_block_xet(struct distfs_s *dfs, char **argv, int argc,
     int cb(struct list_s *l, void *up, void *ud) {
         struct world_peer_s   *wp = (struct world_peer_s *)up;
         struct block_action_s *ba = (struct block_action_s *)ud;
-        if (wp->unreachable != 0 || wp->type != WORLD_PEER_PEER) return 0;
+        if (wp->type != WORLD_PEER_PEER) return 0;
         if (ba->action == BLOCK_ACTION_ADVERTISE) {
             ifr(dfs_block_send(ba->dfs->peer, ba->dfs,
                                wp->host, wp->port));
@@ -331,7 +331,7 @@ int dfs_query(struct peer_s *p, int host, unsigned short port,
                                .port  = query_port,
                                .found = NULL };
     ifr(list.map(&p->peers, world.peer.find, &wp));
-    bool reachable = (wp.found && wp.found->unreachable == 0);
+    bool reachable = (wp.found != NULL);
     p->send_buffer.type = BUFFER_QUERY_REPLY;
     p->send_buffer.u.query_reply.host = query_host;
     p->send_buffer.u.query_reply.port = query_port;
@@ -352,7 +352,15 @@ int dfs_query_reply(struct peer_s *p, int host, unsigned short port,
     if (!wp.found) return 0;
     if (!(wp.found->flags & WORLD_PEER_QUERIED)) return 0;
     wp.found->flags &= ~WORLD_PEER_QUERIED;
-    if (reachable) wp.found->flags |= WORLD_PEER_SHADOW;
-    else           wp.found->flags |= WORLD_PEER_OFFLINE;
+    if (reachable) {
+        wp.found->flags |= WORLD_PEER_SHADOW;
+        wp.found->unreachable = 0;
+    } else wp.found->flags |= WORLD_PEER_OFFLINE;
     return 0;
+}
+
+int dfs_pong_reply(struct peer_s *p, int host, unsigned short port)
+{
+    if (!p) return -1;
+    return world.peer.reachable(p, host, port);
 }

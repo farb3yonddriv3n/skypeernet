@@ -6,24 +6,29 @@ int ack_write(struct data_s *d, void *userdata)
     if (!p || !d) return -1;
     if (data.write.integer(d, SPN_VERSION) != 0) return -1;
     if (data.write.integer(d, p->received.header.pidx) != 0) return -1;
+    if (data.write.integer(d, p->received.header.command) != 0) return -1;
+    if (data.write.tdouble(d, p->received.header.ts) != 0) return -1;
     return 0;
 }
 
 int ack_read(struct peer_s *p)
 {
     if (!p) return -1;
-    int idx, ver;
+    int idx, ver, cmd;
+    double ts;
     sn_initr(bf, p->recv_buffer.available->data.s,
              p->recv_buffer.available->data.n);
     if (sn_read((void *)&ver, sizeof(ver), &bf) != 0) return -1;
     if (sn_read((void *)&idx, sizeof(idx), &bf) != 0) return -1;
+    if (sn_read((void *)&cmd, sizeof(cmd), &bf) != 0) return -1;
+    if (sn_read((void *)&ts, sizeof(ts), &bf) != 0) return -1;
     return net.ack(&p->send, idx);
 }
 
 int ack_size(int *sz, void *userdata)
 {
     if (!sz) return -1;
-    *sz = DATA_SIZE_INT * 2;
+    *sz = (DATA_SIZE_INT * 3) + DATA_SIZE_DOUBLE;
     return 0;
 }
 

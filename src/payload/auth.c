@@ -15,8 +15,8 @@ int auth_read(struct peer_s *p)
     if (!p) return -1;
     if (p->user.cb.auth)
         ifr(p->user.cb.auth(p,
-                            ADDR_IP(p->net.remote.addr),
-                            ADDR_PORT(p->net.remote.addr),
+                            p->received.header.src.host,
+                            p->received.header.src.port,
                             p->recv_buffer.available->data.s,
                             p->recv_buffer.available->data.n));
     return 0;

@@ -13,14 +13,14 @@ int file_write(struct data_s *d, void *userdata)
 int file_read(struct peer_s *p)
 {
     syslog(LOG_INFO, "File received from %x:%d, %ld/%ld",
-                     ADDR_IP(p->net.remote.addr),
-                     ADDR_PORT(p->net.remote.addr),
+                     p->received.header.src.host,
+                     p->received.header.src.port,
                      p->recv_buffer.available->file_size.received,
                      p->recv_buffer.available->file_size.total);
     char startswith[256];
     snprintf(startswith, sizeof(startswith), "%08x_%05d_%010d_%010d",
-                                   ADDR_IP(p->net.remote.addr),
-                                   ADDR_PORT(p->net.remote.addr),
+                                   p->received.header.src.host,
+                                   p->received.header.src.port,
                                    p->received.header.tidx,
                                    p->received.header.gidx);
     bool exists;
@@ -41,15 +41,15 @@ int file_read(struct peer_s *p)
     bool finalized;
     ifr(os.filejoin(&p->cfg, fname, fullpath, sizeof(fullpath),
                     filename, sizeof(filename), &finalized));
-    struct world_peer_s wp = { .host = ADDR_IP(p->net.remote.addr),
-                               .port = ADDR_PORT(p->net.remote.addr),
+    struct world_peer_s wp = { .host = p->received.header.src.host,
+                               .port = p->received.header.src.port,
                                .found = NULL };
     ifr(list.map(&p->peers, world.peer.find, &wp));
     if (!wp.found) return -1;
     if (finalized && p->user.cb.file) {
         ifr(p->user.cb.file(p, &p->received.header,
-                            ADDR_IP(p->net.remote.addr),
-                            ADDR_PORT(p->net.remote.addr),
+                            p->received.header.src.host,
+                            p->received.header.src.port,
                             wp.found->pubkeyhash,
                             fullpath, sizeof(fullpath),
                             filename, sizeof(filename)));

@@ -19,14 +19,12 @@ int queryrpl_read(struct peer_s *p)
     int host;
     unsigned short port;
     char reachable;
-    printf("query reply read\n");
     if (sn_read((void *)&host, sizeof(host), &bf) != 0) return -1;
     if (sn_read((void *)&port, sizeof(port), &bf) != 0) return -1;
     if (sn_read((void *)&reachable, sizeof(reachable), &bf) != 0) return -1;
     if (p->user.cb.query_reply) {
-        printf("query reply read1\n");
-        ifr(p->user.cb.query_reply(p, ADDR_IP(p->net.remote.addr),
-                                   ADDR_PORT(p->net.remote.addr),
+        ifr(p->user.cb.query_reply(p, p->received.header.src.host,
+                                   p->received.header.src.port,
                                    host, port, reachable));
     }
     return 0;

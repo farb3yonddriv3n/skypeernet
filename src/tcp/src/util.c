@@ -36,28 +36,6 @@ static void memory_append(gcsn *dst, const char *src, const int nsrc)
     dst->offset += nsrc;
 }
 
-static int net_send(struct gc_s *gc, const char *buffer, const int nbuffer)
-{
-    int len = nbuffer;
-    gcsn m = {
-        .s      = hm_palloc(gc->pool, nbuffer + sizeof(int)),
-        .n      = nbuffer + sizeof(int),
-        .offset = 0};
-    int tmplen = len;
-
-    gc_swap_memory((void *)&len, sizeof(len));
-
-    memory_append(&m, (void *)&len, sizeof(len));
-    memory_append(&m, buffer, tmplen);
-
-    struct gc_gen_client_ssl_s *c = &gc->client;
-    gc_ssl_ev_send(c, m.s, m.n);
-
-    hm_pfree(gc->pool, m.s);
-
-    return GC_OK;
-}
-
 void gc_swap_memory(char *dst, int ndst)
 {
     int i, j;

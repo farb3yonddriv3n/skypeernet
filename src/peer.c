@@ -18,6 +18,19 @@ static void write_instant_cb(EV_P_ ev_io *w, int revents)
     list.clean(&p->send.instant);
 }
 
+static void proxy(struct peer_s *p)
+{
+    if (!p) return;
+    int            host = p->received.header.dst.host;
+    unsigned short port = p->received.header.dst.port;
+    if (world.peer.shadow(p, &host, &port) != 0) return;
+    if (payload.proxy.reply(p));
+    if (data.submit(p, &p->received, host, port) != 0) {
+        BT_ADD
+        backtrace.show();
+    }
+}
+
 static void read_cb(EV_P_ ev_io *w, int revents)
 {
     struct peer_s *p = w->data;
@@ -26,20 +39,21 @@ static void read_cb(EV_P_ ev_io *w, int revents)
         syslog(LOG_ERR, "Net.receive failed");
         return;
     }
-    if (p->type == INSTANCE_TRACKER &&
-        ADDR_IP(p->net.remote.addr) == 0 &&
-        ADDR_PORT(p->net.remote.addr) == 0) return;
     bool valid;
     if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid,
-                        ADDR_IP(p->net.remote.addr),
-                        ADDR_PORT(p->net.remote.addr),
                         &p->received) != 0) return;
     if (!valid) return;
+    if (ADDR_PORT(p->net.self.addr) != 0 &&
+        p->received.header.dst.host != ADDR_IP(p->net.self.addr) &&
+        p->received.header.dst.port != ADDR_PORT(p->net.self.addr)) {
+        proxy(p);
+        return;
+    }
     if (payload.recv(p) != 0) {
         backtrace.show();
         syslog(LOG_ERR, "Request from peer %x:%d failed",
-                        ADDR_IP(p->net.remote.addr),
-                        ADDR_PORT(p->net.remote.addr));
+                        p->received.header.dst.host,
+                        p->received.header.dst.port);
     }
 }
 
@@ -132,7 +146,7 @@ static int init_tracker(struct peer_s *t)
     t->net.self.len = sizeof(t->net.self.addr);
     t->net.self.addr.sin_family = AF_INET;
     t->net.self.addr.sin_port = htons(t->cfg.net.tracker.port);
-    t->net.self.addr.sin_addr.s_addr = INADDR_ANY;
+    inet_pton(AF_INET, t->cfg.net.tracker.ip, &(t->net.self.addr.sin_addr));
     if (bind(t->net.sd, (struct sockaddr *)&t->net.self.addr,
              sizeof(t->net.self.addr)) != 0) return -1;
     t->ev.loop = ev_default_loop(0);

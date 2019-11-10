@@ -64,6 +64,7 @@ src/payload/file.c
 src/payload/message.c
 src/payload/payload.c
 src/payload/ping.c
+src/payload/pong.c
 src/payload/query.c
 src/payload/query_reply.c
 src/transaction/file_add.c

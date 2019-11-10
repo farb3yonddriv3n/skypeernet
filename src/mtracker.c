@@ -27,6 +27,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->user.cb.authrpl     = dfs_auth_reply;
     p->user.cb.query       = dfs_query;
     p->user.cb.query_reply = dfs_query_reply;
+    p->user.cb.pong        = dfs_pong_reply;
     p->user.data           = dfs;
     dfs->peer              = p;
     return 0;

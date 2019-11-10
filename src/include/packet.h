@@ -17,6 +17,7 @@ enum command_e {
     COMMAND_AUTH,
     COMMAND_AUTH_REPLY,
     COMMAND_PING,
+    COMMAND_PONG,
     COMMAND_TCP,
     COMMAND_QUERY,
     COMMAND_QUERY_REPLY,
@@ -33,7 +34,6 @@ struct tcp_s {
         unsigned short src;
         unsigned short dst;
     } port;
-    ALIGN16(8);
 };
 
 struct header_s {
@@ -46,12 +46,16 @@ struct header_s {
     unsigned int   length;
     enum command_e command;
     unsigned char  filename[SHA256HEX];
+    double         ts;
     struct tcp_s   tcp;
-};
-
-struct packet_internal_s {
-    int            host;
-    unsigned short port;
+    struct {
+        int            host;
+        unsigned short port;
+    } src;
+    struct {
+        int            host;
+        unsigned short port;
+    } dst;
 };
 
 struct packet_s {
@@ -60,25 +64,23 @@ struct packet_s {
         char payload[UDP_PACKET_PAYLOAD];
         char hash[SHA256HEX];
     } buffer;
-    struct packet_internal_s internal;
 };
 
 struct send_buffer_s;
 
 struct module_packet_s {
-    int (*validate)(char *buffer, size_t nbuffer, bool *valid,
-                    int host, unsigned short port, struct packet_s *p);
+    int (*validate)(char *buffer, size_t nbuffer, bool *valid, struct packet_s *p);
     int (*clean)(void *p);
     int (*tcpsent)(struct gc_gen_client_s *c, int tidx, bool *sent);
     int (*tcpsend)(struct gc_gen_client_s *c, char *buf, int len, int tidx);
     void (*dump)(struct packet_s *p);
     struct {
-        int (*init)(enum command_e, char *buffer, int nbuffer,
+        int (*init)(struct peer_s *p, enum command_e, char *buffer, int nbuffer,
                     struct packet_s **packets, int *npackets,
                     struct send_buffer_s *sb,
                     unsigned int tidx, unsigned int parts,
                     unsigned char *filename,
-                    struct tcp_s *tcp);
+                    struct tcp_s *tcp, int host, unsigned short port);
         int (*validate)(struct packet_s *packets, size_t nbuffer, bool *valid);
     } serialize;
     struct {

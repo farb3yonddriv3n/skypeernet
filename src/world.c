@@ -48,8 +48,7 @@ static int peer_findpubkeyhash(struct list_s *l, void *existing, void *ud)
     struct world_peer_s *ex = (struct world_peer_s *)existing;
     struct world_peer_s *wp = (struct world_peer_s *)ud;
     if (dmemcmp(ex->pubkeyhash, sizeof(ex->pubkeyhash),
-                wp->pubkeyhash, sizeof(wp->pubkeyhash)) &&
-        ex->unreachable == 0) {
+                wp->pubkeyhash, sizeof(wp->pubkeyhash))) {
         wp->found = ex;
         return 1;
     }
@@ -62,6 +61,17 @@ static int peer_findauthstr(struct list_s *l, void *existing, void *ud)
     struct world_peer_s *wp = (struct world_peer_s *)ud;
     if (dmemcmp(ex->authstr, sizeof(ex->authstr),
                 wp->authstr, sizeof(wp->authstr))) {
+        wp->found = ex;
+        return 1;
+    }
+    return 0;
+}
+
+static int peer_findproxy(struct list_s *l, void *existing, void *ud)
+{
+    struct world_peer_s *ex = (struct world_peer_s *)existing;
+    struct world_peer_s *wp = (struct world_peer_s *)ud;
+    if (ex->flags & WORLD_PEER_PROXY) {
         wp->found = ex;
         return 1;
     }
@@ -115,42 +125,35 @@ static int peer_isreachable(struct peer_s *p, int host, unsigned short port,
     if (!p || !reachable) return -1;
     struct world_peer_s wp = { .host  = host, .port  = port, .found = NULL };
     ifr(list.map(&p->peers, peer_find, &wp));
-    if (wp.found && wp.found->unreachable == 0) *reachable = true;
-    else                                        *reachable = false;
+    if (wp.found) *reachable = true;
+    else          *reachable = false;
     return 0;
-}
-
-static int reachable_set(struct peer_s *p, int host, unsigned short port,
-                         bool reachable)
-{
-    struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
-    ifr(list.map(&p->peers, peer_find, &wp));
-    if (!wp.found) return 0;
-    if (!reachable && ++wp.found->unreachable == p->cfg.net.max.peer_unreachable) {
-        if (p->type == INSTANCE_PEER) {
-            wp.found->flags |= WORLD_PEER_QUERIED;
-            p->send_buffer.type = BUFFER_QUERY;
-            p->send_buffer.u.query.host = host;
-            p->send_buffer.u.query.port = port;
-            return payload.send(p, COMMAND_QUERY,
-                                p->tracker.host, p->tracker.port,
-                                0, 0, NULL, NULL);
-        } else {
-            if (p->user.cb.offline && p->user.cb.offline(p, wp.found) != 0) return -1;
-            ifr(list.del(&p->peers, wp.found));
-        }
-    } else if (reachable) wp.found->unreachable = 0;
-    return 0;
-}
-
-static int peer_unreachable(struct peer_s *p, int host, unsigned short port)
-{
-    return reachable_set(p, host, port, false);
 }
 
 static int peer_reachable(struct peer_s *p, int host, unsigned short port)
 {
-    return reachable_set(p, host, port, true);
+    struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
+    ifr(list.map(&p->peers, peer_find, &wp));
+    if (!wp.found) return 0;
+    wp.found->unreachable = 0;
+    return 0;
+}
+
+static int peer_offline_shadow(struct peer_s *p, struct world_peer_s *wp)
+{
+    if (!p || !wp) return -1;
+    if (p->type == INSTANCE_PEER) {
+        wp->flags |= WORLD_PEER_QUERIED;
+        p->send_buffer.type = BUFFER_QUERY;
+        p->send_buffer.u.query.host = wp->host;
+        p->send_buffer.u.query.port = wp->port;
+        return payload.send(p, COMMAND_QUERY,
+                            p->tracker.host, p->tracker.port,
+                            0, 0, NULL, NULL);
+    } else {
+        ifr(p->user.cb.offline && p->user.cb.offline(p, wp));
+        return list.del(&p->peers, wp);
+    }
 }
 
 static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents)
@@ -162,9 +165,13 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
         struct peer_s       *p  = (struct peer_s *)ud;
         struct world_peer_s *wp = (struct world_peer_s *)un;
         syslog(LOG_DEBUG, "Checking peer's availability: %x:%d", wp->host, wp->port);
-        return payload.send(p, COMMAND_PING,
-                            wp->host,
-                            wp->port, 0, 0, NULL, NULL);
+        if (++wp->unreachable >= p->cfg.net.max.peer_unreachable) {
+            return peer_offline_shadow(p, wp);
+        } else {
+            return payload.send(p, COMMAND_PING,
+                                wp->host,
+                                wp->port, 0, 0, NULL, NULL);
+        }
     }
     if (list.map(&p->peers, cb, p) != 0)
         syslog(LOG_ERR, "Peers check failed");
@@ -194,15 +201,33 @@ static int peer_add(struct peer_s *p, struct world_peer_s *wp,
     return 0;
 }
 
+static int peer_shadow(struct peer_s *p, int *host, unsigned short *port)
+{
+    if (!p || !host || !port) return -1;
+    struct world_peer_s wp = { .host = *host, .port = *port, .found = NULL };
+    ifr(list.map(&p->peers, peer_find, &wp));
+    if (!wp.found) return 0;
+    wp.found->stats.sent++;
+    if (wp.found->flags & WORLD_PEER_SHADOW) {
+        struct world_peer_s proxy = { .found = NULL };
+        ifr(list.map(&p->peers, peer_findproxy, &proxy));
+        if (!proxy.found) return 0;
+        *host = proxy.found->host;
+        *port = proxy.found->port;
+    }
+    return 0;
+}
+
 const struct module_world_s world = {
     .peer.reachable      = peer_reachable,
-    .peer.unreachable    = peer_unreachable,
     .peer.check          = peer_check,
     .peer.isreachable    = peer_isreachable,
     .peer.find           = peer_find,
     .peer.findpubkeyhash = peer_findpubkeyhash,
     .peer.findauthstr    = peer_findauthstr,
+    .peer.findproxy      = peer_findproxy,
     .peer.broadcast      = peer_broadcast,
     .peer.auth           = peer_auth,
     .peer.add            = peer_add,
+    .peer.shadow         = peer_shadow,
 };
