@@ -32,7 +32,8 @@ static int peer_auth(struct peer_s *p, struct world_peer_s *wp)
     return 0;
 }
 
-static int peer_find(struct list_s *l, void *existing, void *uwp) {
+static int peer_find(struct list_s *l, void *existing, void *uwp)
+{
     struct world_peer_s *ex = (struct world_peer_s *)existing;
     struct world_peer_s *wp = (struct world_peer_s *)uwp;
     if (wp->host == ex->host &&

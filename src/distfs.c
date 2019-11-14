@@ -355,7 +355,9 @@ int dfs_query_reply(struct peer_s *p, int host, unsigned short port,
     if (reachable) {
         wp.found->flags |= WORLD_PEER_SHADOW;
         wp.found->unreachable = 0;
-    } else wp.found->flags |= WORLD_PEER_OFFLINE;
+    } else {
+        ifr(list.del(&p->peers, wp.found));
+    }
     return 0;
 }
 
