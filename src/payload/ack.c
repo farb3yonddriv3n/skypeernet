@@ -4,10 +4,10 @@ int ack_write(struct data_s *d, void *userdata)
 {
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
-    if (data.write.integer(d, SPN_VERSION) != 0) return -1;
-    if (data.write.integer(d, p->received.header.pidx) != 0) return -1;
-    if (data.write.integer(d, p->received.header.command) != 0) return -1;
-    if (data.write.tdouble(d, p->received.header.ts) != 0) return -1;
+    ifr(data.write.integer(d, SPN_VERSION));
+    ifr(data.write.integer(d, p->received.header.pidx));
+    ifr(data.write.integer(d, p->received.header.command));
+    ifr(data.write.tdouble(d, p->received.header.ts));
     return 0;
 }
 
@@ -18,11 +18,12 @@ int ack_read(struct peer_s *p)
     double ts;
     sn_initr(bf, p->recv_buffer.available->data.s,
              p->recv_buffer.available->data.n);
-    if (sn_read((void *)&ver, sizeof(ver), &bf) != 0) return -1;
-    if (sn_read((void *)&idx, sizeof(idx), &bf) != 0) return -1;
-    if (sn_read((void *)&cmd, sizeof(cmd), &bf) != 0) return -1;
-    if (sn_read((void *)&ts, sizeof(ts), &bf) != 0) return -1;
-    return net.ack(&p->send, idx);
+    ifr(sn_read((void *)&ver, sizeof(ver), &bf));
+    ifr(sn_read((void *)&idx, sizeof(idx), &bf));
+    ifr(sn_read((void *)&cmd, sizeof(cmd), &bf));
+    ifr(sn_read((void *)&ts, sizeof(ts), &bf));
+    ifr(net.ack(&p->send, idx));
+    return 0;
 }
 
 int ack_size(int *sz, void *userdata)

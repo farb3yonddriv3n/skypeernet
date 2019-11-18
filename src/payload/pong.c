@@ -5,7 +5,7 @@ int pong_write(struct data_s *d, void *userdata)
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
     if (p->send_buffer.type != BUFFER_PONG) return -1;
-    if (data.write.tdouble(d, p->send_buffer.u.pong.ts) != 0) return -1;
+    ifr(data.write.tdouble(d, p->send_buffer.u.pong.ts));
     return 0;
 }
 
@@ -15,7 +15,7 @@ int pong_read(struct peer_s *p)
     sn_initr(bf, p->recv_buffer.available->data.s,
              p->recv_buffer.available->data.n);
     double ts;
-    if (sn_read((void *)&ts, sizeof(ts), &bf) != 0) return -1;
+    ifr(sn_read((void *)&ts, sizeof(ts), &bf));
     if (p->user.cb.pong) {
         ifr(p->user.cb.pong(p,
                             p->received.header.src.host,

@@ -78,28 +78,28 @@ static int port_clean(void *ud)
 static int announce_read(struct world_peer_s *wp, char *src, int nsrc)
 {
     sn_initr(bf, src, nsrc);
-    if (sn_read((void *)&wp->host, sizeof(wp->host), &bf) != 0) return -1;
-    if (sn_read((void *)&wp->port, sizeof(wp->port), &bf) != 0) return -1;
+    ifr(sn_read((void *)&wp->host, sizeof(wp->host), &bf));
+    ifr(sn_read((void *)&wp->port, sizeof(wp->port), &bf));
     char proxy;
-    if (sn_read((void *)&proxy, sizeof(proxy), &bf) != 0) return -1;
+    ifr(sn_read((void *)&proxy, sizeof(proxy), &bf))
     if (proxy) wp->flags |= WORLD_PEER_PROXY;
     int nkey;
-    if (sn_read((void *)&nkey, sizeof(nkey), &bf) != 0) return -1;
+    ifr(sn_read((void *)&nkey, sizeof(nkey), &bf));
     sn_bytes_init_new(wp->pubkey, nkey);
-    if (sn_read((void *)wp->pubkey.s, nkey, &bf) != 0) return -1;
+    ifr(sn_read((void *)wp->pubkey.s, nkey, &bf));
     sha256hex((unsigned char *)wp->pubkey.s, nkey, wp->pubkeyhash);
-    if (sn_read((void *)&wp->version, sizeof(wp->version), &bf) != 0) return -1;
+    ifr(sn_read((void *)&wp->version, sizeof(wp->version), &bf));
     int ndesc;
-    if (sn_read((void *)&ndesc, sizeof(ndesc), &bf) != 0) return -1;
+    ifr(sn_read((void *)&ndesc, sizeof(ndesc), &bf));
     if (ndesc > sizeof(wp->tcp.description)) return -1;
-    if (sn_read((void *)wp->tcp.description, ndesc, &bf) != 0) return -1;
+    ifr(sn_read((void *)wp->tcp.description, ndesc, &bf));
     int i, added;
     for (i = bf.offset, added = 0;
          (i < bf.n && added < MAX_ANNOUNCED_PORTS);
          i += DATA_SIZE_INT, added++) {
         int *tcpport = malloc(sizeof(*tcpport));
         if (!tcpport) return -1;
-        if (sn_read((void *)tcpport, sizeof(*tcpport), &bf) != 0) return -1;
+        ifr(sn_read((void *)tcpport, sizeof(*tcpport), &bf));
         ifr(list.add(&wp->tcp.ports, tcpport, port_clean));
     }
     return 0;

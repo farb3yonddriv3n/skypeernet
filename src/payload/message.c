@@ -5,8 +5,8 @@ int message_write(struct data_s *d, void *userdata)
     struct peer_s *p = (struct peer_s *)userdata;
     if (!p || !d) return -1;
     if (p->send_buffer.type != BUFFER_MESSAGE) return -1;
-    if (data.write.raw(d, (char *)p->send_buffer.u.message.str,
-                       strlen(p->send_buffer.u.message.str)) != 0) return -1;
+    ifr(data.write.raw(d, (char *)p->send_buffer.u.message.str,
+                       strlen(p->send_buffer.u.message.str)));
     return 0;
 }
 
