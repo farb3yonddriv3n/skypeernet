@@ -47,6 +47,8 @@ struct config_s {
             int chunk_size;
         } max;
         int proxy;
+        int sendfactor;
+        bool *sendtable;
     } net;
     struct {
         char download[128];

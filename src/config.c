@@ -38,6 +38,24 @@ static int port_clean(void *ptr)
     return 0;
 }
 
+static int send_table(struct config_s *cfg)
+{
+    if (!cfg) return -1;
+    if (cfg->net.max.send_retry < 2 || cfg->net.sendfactor < 2) return -1;
+    cfg->net.sendtable = malloc(sizeof(bool) * cfg->net.max.send_retry);
+    if (!cfg->net.sendtable) return -1;
+    int i, step;
+    cfg->net.sendtable[0] = true;
+    for (i = 1, step = cfg->net.sendfactor; i < cfg->net.max.send_retry; i++) {
+        if (i == step) {
+            cfg->net.sendtable[i] = true;
+            step *= cfg->net.sendfactor;
+        } else
+            cfg->net.sendtable[i] = false;
+    }
+    return 0;
+}
+
 int config_init(struct config_s *cfg)
 {
     if (!cfg) return -1;
@@ -59,6 +77,8 @@ int config_init(struct config_s *cfg)
     cfg->net.interval.peers_reachable = json_object_get_double(tmp);
     json_object_object_get_ex(obj, "mining_target", &tmp);
     cfg->miningtarget = json_object_get_int(tmp);
+    json_object_object_get_ex(obj, "send_factor", &tmp);
+    cfg->net.sendfactor = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_chunk_size", &tmp);
     cfg->net.max.chunk_size = json_object_get_int(tmp);
     json_object_object_get_ex(obj, "max_task_buffer", &tmp);
@@ -147,6 +167,7 @@ int config_init(struct config_s *cfg)
         return 0;
     }
     ifr(os.readkeys(cfg, importkey));
+    ifr(send_table(cfg));
     return 0;
 }
 
