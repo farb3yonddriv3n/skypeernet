@@ -13,6 +13,7 @@ struct nb_s {
     struct peer_s *peer;
     int pidx;
     int gidx;
+    int tidx;
     enum command_e cmd;
     int sd;
     snb buffer;
@@ -71,7 +72,7 @@ struct net_ev_s {
 struct module_net_s {
     int (*receive)(struct peer_s *p, int sd, char *data, int len,
                    struct sockaddr_in *addr, socklen_t *naddr);
-    int (*ack)(struct net_send_s *ns, int idx);
+    int (*ack)(struct net_send_s *ns, int tidx, int pidx);
     int (*dispatch)(struct list_s *l);
     void (*retry)(struct ev_loop *loop, struct ev_timer *timer, int revents);
     int (*resume)(struct net_ev_s *ev);

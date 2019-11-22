@@ -142,6 +142,7 @@ static int data_submit(struct peer_s *p, struct packet_s *pck,
     nb->peer = p;
     nb->pidx = pck->header.pidx;
     nb->gidx = pck->header.gidx;
+    nb->tidx = pck->header.tidx;
     nb->cmd  = pck->header.command;
     nb->sd   = p->net.sd;
     ifr(packet_set(&nb->buffer, pck));
@@ -149,10 +150,14 @@ static int data_submit(struct peer_s *p, struct packet_s *pck,
     nb->remote.len = p->net.remote.len;
     ADDR_IP(nb->remote.addr)   = host;
     ADDR_PORT(nb->remote.addr) = port;
-    nb->status = (pck->header.command == COMMAND_ACK)
+    nb->status = (nb->cmd== COMMAND_ACK ||
+                  nb->cmd == COMMAND_PING ||
+                  nb->cmd == COMMAND_PONG)
                  ? NET_ONESHOT : NET_INIT;
     nb->attempt = 0;
-    if (nb->cmd == COMMAND_ACK) {
+    if (nb->cmd == COMMAND_ACK ||
+        nb->cmd == COMMAND_PING ||
+        nb->cmd == COMMAND_PONG) {
         ifr(list.add(&p->send.instant, nb, net.nb.clean));
         ev_io_start(p->ev.loop, &p->ev.write_instant);
     } else {

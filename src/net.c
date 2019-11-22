@@ -25,20 +25,21 @@ static int nb_clean(void *unb)
     return 0;
 }
 
-static int ack(struct net_send_s *ns, int idx)
+static int ack(struct net_send_s *ns, int tidx, int pidx)
 {
+    struct ack_s { int tidx; int pidx; } ad = { .tidx = tidx, .pidx = pidx };
     int cb(struct list_s *l, void *unb, void *dcb)
     {
-        struct nb_s *nb  = (struct nb_s *)unb;
-        int          idx = *(int *)dcb;
-        if (idx == nb->pidx) {
+        struct nb_s *nb   = (struct nb_s *)unb;
+        struct ack_s *acd = (struct ack_s *)dcb;
+        if (acd->pidx == nb->pidx && acd->tidx == nb->tidx) {
             ifr(list.del(l, nb));
             return 1;
         }
         return 0;
     }
     if (!ns) return -1;
-    ifr(list.map(&ns->nbl, cb, &idx));
+    ifr(list.map(&ns->nbl, cb, &ad));
     return 0;
 }
 
@@ -46,6 +47,8 @@ static int attempts(struct list_s *l, struct nb_s *nb, bool *skip)
 {
     if (!l || !nb || !skip) return -1;
     *skip = false;
+    if (!(nb->peer->cfg.net.sendtable[nb->attempt % nb->peer->cfg.net.max.send_retry]))
+        *skip = true;
     if (++nb->attempt > nb->peer->cfg.net.max.send_retry) {
         *skip = true;
         return list.del(l, nb);
@@ -65,8 +68,8 @@ static int dispatch(struct list_s *l)
                                    0,
                                    (struct sockaddr *)&nb->remote.addr,
                                    nb->remote.len);
-            syslog(LOG_DEBUG, "Sending packet %d of group %d %ld bytes to %x:%d attempt %d\n",
-                              nb->pidx, nb->gidx, bytes,
+            syslog(LOG_DEBUG, "Sending packet %d of group %d and tidx %d %ld bytes to %x:%d attempt %d\n",
+                              nb->pidx, nb->gidx, nb->tidx, bytes,
                               ADDR_IP(nb->remote.addr),
                               ADDR_PORT(nb->remote.addr),
                               nb->attempt);
