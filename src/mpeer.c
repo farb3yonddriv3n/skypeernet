@@ -34,8 +34,11 @@ static int dfs_auth(struct peer_s *p, int host,
     if (!p || !data) return -1;
     unsigned char *dec;
     int            ndec;
-    ifr(rsa_decrypt(p->cfg.keys.local.rsa.private, (unsigned char *)data, len,
-                    &dec, &ndec));
+    if (rsa_decrypt(p->cfg.keys.local.rsa.private, (unsigned char *)data, len,
+                    &dec, &ndec) != 0) {
+        peer.clean(p);
+        return -1;
+    }
     p->send_buffer.type = BUFFER_AUTH_REPLY;
     sn_setr(p->send_buffer.u.auth.str, (char *)dec, ndec);
     ifr(payload.send(p, COMMAND_AUTH_REPLY,
