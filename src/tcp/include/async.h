@@ -110,7 +110,10 @@ struct gc_client_s {
 
     int                    reqidx;      /**< Request index. */
 
-    struct list_s          packets;     /**< Client's TCP packets. */
+    struct {
+        struct list_s      packets;     /**< Client's TCP packets. */
+        int                tidx;
+    } tcp;
 };
 
 struct gc_gen_client_s {

@@ -75,7 +75,7 @@ void async_client_shutdown(struct gc_gen_client_s *c)
         ht_rem(c->parent->clients, key, strlen(key));
     }
 
-    list.clean(&c->base.packets);
+    list.clean(&c->base.tcp.packets);
     //struct gc_s *gc = c->base.gc;
     hm_pfree(p, c);
 
@@ -353,7 +353,7 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
 #endif
     cc->base.reqidx = 0;
     //cc->base.packets = ht_init(cs->pool);
-    (void )list.init(&cc->base.packets);
+    (void )list.init(&cc->base.tcp.packets);
 
     if (connector_addclient(cs, cc) != GC_OK) {
         hm_pfree(cs->pool, cc);

@@ -187,7 +187,7 @@ int async_client(struct gc_gen_client_s *client)
     client->base.write.data = client;
     gc_timestring(client->base.date, sizeof(client->base.date));
 
-    if (list.init(&client->base.packets) != 0) return -1;
+    if (list.init(&client->base.tcp.packets) != 0) return -1;
 
     ev_io_start(client->base.loop, &client->base.read);
     if (connect(client->base.fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != -1

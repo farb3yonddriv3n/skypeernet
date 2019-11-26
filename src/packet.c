@@ -113,6 +113,8 @@ static int deserialize_init(char *buffer, size_t nbuffer, bool *valid)
     return 0;
 }
 
+struct tcpbuffer_s { char *buf; int len; int tidx; bool dispatched; };
+
 static int tcpsent(struct gc_gen_client_s *c, int tidx, bool *sent)
 {
     if (!c || !sent) return -1;
@@ -123,38 +125,60 @@ static int tcpsent(struct gc_gen_client_s *c, int tidx, bool *sent)
     struct tcpidx_s ti = { .tidx = tidx, .sent = sent };
     *sent = false;
     int find(struct list_s *l, void *ex, void *ud) {
+        struct tcpbuffer_s *tb = (struct tcpbuffer_s *)ex;
         struct tcpidx_s *tis = (struct tcpidx_s *)ud;
-        if (*(int *)ex == tis->tidx) {
+        if (tb->tidx == tis->tidx) {
             *tis->sent = true;
             return 1;
         }
         return 0;
     }
-    ifr(list.map(&c->base.packets, find, (void *)&ti));
+    ifr(list.map(&c->base.tcp.packets, find, (void *)&ti));
     return 0;
 }
 
-static int cleanidx(void *idx)
+static int cleantb(void *data)
 {
-    if (!idx) return -1;
-    free(idx);
+    if (!data) return -1;
+    struct tcpbuffer_s *tb = (struct tcpbuffer_s *)data;
+    free(tb->buf);
+    free(tb);
     return 0;
+}
+
+static int tcpdispatch(struct gc_gen_client_s *c)
+{
+    if (!c) return -1;
+    int cb(struct list_s *l, void *ex, void *ud) {
+        struct gc_gen_client_s *c  = (struct gc_gen_client_s *)ud;
+        struct tcpbuffer_s     *tb = (struct tcpbuffer_s *)ex;
+        if (tb->dispatched) return 0;
+        if (c->base.tcp.tidx == 0 ||
+            (c->base.tcp.tidx != 0 && c->base.tcp.tidx + 1 == tb->tidx)) {
+            c->base.tcp.tidx = tb->tidx;
+            tb->dispatched = true;
+            gc_gen_ev_send(c, tb->buf, tb->len);
+            ifr(tcpdispatch(c));
+            return 1;
+        }
+        return 0;
+    }
+    return list.map(&c->base.tcp.packets, cb, c);
 }
 
 static int tcpsend(struct gc_gen_client_s *c, char *buf, int len, int tidx)
 {
     if (!c || !buf) return -1;
-    /*
-    char key[32];
-    snprintf(key, sizeof(key), "%d", tidx);
-    HT_ADD_WA(c->base.packets, key, strlen(key), key, strlen(key));
-    */
-    int *idx = malloc(sizeof(*idx));
-    if (!idx) return -1;
-    *idx = tidx;
-    ifr(list.queue_add(&c->base.packets, idx, cleanidx));
-    gc_gen_ev_send(c, buf, len);
-    return 0;
+    struct tcpbuffer_s *tb = malloc(sizeof(*tb));
+    if (!tb) return -1;
+    tb->buf  = malloc(len);
+    if (!tb->buf) return -1;
+    memcpy(tb->buf, buf, len);
+    tb->len        = len;
+    tb->tidx       = tidx;
+    tb->dispatched = false;
+    ifr(list.queue_add(&c->base.tcp.packets, tb, cleantb));
+    return tcpdispatch(c);
 }
 
 static void dump(struct packet_s *p)
