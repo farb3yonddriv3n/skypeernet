@@ -131,12 +131,16 @@ static int peer_isreachable(struct peer_s *p, int host, unsigned short port,
     return 0;
 }
 
-static int peer_reachable(struct peer_s *p, int host, unsigned short port)
+static int peer_reachable(struct peer_s *p, int host, unsigned short port,
+                          double ts)
 {
     struct world_peer_s wp = { .host = host, .port = port, .found = NULL };
     ifr(list.map(&p->peers, peer_find, &wp));
     if (!wp.found) return 0;
     wp.found->unreachable = 0;
+    double now;
+    ifr(os.gettimems(&now));
+    wp.found->pingms = (int )((now - ts) * 100);
     return 0;
 }
 
@@ -169,6 +173,8 @@ static void peer_check(struct ev_loop *loop, struct ev_timer *timer, int revents
         if (++wp->unreachable >= p->cfg.net.max.peer_unreachable) {
             return peer_offline_shadow(p, wp);
         } else {
+            p->send_buffer.type = BUFFER_PING;
+            ifr(os.gettimems(&p->send_buffer.u.ping.ts));
             return payload.send(p, COMMAND_PING,
                                 wp->host,
                                 wp->port, 0, 0, NULL, NULL);

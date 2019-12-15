@@ -361,8 +361,20 @@ int dfs_query_reply(struct peer_s *p, int host, unsigned short port,
     return 0;
 }
 
-int dfs_pong_reply(struct peer_s *p, int host, unsigned short port)
+int dfs_pong_reply(struct peer_s *p, int host, unsigned short port, double ts)
 {
     if (!p) return -1;
-    return world.peer.reachable(p, host, port);
+    return world.peer.reachable(p, host, port, ts);
+}
+
+int dfs_ping_reply(struct peer_s *p, int host, unsigned short port,
+                   double ts)
+{
+    if (!p) return -1;
+    p->send_buffer.type = BUFFER_PONG;
+    p->send_buffer.u.pong.ts = ts;
+    return payload.send(p, COMMAND_PONG,
+                        p->received.header.src.host,
+                        p->received.header.src.port,
+                        0, 0, NULL, NULL);
 }

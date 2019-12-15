@@ -46,6 +46,9 @@ int dfs_query(struct peer_s *p, int host, unsigned short port,
               int query_host, unsigned short query_port);
 int dfs_query_reply(struct peer_s *p, int host, unsigned short port,
                     int query_host, unsigned short query_port, bool reachable);
-int dfs_pong_reply(struct peer_s *p, int host, unsigned short port);
+int dfs_ping_reply(struct peer_s *p, int host, unsigned short port,
+                   double ts);
+int dfs_pong_reply(struct peer_s *p, int host, unsigned short port,
+                   double ts);
 
 #endif

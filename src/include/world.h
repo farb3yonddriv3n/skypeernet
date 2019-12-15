@@ -23,6 +23,7 @@ struct world_peer_s {
     unsigned char        pubkeyhash[SHA256HEX];
     unsigned char        authstr[SHA256HEX];
     int                  version;
+    int                  pingms;
     unsigned int         flags;
     struct {
         char description[256];
@@ -35,7 +36,8 @@ struct world_peer_s {
 
 struct module_world_s {
     struct {
-        int (*reachable)(struct peer_s *p, int host, unsigned short port);
+        int (*reachable)(struct peer_s *p, int host, unsigned short port,
+                         double ts);
         void (*check)(struct ev_loop *loop, struct ev_timer *timer, int revents);
         int (*isreachable)(struct peer_s *p, int host, unsigned short port,
                            bool *reachable);

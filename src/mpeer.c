@@ -412,6 +412,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->user.cb.auth    = dfs_auth;
     p->user.cb.query   = dfs_query;
     p->user.cb.query_reply = dfs_query_reply;
+    p->user.cb.ping    = dfs_ping_reply;
     p->user.cb.pong    = dfs_pong_reply;
     p->user.data       = dfs;
     p->api.cb.message  = api_message_write;
