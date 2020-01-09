@@ -11,10 +11,58 @@ struct list_internal_s {
     } data;
 };
 
+static int filter_find(struct list_s *l, const char *column,
+                       struct ht_s **found);
+
 static int init(struct list_s *l)
 {
     if (!l) return -1;
     memset(l, 0, sizeof(*l));
+    return 0;
+}
+
+static int clean_items(struct list_s *l)
+{
+    if (!l) return -1;
+    struct list_internal_s *li, *d;
+    for (li = l->head; li != NULL; ) {
+        if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
+        d = li;
+        li = li->next;
+        free(d);
+    }
+    l->head = l->tail = NULL;
+    l->size = 0;
+    return 0;
+}
+
+static int reset(struct list_s *l)
+{
+    if (!l) return -1;
+    ifr(clean_items(l));
+    int i;
+    for (i = 0; i < l->filter.ncolumns; i++) {
+        ht_free(l->filter.columns[i].ht);
+        l->filter.columns[i].ht = ht_init();
+    }
+    return 0;
+}
+
+static int column_init(struct list_s *l, struct list_param_s *params,
+                       int nparams)
+{
+    if (!l) return -1;
+    memset(l, 0, sizeof(*l));
+    l->filter.ncolumns = nparams;
+    l->filter.columns = malloc(nparams * sizeof(*(l->filter.columns)));
+    if (!l->filter.columns) return -1;
+    int i;
+    for (i = 0; i < nparams; i++) {
+        snprintf(l->filter.columns[i].name, sizeof(l->filter.columns[i].name),
+                 "%s", params[i].name);
+        l->filter.columns[i].ht = ht_init();
+        if (!l->filter.columns[i].ht) return -1;
+    }
     return 0;
 }
 
@@ -26,21 +74,42 @@ static int init_internal(struct list_internal_s **li)
     return 0;
 }
 
-static int add(struct list_s *l, void *userdata, int (*clean)(void *ptr))
+static int add_internal(struct list_s *l, void *userdata,
+                        int (*clean)(void *ptr),
+                        struct list_internal_s **li)
+{
+    if (!l || !userdata) return -1;
+    if (init_internal(li) != 0) return -1;
+    (*li)->data.ptr   = userdata;
+    (*li)->data.clean = clean;
+    (*li)->next       = NULL;
+    (*li)->prev       = NULL;
+    (*li)->prev       = l->tail;
+    if (l->tail) {
+        l->tail->next = *li;
+        l->tail       = *li;
+    } else l->head = l->tail = *li;
+    l->size++;
+    return 0;
+}
+
+static int column_add(struct list_s *l, void *userdata,
+                      int (*columns)(struct list_s *l, void *li, void *userdata),
+                      int (*clean)(void *ptr))
+{
+    if (!l || !userdata || !columns) return -1;
+    struct list_internal_s *li;
+    ifr(add_internal(l, userdata, clean, &li));
+    if (columns) return columns(l, li, userdata);
+    return 0;
+}
+
+static int add(struct list_s *l, void *userdata,
+               int (*clean)(void *ptr))
 {
     if (!l || !userdata) return -1;
     struct list_internal_s *li;
-    if (init_internal(&li) != 0) return -1;
-    li->data.ptr   = userdata;
-    li->data.clean = clean;
-    li->next       = NULL;
-    li->prev       = l->tail;
-    if (l->tail) {
-        l->tail->next = li;
-        l->tail       = li;
-    } else l->head = l->tail = li;
-    l->size++;
-    return 0;
+    return add_internal(l, userdata, clean, &li);
 }
 
 static int add_head(struct list_s *l, void *userdata, int (*clean)(void *ptr))
@@ -71,6 +140,27 @@ static int del_item(struct list_s *l, struct list_internal_s *li)
     l->size--;
     if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
     free(li);
+    return 0;
+}
+
+static int column_del(struct list_s *l, const char *column,
+                      void *key, int nkey)
+{
+    if (!l || !column) return -1;
+    struct ht_s *found;
+    ifr(filter_find(l, column, &found));
+    if (!found) return -1;
+    struct ht_item_s *item = ht_get(found, key, nkey);
+    if (!item) return 0;
+    int i;
+    for (i = 0; i < l->filter.ncolumns; i++) {
+        struct ht_item_s *r = ht_get(l->filter.columns[i].ht, item->k, item->nk);
+        if (r == item) continue;
+        ht_rem(l->filter.columns[i].ht, item->k, item->nk);
+    }
+    ifr(del_item(l, (struct list_internal_s *)item->v));
+    ht_rem(found, item->k, item->nk);
+    printf("removing \n");
     return 0;
 }
 
@@ -112,14 +202,11 @@ static int map(struct list_s *l, int (*cb)(struct list_s*, void*, void*),
 static int clean(struct list_s *l)
 {
     if (!l) return -1;
-    struct list_internal_s *li, *d;
-    for (li = l->head; li != NULL; ) {
-        if (li->data.clean && li->data.clean(li->data.ptr) != 0) return -1;
-        d = li;
-        li = li->next;
-        free(d);
-    }
-    if (init(l) != 0) return -1;
+    ifr(clean_items(l));
+    int i;
+    for (i = 0; i < l->filter.ncolumns; i++)
+        ht_free(l->filter.columns[i].ht);
+    if (l->filter.columns) free(l->filter.columns);
     return 0;
 }
 
@@ -181,6 +268,51 @@ static int queue_add(struct list_s *l, void *userdata, int (*clean)(void *ptr))
     return add_head(l, userdata, clean);
 }
 
+
+static int filter_find(struct list_s *l, const char *column,
+                       struct ht_s **found)
+{
+    if (!l || !column || !found) return -1;
+    *found = NULL;
+    int i;
+    for (i = 0; i < l->filter.ncolumns; i++) {
+        if(dmemcmp(l->filter.columns[i].name, strlen(l->filter.columns[i].name),
+           column, strlen(column))) {
+            *found = l->filter.columns[i].ht;
+            return 0;
+        }
+    }
+    return 0;
+}
+
+static int column_map(struct list_s *l, const char *column,
+                      const void *key, const int nkey,
+                      const void *value, const int nvalue)
+{
+    if (!l || !column || !key || !value) return -1;
+    struct ht_s *found;
+    ifr(filter_find(l, column, &found));
+    if (!found) return -1;
+    HT_ADD_WA(found, key, nkey, value, nvalue);
+    return 0;
+}
+
+static int column_find(struct list_s *l, const char *column,
+                       void *key, const int nkey,
+                       int (*cb)(struct list_s *l, void *value,
+                                 const int nvalue, void **userdata),
+                       void **userdata)
+{
+    if (!l || !column || !cb) return -1;
+    struct ht_s *found;
+    ifr(filter_find(l, column, &found));
+    if (!found) return -1;
+    struct ht_item_s *item = ht_get(found, key, nkey);
+    if (!item) return 0;
+    struct list_internal_s *li = (struct list_internal_s *)item->v;
+    return cb(l, li->data.ptr, sizeof(li->data.ptr), userdata);
+}
+
 const struct module_list_s list = {
     .init         = init,
     .add          = add,
@@ -190,6 +322,12 @@ const struct module_list_s list = {
     .size         = size,
     .toarray      = toarray,
     .toarray_sort = toarray_sort,
+    .reset        = reset,
     .clean        = clean,
     .queue_add    = queue_add,
+    .column.init  = column_init,
+    .column.add   = column_add,
+    .column.map   = column_map,
+    .column.find  = column_find,
+    .column.del   = column_del,
 };

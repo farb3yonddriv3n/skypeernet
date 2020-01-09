@@ -3,6 +3,7 @@
 
 struct t4_s {
     int x;
+    int y;
 };
 
 static int clean(void *data)
@@ -12,12 +13,25 @@ static int clean(void *data)
     return 0;
 }
 
-static int cb(struct list_s *l, void *data, void *userdata)
+#define LISTADD(m_list, m_column, m_key) \
+    list.column.map(l, m_column, &m_key, sizeof(m_key), \
+                    li, sizeof(li))
+
+static int map_columns(struct list_s *l, void *li, void *userdata)
 {
-    assert(data != NULL);
-    struct t4_s *t = (struct t4_s *)data;
-    printf("%d\n", t->x);
-    A(list.del(l, data), 0);
+    if (!l || !userdata) return -1;
+    struct t4_s *item = (struct t4_s *)userdata;
+    ifr(LISTADD(l, "x", item->x));
+    ifr(LISTADD(l, "y", item->y));
+    return 0;
+}
+
+static int findcb(struct list_s *l, void *value,
+                  const int nvalue, void **userdata)
+{
+    struct t4_s **found = (struct t4_s **)userdata;
+    if (nvalue != sizeof(void *)) return -1;
+    *found = (struct t4_s *)value;
     return 0;
 }
 
@@ -26,33 +40,45 @@ static int cb(struct list_s *l, void *data, void *userdata)
 void t4_list()
 {
     struct list_s l;
-    A(list.init(&l), 0);
+    struct list_param_s params[] = { { .name = "x" },
+                                     { .name = "y" } };
+    A(list.column.init(&l, params, COUNTOF(params)), 0);
     struct t4_s *t4[ITEMS];
 
     int i;
     for (i = 0; i < ITEMS; i++) {
         struct t4_s *t = malloc(sizeof(*t));
         t->x = i;
+        t->y = i + 1;
         t4[i] = t;
-        A(list.add(&l, t, clean), 0);
+        A(list.column.add(&l, t, map_columns, clean), 0);
+    }
+
+    for (i = 0; i < ITEMS; i++) {
+        struct t4_s *found = NULL;
+        A(list.column.find(&l, "x", &i, sizeof(i),
+                           findcb, (void **)&found), 0);
+        CU_ASSERT(t4[i] == found);
+        found = NULL;
+        int find = i + 1;
+        A(list.column.find(&l, "y", &find, sizeof(find),
+                           findcb, (void **)&found), 0);
+        CU_ASSERT(t4[i] == found);
     }
 
     for (i = 0; i < COUNTOF(t4); i++) {
-        if (i == 2 || i == 3) A(list.del(&l, t4[i]), 0);
+        A(list.column.del(&l, "x", &t4[i]->x, sizeof(t4[i]->x)), 0);
     }
 
-    void **vt;
     int size;
+    void **vt;
     A(list.toarray(&l, &vt, &size), 0);
-    printf("size: %d\n", size);
     for (i = 0; i < size; i++) {
         printf("%d\n", ((struct t4_s *)(((char **)vt)[i]))->x);
     }
     free(vt);
-    A(list.map(&l, cb, NULL), 0);
-    A(list.clean(&l), 0);
 
-    A(list.init(&l), 0);
+    A(list.reset(&l), 0);
     for (i = 0; i < 200; i++) {
         int *n = malloc(sizeof(*n));
         *n = i;
