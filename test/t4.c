@@ -13,16 +13,12 @@ static int clean(void *data)
     return 0;
 }
 
-#define LISTADD(m_list, m_column, m_key) \
-    list.column.map(l, m_column, &m_key, sizeof(m_key), \
-                    li, sizeof(li))
-
 static int map_columns(struct list_s *l, void *li, void *userdata)
 {
     if (!l || !userdata) return -1;
     struct t4_s *item = (struct t4_s *)userdata;
-    ifr(LISTADD(l, "x", item->x));
-    ifr(LISTADD(l, "y", item->y));
+    ifr(LISTADD(l, "x", &item->x, sizeof(item->x)));
+    ifr(LISTADD(l, "y", &item->y, sizeof(item->y)));
     return 0;
 }
 
