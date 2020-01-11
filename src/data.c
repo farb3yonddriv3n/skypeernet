@@ -133,6 +133,18 @@ static int packet_get(struct packet_s *p, char *buffer, int nbuffer)
     return 0;
 }
 
+static int map_columns(struct list_s *l, void *li, void *userdata)
+{
+    if (!l || !li || !userdata) return -1;
+    struct nb_s *nb = (struct nb_s *)userdata;
+    char buffer[128];
+    int offset;
+    ifr(unique_together(buffer, sizeof(buffer), &offset, 2,
+                        (void *)&nb->pidx, sizeof(nb->pidx),
+                        (void *)&nb->tidx, sizeof(nb->tidx)));
+    return LISTADD(l, "pidx_tidx", buffer, offset);
+}
+
 static int data_submit(struct peer_s *p, struct packet_s *pck,
                        int host, unsigned short port)
 {
@@ -161,7 +173,7 @@ static int data_submit(struct peer_s *p, struct packet_s *pck,
         ifr(list.add(&p->send.instant, nb, net.nb.clean));
         ev_io_start(p->ev.loop, &p->ev.write_instant);
     } else {
-        ifr(list.add(&p->send.nbl, nb, net.nb.clean));
+        ifr(list.column.add(&p->send.nbl, nb, map_columns, net.nb.clean));
     }
     return 0;
 }

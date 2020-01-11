@@ -160,7 +160,6 @@ static int column_del(struct list_s *l, const char *column,
     }
     ifr(del_item(l, (struct list_internal_s *)item->v));
     ht_rem(found, item->k, item->nk);
-    printf("removing \n");
     return 0;
 }
 

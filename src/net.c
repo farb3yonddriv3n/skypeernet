@@ -27,20 +27,12 @@ static int nb_clean(void *unb)
 
 static int ack(struct net_send_s *ns, int tidx, int pidx)
 {
-    struct ack_s { int tidx; int pidx; } ad = { .tidx = tidx, .pidx = pidx };
-    int cb(struct list_s *l, void *unb, void *dcb)
-    {
-        struct nb_s *nb   = (struct nb_s *)unb;
-        struct ack_s *acd = (struct ack_s *)dcb;
-        if (acd->pidx == nb->pidx && acd->tidx == nb->tidx) {
-            ifr(list.del(l, nb));
-            return 1;
-        }
-        return 0;
-    }
-    if (!ns) return -1;
-    ifr(list.map(&ns->nbl, cb, &ad));
-    return 0;
+    char key[128];
+    int nkey;
+    ifr(unique_together(key, sizeof(key), &nkey, 2,
+                        (void *)&pidx, sizeof(pidx),
+                        (void *)&tidx, sizeof(tidx)));
+    return list.column.del(&ns->nbl, "pidx_tidx", key, nkey);
 }
 
 static int attempts(struct list_s *l, struct nb_s *nb, bool *skip)

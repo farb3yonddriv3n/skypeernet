@@ -1,6 +1,10 @@
 #ifndef LIST_H_
 #define LIST_H_
 
+#define LISTADD(m_list, m_column, m_key, m_nkey) \
+    list.column.map(m_list, m_column, m_key, m_nkey, \
+                    li, sizeof(li))
+
 enum list_array_sort_e {
     LIST_ARRAY_SORT_STR,
 };

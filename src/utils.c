@@ -130,3 +130,31 @@ void swap_memory(char *dst, int ndst)
         dst[j] ^= dst[i];
     }
 }
+
+int unique_together(char *output, int noutput, int *offset, int params, ...)
+{
+    va_list args;
+    va_start(args, params);
+    *offset = 0;
+    while (params-- > 0) {
+        char *buf = va_arg(args, char*);
+        int n = va_arg(args, int);
+        if (*offset + n > noutput) return -1;
+        memcpy(output + *offset, buf, n);
+        *offset += n;
+    }
+    va_end(args);
+    return 0;
+}
+
+int bindump(char *buffer, int nbuffer)
+{
+    if (!buffer || nbuffer < 1) return -1;
+    int i;
+    printf("Dumping %d bytes\n", nbuffer);
+    for (i = 0; i < nbuffer; i++) {
+        printf("%x ", buffer[i]);
+    }
+    printf("\nDump ended\n");
+    return 0;
+}

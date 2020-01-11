@@ -2,6 +2,7 @@
 #include <memory.h>
 #include <malloc.h>
 #include <assert.h>
+#include <stdlib.h>
 #include "hashtable.h"
 
 struct ht_s *ht_init()
@@ -39,7 +40,7 @@ inline static void ht_key(int* dst, const char* key, const int nkey)
     int i;
     *dst = 0;
     for(i = 0; i < nkey; i++)
-        *dst += key[i];
+        *dst += abs(key[i]);
     *dst %= HT_SIZE;
 }
 
@@ -112,7 +113,7 @@ int ht_rem(struct ht_s *ht, const char *key, const int nkey)
 struct ht_item_s *ht_get(struct ht_s *ht, const char *key, const int nkey)
 {
     struct ht_item_s *h;
-    int                  idx = 0;
+    int idx = 0;
     if (!ht || !key) return NULL;
     ht_key(&idx, key, nkey);
     if(ht->ht[idx]) {

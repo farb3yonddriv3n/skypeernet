@@ -88,5 +88,7 @@ inline static void sha256hex(const unsigned char *src, const int srclen,
 struct file_s;
 int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc);
 void swap_memory(char *dst, int ndst);
+int unique_together(char *output, int noutput, int *offset, int params, ...);
+int bindump(char *buffer, int nbuffer);
 
 #endif

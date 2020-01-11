@@ -129,6 +129,8 @@ static int init_peer(struct peer_s *p)
     p->ev.read.ev.data  = (void *)p;
     p->ev.write.data = (void *)p;
     p->ev.write_instant.data = (void *)p;
+    struct list_param_s params[] = { { .name = "pidx_tidx" } };
+    ifr(list.column.init(&p->send.nbl, params, COUNTOF(params)));
     ev_timer_again(p->ev.loop, &p->ev.send);
     hm_log_open(&p->log, NULL, GCLOG_TRACE);
     backtrace.init();
@@ -165,6 +167,8 @@ static int init_tracker(struct peer_s *t)
     t->ev.write_instant.data = t;
     t->ev.peers_reachable.data  = t;
     rl_callback_handler_install("> ", (rl_vcpfunc_t *)&rlhandler);
+    struct list_param_s params[] = { { .name = "pidx_tidx" } };
+    ifr(list.column.init(&t->send.nbl, params, COUNTOF(params)));
     ev_timer_again(t->ev.loop, &t->ev.send);
     backtrace.init();
     return 0;
