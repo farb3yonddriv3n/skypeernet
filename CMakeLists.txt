@@ -41,6 +41,7 @@ src/endpoint.c
 src/file.c
 src/group.c
 src/job.c
+src/localport.c
 src/net.c
 src/os.c
 src/packet.c

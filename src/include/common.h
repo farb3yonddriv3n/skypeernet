@@ -68,5 +68,6 @@
 #include <distfs.h>
 #include <job.h>
 #include <api.h>
+#include <localport.h>
 
 #endif

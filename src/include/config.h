@@ -49,6 +49,7 @@ struct config_s {
         int proxy;
         int sendfactor;
         bool *sendtable;
+        unsigned short local_port;
     } net;
     struct {
         char download[128];

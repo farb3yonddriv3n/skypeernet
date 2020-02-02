@@ -161,7 +161,8 @@ static int online(struct peer_s *p, struct world_peer_s *wp)
 {
     printf("New peer: %x:%d of type %d\n", wp->host, wp->port, wp->type);
     if (p->api.cb.online && p->api.cb.online(p, wp) != 0) return -1;
-    if (wp->type == WORLD_PEER_TRACKER) return 0;
+    if (wp->type == WORLD_PEER_TRACKER)
+        return localport.save(&p->cfg, ADDR_PORT(p->net.self.addr));
     return distfs_command_send(p->user.data, DISTFS_HELLO, wp->host, wp->port);
 }
 

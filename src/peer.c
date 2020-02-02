@@ -100,7 +100,11 @@ static int init_peer(struct peer_s *p)
     if (signal(SIGINT, sig_handler) == SIG_ERR) return -1;
     p->net.self.addr.sin_family      = AF_INET;
     p->net.self.addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    unsigned short local_port = 0;
+    ifr(localport.load(&p->cfg, &local_port));
+    p->net.self.addr.sin_port        = local_port;
     p->net.self.len                  = sizeof(p->net.self.addr);
+    bind(p->net.sd, (const struct sockaddr *)&p->net.self.addr, p->net.self.len);
 
     p->net.remote.addr.sin_family    = AF_INET;
     p->net.remote.addr.sin_port      = htons(p->cfg.net.tracker.port);
