@@ -50,6 +50,7 @@ struct module_world_s {
                    bool *added);
         int (*shadow)(struct peer_s *p, int *host, unsigned short *port);
         int (*findproxy)(struct list_s *l, void *existing, void *ud);
+        int (*clean)(void *uwp);
     } peer;
 };
 

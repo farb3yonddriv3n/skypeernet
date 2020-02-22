@@ -114,6 +114,7 @@ struct peer_s {
     struct recv_buffer_s recv_buffer;
     struct list_s        backtrace;
     struct list_s        rogue;
+    struct list_s        whitelist;
     struct {
         struct list_s tunnels;
         struct list_s endpoints;

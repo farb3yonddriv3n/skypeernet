@@ -49,6 +49,7 @@
 #include <block.h>
 #include <root.h>
 #include <group.h>
+#include <whitelist.h>
 
 #include <packet.h>
 #include <net.h>

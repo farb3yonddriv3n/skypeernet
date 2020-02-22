@@ -135,6 +135,24 @@ static int cli_traffic(struct peer_s *p, char **argv, int argc)
     return 0;
 }
 
+static int wl(struct peer_s *p, char **argv, int argc)
+{
+    if (!p) return -1;
+    return whitelist.list(p);
+}
+
+static int wl_add(struct peer_s *p, char **argv, int argc)
+{
+    if (!p) return -1;
+    return whitelist.addrem(p, argv[1], WL_ADD);
+}
+
+static int wl_rem(struct peer_s *p, char **argv, int argc)
+{
+    if (!p) return -1;
+    return whitelist.addrem(p, argv[1], WL_REM);
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -145,6 +163,9 @@ static const struct { const char *alias[8];
     { { "fs", "filesend" },           2, 3, send_file },
     { { "w",  "whoami" },             2, 0, whoami },
     { { "tf", "traffic" },            2, 0, cli_traffic },
+    { { "wl", "whitelist" },          2, 0, wl },
+    { { "wa", "whitelist_add" },      2, 1, wl_add },
+    { { "wr", "whitelist_rem" },      2, 1, wl_rem },
 };
 
 static int init(struct peer_s *p, char *line)
@@ -168,12 +189,17 @@ static int init(struct peer_s *p, char *line)
             }
         }
     }
+
     if (!found && p->user.cb.cli) {
         if (p->user.cb.cli(p, argv, argc) != 0) {
             free(argv);
             return -1;
         }
+    } else if (!found) {
+        if (argv) free(argv);
+        return -1;
     }
+
     if (argv) free(argv);
     return 0;
 }

@@ -187,4 +187,5 @@ void config_free(struct config_s *cfg)
     RSA_free(cfg->keys.local.rsa.private);
     sn_free(cfg->keys.local.str.public);
     sn_free(cfg->keys.local.str.private);
+    free(cfg->net.sendtable);
 }

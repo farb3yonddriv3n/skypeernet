@@ -172,6 +172,12 @@ int announce_prp(struct peer_s *p)
     wp->type = WORLD_PEER_PEER;
     wp->host = ADDR_IP(p->net.remote.addr);
     wp->port = ADDR_PORT(p->net.remote.addr);
+    bool whitelisted;
+    ifr(whitelist.exists(p, (const char *)wp->pubkeyhash, &whitelisted));
+    if (!whitelisted) {
+        printf("Peer not whitelisted: [%.*s]\n", (int )sizeof(wp->pubkeyhash), wp->pubkeyhash);
+        return world.peer.clean(wp);
+    }
     bool added;
     ifr(world.peer.add(p, wp, &added));
     if (added) {

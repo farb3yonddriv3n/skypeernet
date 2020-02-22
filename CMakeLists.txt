@@ -55,6 +55,7 @@ src/transaction.c
 src/tunnel.c
 src/utils.c
 src/version.c
+src/whitelist.c
 src/world.c
 src/payload/ack.c
 src/payload/announce.c

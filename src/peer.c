@@ -59,8 +59,7 @@ static void read_cb(EV_P_ ev_io *w, int revents)
 
 static void rlhandler(char *line)
 {
-    if (line == NULL) {
-    } else {
+    if (line != NULL) {
         if (*line != 0) {
             add_history(line);
         }
@@ -174,6 +173,7 @@ static int init_tracker(struct peer_s *t)
     struct list_param_s params[] = { { .name = "pidx_tidx" } };
     ifr(list.column.init(&t->send.nbl, params, COUNTOF(params)));
     ev_timer_again(t->ev.loop, &t->ev.send);
+    ifr(whitelist.load(t));
     backtrace.init();
     return 0;
 }
@@ -195,6 +195,7 @@ static int clean(struct peer_s *p)
     list.clean(&p->tasks.list);
     list.clean(&p->tcp.tunnels);
     list.clean(&p->tcp.endpoints);
+    list.clean(&p->whitelist);
     config_free(&p->cfg);
     if (p->miningtarget.ptr) free(p->miningtarget.ptr);
     backtrace.clean();

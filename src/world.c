@@ -237,4 +237,5 @@ const struct module_world_s world = {
     .peer.auth           = peer_auth,
     .peer.add            = peer_add,
     .peer.shadow         = peer_shadow,
+    .peer.clean          = wp_clean,
 };
