@@ -101,7 +101,7 @@ static int wl_addrem(struct peer_s *p, const char *pubhash,
     if (!p || !pubhash) return -1;
     if (strlen(pubhash) != SHA256HEX) return -1;
     struct wl_item_s wlf = {
-        .pubhash = pubhash,
+        .pubhash = (char *)pubhash,
         .found = NULL,
     };
     ifr(list.map(&p->whitelist, find, &wlf));
@@ -117,7 +117,7 @@ static int wl_exists(struct peer_s *p, const char *pubhash, bool *exists)
     if (!p || !pubhash) return -1;
     if (strlen(pubhash) != SHA256HEX) return -1;
     struct wl_item_s wlf = {
-        .pubhash = pubhash,
+        .pubhash = (char *)pubhash,
         .found = NULL,
     };
     ifr(list.map(&p->whitelist, find, &wlf));
@@ -130,7 +130,7 @@ static int wl_list(struct peer_s *p)
     if (!p) return -1;
     json_object *r;
     ifr(export(p, &r));
-    const char *json = json_object_to_json_string(r);
+    const char *json = json_object_to_json_string_ext(r, JSON_C_TO_STRING_PRETTY);
     printf("%s\n", json);
     json_object_put(r);
     return 0;

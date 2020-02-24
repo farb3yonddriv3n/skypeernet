@@ -25,13 +25,19 @@ static int nb_clean(void *unb)
     return 0;
 }
 
+static int unique_key(char *key, int nkey, int *keylen, int pidx, int tidx)
+{
+    if (!key || !nkey) return -1;
+    return unique_together(key, nkey, keylen, 2,
+                           (void *)&pidx, sizeof(pidx),
+                           (void *)&tidx, sizeof(tidx));
+}
+
 static int ack(struct net_send_s *ns, int tidx, int pidx)
 {
     char key[128];
     int nkey;
-    ifr(unique_together(key, sizeof(key), &nkey, 2,
-                        (void *)&pidx, sizeof(pidx),
-                        (void *)&tidx, sizeof(tidx)));
+    ifr(unique_key(key, sizeof(key), &nkey, pidx, tidx));
     return list.column.del(&ns->nbl, "pidx_tidx", key, nkey);
 }
 
@@ -43,7 +49,7 @@ static int attempts(struct list_s *l, struct nb_s *nb, bool *skip)
         *skip = true;
     if (++nb->attempt > nb->peer->cfg.net.max.send_retry) {
         *skip = true;
-        return list.del(l, nb);
+        return ack(&nb->peer->send, nb->tidx, nb->pidx);
     }
     return 0;
 }
@@ -60,11 +66,11 @@ static int dispatch(struct list_s *l)
                                    0,
                                    (struct sockaddr *)&nb->remote.addr,
                                    nb->remote.len);
-            syslog(LOG_DEBUG, "Sending packet %d of group %d and tidx %d %ld bytes to %x:%d attempt %d\n",
-                              nb->pidx, nb->gidx, nb->tidx, bytes,
-                              ADDR_IP(nb->remote.addr),
-                              ADDR_PORT(nb->remote.addr),
-                              nb->attempt);
+            //syslog(LOG_DEBUG, "Sending packet %d of group %d and tidx %d %ld bytes to %x:%d attempt %d\n",
+            //                  nb->pidx, nb->gidx, nb->tidx, bytes,
+            //                  ADDR_IP(nb->remote.addr),
+            //                  ADDR_PORT(nb->remote.addr),
+            //                  nb->attempt);
             if (nb->status == NET_ONESHOT) return list.del(l, nb);
             if (bytes <= 0) syslog(LOG_ERR, "Dispatch error: %s", strerror(errno));
             return 0;

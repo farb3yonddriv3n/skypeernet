@@ -24,7 +24,7 @@ static void proxy(struct peer_s *p)
     int            host = p->received.header.dst.host;
     unsigned short port = p->received.header.dst.port;
     if (world.peer.shadow(p, &host, &port) != 0) return;
-    if (payload.proxy.reply(p));
+    if (payload.proxy.reply(p) != 0) return;
     if (data.submit(p, &p->received, host, port) != 0) {
         BT_ADD
         backtrace.show();
@@ -43,12 +43,14 @@ static void read_cb(EV_P_ ev_io *w, int revents)
     if (packet.validate(p->recv.data, sizeof(p->recv.data), &valid,
                         &p->received) != 0) return;
     if (!valid) return;
-    if (ADDR_PORT(p->net.self.addr) != 0 &&
+
+    if (ADDR_IP(p->net.self.addr) != 0 &&
         p->received.header.dst.host != ADDR_IP(p->net.self.addr) &&
         p->received.header.dst.port != ADDR_PORT(p->net.self.addr)) {
         proxy(p);
         return;
     }
+
     if (payload.recv(p) != 0) {
         backtrace.show();
         syslog(LOG_ERR, "Request from peer %x:%d failed",
