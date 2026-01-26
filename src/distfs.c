@@ -125,11 +125,16 @@ int dfs_job_finalize(struct distfs_s *dfs, char **argv, int argc,
                      int *dfserr)
 {
     if (!dfs || !argv || argc != 2 || !dfserr) return -1;
-    if (strlen(argv[1]) != SHA256HEX) return -1;
+    if (strlen(argv[1]) != SHA256HEX) {
+        printf("Error: Invalid file hash (must be %d hex characters)\n", SHA256HEX);
+        *dfserr = 3;
+        return 0;
+    }
     unsigned char *h = (unsigned char *)argv[1];
     bool finalized;
     if (job.finalize(dfs->peer, dfs->blocks.remote, h,
                      strlen((const char *)h), &finalized) != 0) {
+        printf("Error: Finalization failed for %s\n", argv[1]);
         *dfserr = 2;
         return 0;
     };

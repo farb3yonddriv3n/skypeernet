@@ -267,11 +267,19 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
     if (!f) {
         ifr(root.find(dfs->blocks.local, file, (void **)&f));
     }
-    if (!f) return -1;
+    if (!f) {
+        printf("Error: File %.*s not found in remote or local blocks\n",
+               nfile, file);
+        return -1;
+    }
     unsigned char *desc;
     int            ndesc;
     ifr(decode_desc(f, &desc, &ndesc));
-    if (!desc) return 0;
+    if (!desc) {
+        printf("Error: Failed to decode file description for %.*s\n",
+               nfile, file);
+        return 0;
+    }
     char dst[2048], chunkpath[256];
     snprintf(dst, sizeof(dst), "%s/%.*s", cfg->dir.finalized, ndesc, desc);
     remove(dst);
@@ -283,10 +291,24 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
         char *buffer;
         sn_initz(cn, chunkpath);
         int n = eioie_fread(&buffer, cn);
-        if (n <= 0) return -1;
+        if (n <= 0) {
+            printf("Error: Failed to read chunk %d/%d from %s\n",
+                   i + 1, (int)f->chunks.size, chunkpath);
+            printf("       Make sure all chunks are downloaded (check with 'jd')\n");
+            return -1;
+        }
         struct config_key_s *key;
         ifr(config_keyexists(cfg, f->pubkeyhash, &key));
-        if (!key) return 0;
+        if (!key) {
+            printf("Error: Missing decryption key for file %.*s\n", nfile, file);
+            printf("       Required key (pubkeyhash): %.*s\n",
+                   (int)sizeof(f->pubkeyhash), f->pubkeyhash);
+            printf("       To fix: obtain the sharer's private key and place it in\n");
+            printf("       %s/%.*s.pem, then restart spnpeer\n",
+                   cfg->dir.keys, (int)sizeof(f->pubkeyhash), f->pubkeyhash);
+            free(buffer);
+            return 0;
+        }
         unsigned char *tagdec;
         int            ntagdec;
         ifr(decx(&tagdec, &ntagdec,
@@ -294,19 +316,30 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
             strlen(f->chunks.array[i].tag),
             key));
         unsigned char *decrypted = malloc(f->chunks.array[i].size);
-        if (!decrypted) return -1;
+        if (!decrypted) {
+            free(buffer);
+            return -1;
+        }
         int dc = aes_decrypt((unsigned char *)buffer, n, NULL,
                              0, tagdec, key->aes.key,
                              (unsigned char *)f->chunks.array[i].timeiter,
                              decrypted);
         free(tagdec);
-        if (dc < 1) return -1;
+        if (dc < 1) {
+            printf("Error: Decryption failed for chunk %d/%d\n",
+                   i + 1, (int)f->chunks.size);
+            printf("       The key may be incorrect or the chunk is corrupted\n");
+            free(buffer);
+            free(decrypted);
+            return -1;
+        }
         ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
         free(buffer);
         free(decrypted);
     }
     ifr(api_jobsdump(p));
     *finalized = true;
+    printf("File finalized successfully: %s\n", dst);
     return 0;
 }
 
