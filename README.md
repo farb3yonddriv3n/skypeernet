@@ -266,6 +266,102 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 | `tunneldump` | `ud` | - | List active tunnels |
 | `endpointdump` | `ed` | - | List tunnel endpoints |
 
+## Encryption and Keys
+
+### How Encryption Works
+
+All files in skypeernet are **encrypted with AES-256**. The encryption key is derived from the sharer's RSA private key:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  FILE ENCRYPTION (when sharing)                                  │
+│                                                                   │
+│  Your RSA Private Key                                            │
+│         │                                                        │
+│         ▼                                                        │
+│  SHA256(private_key) ──► AES-256 Key                            │
+│                              │                                   │
+│  Original File ──────────────┼──► Encrypted Chunks              │
+│                              │                                   │
+│  Each chunk gets unique IV (timeiter)                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Requirement for Downloading
+
+**Important:** To finalize (decrypt) a downloaded file, you MUST have the private key of the peer who originally shared it.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  FILE DECRYPTION (when finalizing)                               │
+│                                                                   │
+│  Downloaded encrypted chunks                                     │
+│         │                                                        │
+│         │    Sharer's Private Key (from ~/keys/)                │
+│         │              │                                         │
+│         │              ▼                                         │
+│         │    SHA256(private_key) ──► AES-256 Key                │
+│         │              │                                         │
+│         └──────────────┼──► Decrypted File                      │
+│                                                                   │
+│  ⚠️  WITHOUT the key: finalization FAILS silently               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Managing Shared Keys
+
+Keys are stored in the `keys_directory` (default: `~/keys/`):
+
+```bash
+~/keys/
+├── private.pem          # Your private key (auto-generated)
+├── public.pem           # Your public key (auto-generated)
+└── <pubkeyhash>.pem     # Shared keys from other peers (64-char hex names)
+```
+
+**To download files from another peer:**
+
+1. Get their private key file (they must share it with you out-of-band)
+2. Rename it to their `pubkeyhash` (64 hex characters) with `.pem` extension
+3. Place it in your `~/keys/` directory
+4. Restart spnpeer (keys are loaded at startup)
+
+**Check loaded keys:**
+```bash
+> kd
+ | My key |
+ | a1b2c3d4e5f6...your_pubkeyhash...64chars |
+ | Shared keys |
+ | f6e5d4c3b2a1...their_pubkeyhash...64chars |
+```
+
+**Finding who shared a file:**
+```bash
+> lf r
+{
+  "files": [{
+    "name": "document.pdf",
+    "hash": "...",
+    "pubkeyhash": "f6e5d4c3b2a1..."   # ◄── You need this peer's private key
+  }]
+}
+```
+
+### Use Cases
+
+| Scenario | Key Required | How to Get It |
+|----------|--------------|---------------|
+| Download your own files | Your private key | Already have it (auto) |
+| Download from trusted peer | Their private key | They share it with you |
+| Download from public peer | Their private key | They publish it |
+| Public file sharing | Shared group key | Distributed to group |
+
+### Security Implications
+
+- **Private sharing:** Only share your private key with trusted parties
+- **Public sharing:** If you want files publicly downloadable, publish your private key
+- **Group sharing:** Create a dedicated keypair for the group and distribute it
+
 ## File Sharing Workflow
 
 ### Sharing a File (Step by Step)
@@ -305,10 +401,14 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 │       "files": [{                                                │
 │         "name": "myfile.pdf",                                    │
 │         "hash": "a1b2c3d4...64chars...",                        │
+│         "pubkeyhash": "f6e5d4c3...64chars...",  ◄── NOTE THIS!  │
 │         "size": 1048576,                                         │
 │         "downloaded": false                                      │
 │       }]                                                         │
 │     }                                                            │
+│                                                                   │
+│  ⚠️  BEFORE DOWNLOADING: Ensure you have the sharer's private   │
+│     key in ~/keys/<pubkeyhash>.pem (see "Encryption and Keys")  │
 │                                                                   │
 │  2. Start download job (use the 64-char hash)                    │
 │     > ja a1b2c3d4e5f6...                                        │
@@ -327,6 +427,8 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 │                                                                   │
 │  4. Finalize when complete (100%)                                │
 │     > jf a1b2c3d4e5f6...                                        │
+│                                                                   │
+│     ⚠️  If finalization fails silently, you're missing the key! │
 │                                                                   │
 │  ✓ File is now in ~/finalized/myfile.pdf                        │
 └──────────────────────────────────────────────────────────────────┘
@@ -414,6 +516,17 @@ python skynet.py
 2. Verify file exists remotely: `lf r`
 3. Check job status: `jd`
 4. Look at tasks: `ad`
+
+### File finalization fails (no file appears)
+
+**Most common cause:** Missing decryption key!
+
+1. Check the file's `pubkeyhash` with `lf r`
+2. Verify you have the key: `kd` (should show matching shared key)
+3. If missing, obtain the private key from the file sharer
+4. Place key in `~/keys/<pubkeyhash>.pem`
+5. **Restart spnpeer** (keys only load at startup)
+6. Try `jf <hash>` again
 
 ### Mining takes too long
 
