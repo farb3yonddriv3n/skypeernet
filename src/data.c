@@ -101,7 +101,7 @@ static int packet_set(snb *dst, struct packet_s *p)
         return -1;
     if (snb_bytes_append(dst, (char *)&p->buffer.payload, p->header.length)          != 0)
         return -1;
-    if (snb_bytes_append(dst, (char *)&p->buffer.hash,    sizeof(p->buffer.hash))    != 0)
+    if (snb_bytes_append(dst, (char *)&p->buffer.hash,    CRC32_SIZE)    != 0)
         return -1;
     return 0;
 }
@@ -129,7 +129,7 @@ static int packet_get(struct packet_s *p, char *buffer, int nbuffer)
     if (sn_read((void *)&p->header.dst.port, sizeof(p->header.dst.port), &b) != 0) return -1;
     if (sn_read((void *)&p->header.ts, sizeof(p->header.ts), &b) != 0) return -1;
     if (sn_read(p->buffer.payload, p->header.length, &b)       != 0) return -1;
-    if (sn_read(p->buffer.hash,    sizeof(p->buffer.hash), &b) != 0) return -1;
+    if (sn_read(p->buffer.hash,    CRC32_SIZE, &b) != 0) return -1;
     return 0;
 }
 

@@ -38,15 +38,18 @@
 
 /**
  * Maximum size of a single UDP packet.
- * Chosen to stay well under typical MTU (~1500) to avoid fragmentation.
+ * Set to 534 bytes to maximize payload while staying under typical MTU (~1500).
  */
 #define UDP_PACKET_SIZE    534
 
 /**
  * Maximum payload bytes per packet after subtracting header and hash.
- * payload_size = total_size - header_size - hash_size(64 bytes for SHA256HEX)
+ * payload_size = total_size - header_size - hash_size
+ *
+ * Using CRC32 (8 bytes hex) instead of SHA256 (64 bytes hex) for packet
+ * integrity saves 56 bytes per packet and is much faster to compute.
  */
-#define UDP_PACKET_PAYLOAD (UDP_PACKET_SIZE - sizeof(struct header_s) - SHA256HEX)
+#define UDP_PACKET_PAYLOAD (UDP_PACKET_SIZE - sizeof(struct header_s) - CRC32_SIZE)
 //#define UDP_PACKET_PAYLOAD 1
 
 /**
@@ -195,18 +198,18 @@ struct header_s {
  *
  * WIRE FORMAT:
  * +------------------+-------------------+------------------+
- * | header_s         | payload           | SHA256 hash      |
- * | (variable size)  | (0 to PAYLOAD_MAX)| (64 bytes hex)   |
+ * | header_s         | payload           | CRC32 hash       |
+ * | (variable size)  | (0 to PAYLOAD_MAX)| (8 bytes hex)    |
  * +------------------+-------------------+------------------+
  *
  * The hash covers header + payload (not itself) and is used to
- * detect corruption or tampering.
+ * detect corruption. CRC32 is used instead of SHA256 for speed.
  */
 struct packet_s {
     struct header_s header;
     struct {
         char payload[UDP_PACKET_PAYLOAD];  /**< Message payload (variable length, up to max) */
-        char hash[SHA256HEX];              /**< SHA256 hash of header + payload (hex encoded) */
+        char hash[CRC32_SIZE];             /**< CRC32 hash of header + payload (hex encoded) */
     } buffer;
 };
 

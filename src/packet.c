@@ -29,9 +29,10 @@ static int packet_create(struct peer_s *pr, enum command_e cmd, char *buffer, in
     if (tcp) memcpy(&p->header.tcp, tcp, sizeof(*tcp));
     if (filename) memcpy(p->header.filename, filename, sizeof(p->header.filename));
     memcpy(p->buffer.payload, buffer, nbuffer);
-    unsigned char md[SHA256HEX];
-    sha256hex((unsigned char *)p, sizeof(struct header_s) + nbuffer, md);
-    memcpy(p->buffer.hash, md, SHA256HEX);
+    /* Use fast CRC32 instead of SHA256 for packet integrity */
+    unsigned char md[CRC32_SIZE];
+    crc32hex((unsigned char *)p, sizeof(struct header_s) + nbuffer, md);
+    memcpy(p->buffer.hash, md, CRC32_SIZE);
     return 0;
 }
 
@@ -99,9 +100,10 @@ static int validate(char *buffer, size_t nbuffer, bool *valid, struct packet_s *
     //if (nbuffer > sizeof(struct packet_s)) return 0;
     if (data.get(p, buffer, nbuffer) != 0) return -1;
     if (p->header.length > UDP_PACKET_PAYLOAD) return 0;
-    unsigned char md[SHA256HEX];
-    sha256hex((unsigned char *)p, sizeof(struct header_s) + p->header.length, md);
-    if (memcmp(md, p->buffer.hash, SHA256HEX) != 0) return 0;
+    /* Use fast CRC32 instead of SHA256 for validation */
+    unsigned char md[CRC32_SIZE];
+    crc32hex((unsigned char *)p, sizeof(struct header_s) + p->header.length, md);
+    if (memcmp(md, p->buffer.hash, CRC32_SIZE) != 0) return 0;
     *valid = true;
     return 0;
 }
