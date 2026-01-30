@@ -7,15 +7,15 @@ static void tunnel_data(struct gc_gen_client_s *client, char *buf, int len)
                          .port.dst = t->tcp.dst,
                          .cidx     = client->base.fd,
                          .reqtype  = TCP_REQUEST };
-    unsigned char filename[SHA256HEX];
-    sha256hex((unsigned char *)buf, len, filename);
-    char filenamestr[256];
-    snprintf(filenamestr, sizeof(filenamestr), "%s/%.*s", t->peer->cfg.dir.tcp,
-                                                          SHA256HEX, filename);
-    os.filewrite(filenamestr, "wb", buf, len);
-    task.add(t->peer, t->peer->cfg.dir.tcp, filename, sizeof(filename),
-             t->remote.host, t->remote.port, NULL,
-             TASK_FILE_DELETE, &tcp);
+    /* Send TCP data directly through UDP packets without disk I/O */
+    struct peer_s *p = t->peer;
+    p->send_buffer.type = BUFFER_FILE;
+    sn_setr(p->send_buffer.u.file.bin, buf, len);
+
+    /* Use a simple counter for tidx instead of SHA256 hash */
+    static unsigned int tcp_tidx = 0;
+    payload.send(p, COMMAND_FILE, t->remote.host, t->remote.port,
+                 ++tcp_tidx, 1, NULL, &tcp);
 }
 
 static int find(struct list_s *l, void *ex, void *ud)
