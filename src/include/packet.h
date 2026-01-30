@@ -7,7 +7,7 @@
  * skypeernet uses a custom UDP-based protocol with the following characteristics:
  *
  * 1. PACKET STRUCTURE:
- *    - Fixed maximum size: 534 bytes (UDP_PACKET_SIZE)
+ *    - Fixed maximum size: 634 bytes (UDP_PACKET_SIZE)
  *    - Each packet contains: header + payload + SHA256 hash
  *    - Large messages are chunked into multiple packets (same gidx, different pidx)
  *
@@ -38,9 +38,9 @@
 
 /**
  * Maximum size of a single UDP packet.
- * Set to 534 bytes to maximize payload while staying under typical MTU (~1500).
+ * Set to 634 bytes to maximize payload while staying under typical MTU (~1500).
  */
-#define UDP_PACKET_SIZE    534
+#define UDP_PACKET_SIZE   634
 
 /**
  * Maximum payload bytes per packet after subtracting header and hash.

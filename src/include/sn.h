@@ -214,7 +214,7 @@ typedef struct sn_s {
  * Defines memory region for later manipulation
  */
 typedef struct snb_s {
-    char s[1024]; /**< Pointer to a memory region */
+    char s[2048]; /**< Pointer to a memory region */
     int  n;       /**< Size of memory region snb#s */
     int  offset;  /**< Offset from start of region */
 } snb;
