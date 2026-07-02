@@ -67,6 +67,19 @@ int rsa_loadkey(RSA *(*func)(FILE *pfile, RSA **x, pem_password_cb *cb, void *u)
     return 0;
 }
 
+int rsa_pubkey_from_pem(sn *pem, RSA **key)
+{
+    if (!pem || !key) return -1;
+    const char *tmpfile = ".pubkey.pem.tmp";
+    ifr(eioie_fwrite(tmpfile, "w", pem->s, pem->n));
+    sn            str;
+    unsigned char hash[SHA256HEX];
+    ifr(rsa_loadkey(PEM_read_RSAPublicKey, tmpfile, key, &str, hash));
+    sn_free(str);
+    remove(tmpfile);
+    return 0;
+}
+
 int rsa_load(struct config_s *cfg)
 {
     if (!cfg) return -1;

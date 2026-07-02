@@ -256,6 +256,8 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 | `taskcancel` | `ac` | `<taskindex>` | Cancel a transfer task |
 | `keysdump` | `kd` | - | Show RSA key information |
 | `keysexport` | `kx` | - | Export own public key to `keys/<pubkeyhash>.pub.pem` for sharing |
+| `keysend` | `ks` | `<filehash\|gkhash> <pubkeyhash>` | Send a file key or group key to an online peer (grant access without re-mining) |
+| `keygroup` | `kg` | - | Create a group key; share files to it with `ta ... to <gkhash>` |
 | `rdump` | `rd` | - | Dump rogue peer info |
 | `versiondump` | `v` | - | Show version information |
 
@@ -344,9 +346,39 @@ decrypt anything.
 Public key exported to keys/<your_pubkeyhash>.pub.pem
 ```
 
-Planned (see `docs/encryption.md`): `ks <filehash> <pubkeyhash>` — grant
-access to an already-shared file by sending the wrapped CEK directly,
-without re-mining.
+To grant access to an **already-shared** file (no re-mining needed), send
+the key directly to an online peer:
+
+```bash
+> ks <filehash> <pubkeyhash>
+```
+
+The CEK is wrapped with the recipient's public key and sent over the
+network (`COMMAND_KEY`). The recipient verifies it unwraps with their own
+private key, stores it as `keys/<filehash>.cek`, and can finalize the file
+from then on. A key that doesn't unwrap (not addressed to you) is ignored,
+and an existing stored key is never overwritten.
+
+### Group Sharing
+
+A group key is a symmetric AES-256 key identified by its SHA256 hash. It
+lives in the same hash namespace as peer keys, so `ta ... to` and `ks`
+accept it transparently:
+
+```bash
+> kg                                   # create a group key
+Group key created: <gkhash>
+
+> ta report.pdf "weekly" to <gkhash>   # share a file to the group
+> ks <gkhash> <member_pubkeyhash>      # add an online member (they load it live)
+```
+
+Members hold `keys/<gkhash>.grp` (base64 of the key; also importable
+offline by copying the file and restarting) and can decrypt **every** file
+shared to that group — including files shared before they joined — and can
+pass the group key on. Treat the group key as shared trust: anyone holding
+it is a full member. To evict members, create a new group key with `kg`
+and share future files to the new hash.
 
 ### Legacy Blocks and Shared Keys
 
@@ -373,7 +405,8 @@ for new shares.
 |----------|--------------|---------------|
 | Download a `plain`-shared file | None | - |
 | Download your own files | Your private key | Already have it (auto) |
-| Download a peer's CEK file | A key slot addressed to you | Sharer uses `ta ... to <yourhash>` |
+| Download a peer's CEK file | A key slot addressed to you | Sharer uses `ta ... to <yourhash>` or `ks` |
+| Download a group-shared file | The group key | Any member sends it (`ks <gkhash> ...`) or hands you the `.grp` file |
 | Download a legacy file | Sharer's private key | They share it (deprecated) |
 
 ## File Sharing Workflow

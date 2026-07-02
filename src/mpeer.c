@@ -315,6 +315,192 @@ static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc,
     return config_keysdump(&dfs->peer->cfg);
 }
 
+static int dkey(struct peer_s *p, int host, unsigned short port,
+                char *data, int len)
+{
+    if (!p || !data) return -1;
+    if (len <= 1 + SHA256HEX) return -1;
+    char           ktype = data[0];
+    char          *hash  = data + 1;
+    char          *blob  = data + 1 + SHA256HEX;
+    int            nblob = len - 1 - SHA256HEX;
+    size_t         nwrapped;
+    unsigned char *wrapped = base64_decode((unsigned char *)blob, nblob,
+                                           &nwrapped);
+    if (!wrapped) return -1;
+    unsigned char *dec = NULL;
+    int            ndec;
+    int ret = rsa_decrypt(p->cfg.keys.local.rsa.private, wrapped, nwrapped,
+                          &dec, &ndec);
+    free(wrapped);
+    if (ret != 0 || ndec != FILE_CEK_SIZE) {
+        free(dec);
+        printf("Ignoring key grant from %x:%d (not addressed to us)\n",
+               host, port);
+        return 0;
+    }
+    char path[512];
+    bool exists;
+    if (ktype == KEY_TYPE_GROUP) {
+        unsigned char gkhash[SHA256HEX];
+        sha256hex(dec, ndec, gkhash);
+        if (memcmp(gkhash, hash, sizeof(gkhash)) != 0) {
+            free(dec);
+            printf("Ignoring group key from %x:%d (hash mismatch)\n",
+                   host, port);
+            return 0;
+        }
+        snprintf(path, sizeof(path), "%s/%.*s.grp", p->cfg.dir.keys,
+                 SHA256HEX, hash);
+        ifr(os.fileexists(path, &exists));
+        if (exists) {
+            free(dec);
+            printf("Group key %.*s already stored, ignoring\n",
+                   SHA256HEX, hash);
+            return 0;
+        }
+        size_t         nb64;
+        unsigned char *b64 = base64_encode(dec, ndec, &nb64);
+        if (!b64) {
+            free(dec);
+            return -1;
+        }
+        ret = eioie_fwrite(path, "w", (char *)b64, nb64);
+        free(b64);
+        if (ret == 0)
+            ret = config_groupkey_add(&p->cfg, (unsigned char *)hash, dec);
+        free(dec);
+        ifr(ret);
+        printf("Received group key %.*s from %x:%d\n",
+               SHA256HEX, hash, host, port);
+        syslog(LOG_INFO, "Stored group key grant %s", path);
+        return 0;
+    }
+    free(dec);
+    if (ktype != KEY_TYPE_CEK) return -1;
+    snprintf(path, sizeof(path), "%s/%.*s.cek", p->cfg.dir.keys,
+             SHA256HEX, hash);
+    ifr(os.fileexists(path, &exists));
+    if (exists) {
+        printf("Key for file %.*s already stored, ignoring\n",
+               SHA256HEX, hash);
+        return 0;
+    }
+    ifr(eioie_fwrite(path, "w", blob, nblob));
+    printf("Received decryption key for file %.*s from %x:%d\n",
+           SHA256HEX, hash, host, port);
+    syslog(LOG_INFO, "Stored CEK grant %s", path);
+    return 0;
+}
+
+static int key_send_wrapped(struct peer_s *p, char ktype,
+                            unsigned char *hash, unsigned char *secret,
+                            const char *pubkeyhash, int *dfserr)
+{
+    struct world_peer_s wp = { .found = NULL };
+    memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
+    ifr(list.map(&p->peers, world.peer.findpubkeyhash, &wp));
+    if (!wp.found || wp.found->pubkey.n < 1) {
+        printf("Peer %s is not online, cannot send key\n", pubkeyhash);
+        *dfserr = 5;
+        return 0;
+    }
+    RSA *pub = NULL;
+    ifr(rsa_pubkey_from_pem(&wp.found->pubkey, &pub));
+    unsigned char *wrapped;
+    int            nwrapped;
+    int ret = rsa_encrypt(pub, secret, FILE_CEK_SIZE, &wrapped, &nwrapped);
+    RSA_free(pub);
+    ifr(ret);
+    size_t         nb64;
+    unsigned char *b64 = base64_encode(wrapped, nwrapped, &nb64);
+    free(wrapped);
+    if (!b64) return -1;
+    p->send_buffer.type = BUFFER_KEY;
+    p->send_buffer.u.key.ktype = ktype;
+    p->send_buffer.u.key.file  = hash;
+    sn_setr(p->send_buffer.u.key.key, (char *)b64, nb64);
+    ret = payload.send(p, COMMAND_KEY, wp.found->host, wp.found->port,
+                       0, 0, NULL, NULL);
+    free(b64);
+    ifr(ret);
+    printf("%s %.*s sent to peer %.*s\n",
+           ktype == KEY_TYPE_GROUP ? "Group key" : "Key for file",
+           SHA256HEX, hash, SHA256HEX, pubkeyhash);
+    return 0;
+}
+
+static int dfs_key_send(struct distfs_s *dfs, char **argv, int argc,
+                        int *dfserr)
+{
+    if (!dfs || !argv || argc != 3 || !dfserr) return -1;
+    if (strlen(argv[1]) != SHA256HEX || strlen(argv[2]) != SHA256HEX) {
+        printf("Usage: ks <filehash|grouphash> <pubkeyhash>\n");
+        *dfserr = 1;
+        return 0;
+    }
+    struct peer_s *p = dfs->peer;
+    struct config_key_s *ck;
+    ifr(config_keyexists(&p->cfg, (unsigned char *)argv[1], &ck));
+    if (ck && ck->type == CONFIG_KEY_GROUP)
+        return key_send_wrapped(p, KEY_TYPE_GROUP, (unsigned char *)argv[1],
+                                ck->aes.key, argv[2], dfserr);
+    struct file_s *f = NULL;
+    ifr(group.find.transaction(dfs->blocks.remote, (unsigned char *)argv[1],
+                               (void **)&f, NULL, NULL));
+    if (!f) {
+        ifr(root.find(dfs->blocks.local, (unsigned char *)argv[1],
+                      (void **)&f));
+    }
+    if (!f) {
+        printf("File or group key %s not found\n", argv[1]);
+        *dfserr = 2;
+        return 0;
+    }
+    if (f->enc.scheme != FILE_SCHEME_CEK) {
+        printf("File is not CEK-encrypted, nothing to grant\n");
+        *dfserr = 3;
+        return 0;
+    }
+    unsigned char *cek;
+    ifr(file_cek_resolve(f, &cek));
+    if (!cek) {
+        printf("You hold no key for this file, cannot grant access\n");
+        *dfserr = 4;
+        return 0;
+    }
+    return key_send_wrapped(p, KEY_TYPE_CEK, (unsigned char *)argv[1],
+                            cek, argv[2], dfserr);
+}
+
+static int dfs_keygroup(struct distfs_s *dfs, char **argv, int argc,
+                        int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    struct config_s *cfg = &dfs->peer->cfg;
+    unsigned char gk[FILE_CEK_SIZE];
+    if (RAND_bytes(gk, sizeof(gk)) != 1) return -1;
+    unsigned char gkhash[SHA256HEX];
+    sha256hex(gk, sizeof(gk), gkhash);
+    char path[512];
+    snprintf(path, sizeof(path), "%s/%.*s.grp", cfg->dir.keys,
+             (int )sizeof(gkhash), gkhash);
+    size_t         nb64;
+    unsigned char *b64 = base64_encode(gk, sizeof(gk), &nb64);
+    if (!b64) return -1;
+    int ret = eioie_fwrite(path, "w", (char *)b64, nb64);
+    free(b64);
+    ifr(ret);
+    ifr(config_groupkey_add(cfg, gkhash, gk));
+    printf("Group key created: %.*s\n", (int )sizeof(gkhash), gkhash);
+    printf("Share files to it:   ta <file> <tags> to %.*s\n",
+           (int )sizeof(gkhash), gkhash);
+    printf("Add online members:  ks %.*s <pubkeyhash>\n",
+           (int )sizeof(gkhash), gkhash);
+    printf("Offline members import %s and restart\n", path);
+    return 0;
+}
+
 static int dfs_keysexport(struct distfs_s *dfs, char **argv, int argc,
                           int *dfserr)
 {
@@ -353,6 +539,8 @@ static const struct { const char *alias[8];
     { { "jc", "jobclean" },     2, 0, dfs_job_clean         },
     { { "kd", "keysdump" },     2, 0, dfs_keysdump          },
     { { "kx", "keysexport" },   2, 0, dfs_keysexport        },
+    { { "ks", "keysend" },      2, 2, dfs_key_send          },
+    { { "kg", "keygroup" },     2, 0, dfs_keygroup          },
     { { "rd", "rdump" },        2, 0, dfs_rogue_dump        },
     { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
     { { "ac", "taskcancel" },   2, 1, dfs_task_cancel       },
@@ -438,6 +626,7 @@ static int init(struct peer_s *p, struct distfs_s *dfs)
     p->user.cb.query_reply = dfs_query_reply;
     p->user.cb.ping    = dfs_ping_reply;
     p->user.cb.pong    = dfs_pong_reply;
+    p->user.cb.key     = dkey;
     p->user.data       = dfs;
     p->api.cb.message  = api_message_write;
     p->api.cb.online   = api_peer_online;

@@ -1,8 +1,18 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+/**
+ * @brief Kind of key held in a config_key_s entry.
+ */
+enum config_key_e {
+    CONFIG_KEY_LEGACY = 0, /**< RSA private key (own identity or legacy import) */
+    CONFIG_KEY_PUBLIC,     /**< Peer's public key (.pub.pem, CEK recipient) */
+    CONFIG_KEY_GROUP,      /**< Symmetric group key (.grp, sharedname = SHA256(key)) */
+};
+
 struct config_key_s {
-    unsigned char sharedname[SHA256HEX];
+    unsigned char      sharedname[SHA256HEX];
+    enum config_key_e  type;
     struct {
         RSA *public;
         RSA *private;
@@ -73,6 +83,8 @@ struct config_s {
 
 int config_init(struct config_s *cfg);
 void config_free(struct config_s *cfg);
+int config_groupkey_add(struct config_s *cfg, unsigned char *gkhash,
+                        unsigned char *gk);
 int config_keysdump(struct config_s *cfg);
 int config_keyexists(struct config_s *cfg, unsigned char *sharedname,
                      struct config_key_s **exists);

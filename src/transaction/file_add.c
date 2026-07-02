@@ -113,17 +113,34 @@ static int slot_add(struct file_s *f, unsigned char *pubkeyhash,
     return 0;
 }
 
-static int pubkey_from_pem(sn *pem, RSA **key)
+static int slot_add_group(struct file_s *f, unsigned char *gkhash,
+                          unsigned char *gk, unsigned char *cek)
 {
-    if (!pem || !key) return -1;
-    char tmpfile[256];
-    snprintf(tmpfile, sizeof(tmpfile), ".pubkey.slot.tmp");
-    ifr(eioie_fwrite(tmpfile, "w", pem->s, pem->n));
-    sn            str;
-    unsigned char hash[SHA256HEX];
-    ifr(rsa_loadkey(PEM_read_RSAPublicKey, tmpfile, key, &str, hash));
-    sn_free(str);
-    remove(tmpfile);
+    if (!f || !gkhash || !gk || !cek) return -1;
+    f->enc.slots.array = realloc(f->enc.slots.array,
+                                 ++f->enc.slots.size * sizeof(struct file_key_slot_s));
+    if (!f->enc.slots.array) return -1;
+    struct file_key_slot_s *s = &f->enc.slots.array[f->enc.slots.size - 1];
+    memset(s, 0, sizeof(*s));
+    memcpy(s->to, gkhash, sizeof(s->to));
+    unsigned char iv[AES_IV_SIZE];
+    if (RAND_bytes(iv, sizeof(iv)) != 1) return -1;
+    unsigned char tag[AES_TAG_SIZE];
+    unsigned char buffer[sizeof(iv) + sizeof(tag) + FILE_CEK_SIZE + AES_TAG_SIZE];
+    int nct = aes_encrypt(cek, FILE_CEK_SIZE, NULL, 0, gk, iv,
+                          buffer + sizeof(iv) + sizeof(tag), tag);
+    if (nct < 1) return -1;
+    memcpy(buffer, iv, sizeof(iv));
+    memcpy(buffer + sizeof(iv), tag, sizeof(tag));
+    size_t         nb64;
+    unsigned char *b64 = base64_encode(buffer, sizeof(iv) + sizeof(tag) + nct,
+                                       &nb64);
+    if (!b64 || nb64 >= sizeof(s->key)) {
+        free(b64);
+        return -1;
+    }
+    snprintf(s->key, sizeof(s->key), "%.*s", (int)nb64, b64);
+    free(b64);
     return 0;
 }
 
@@ -141,6 +158,8 @@ static int recipient_slot(struct file_s *f, unsigned char *cek,
             return 0;
     struct config_key_s *ck;
     ifr(config_keyexists(&psig->cfg, (unsigned char *)pubkeyhash, &ck));
+    if (ck && ck->type == CONFIG_KEY_GROUP)
+        return slot_add_group(f, (unsigned char *)pubkeyhash, ck->aes.key, cek);
     if (ck && ck->rsa.public)
         return slot_add(f, (unsigned char *)pubkeyhash, ck->rsa.public, cek);
     struct world_peer_s wp = { .found = NULL };
@@ -148,14 +167,15 @@ static int recipient_slot(struct file_s *f, unsigned char *cek,
     ifr(list.map(&psig->peers, world.peer.findpubkeyhash, &wp));
     if (wp.found && wp.found->pubkey.n > 0) {
         RSA *pub = NULL;
-        ifr(pubkey_from_pem(&wp.found->pubkey, &pub));
+        ifr(rsa_pubkey_from_pem(&wp.found->pubkey, &pub));
         int ret = slot_add(f, (unsigned char *)pubkeyhash, pub, cek);
         RSA_free(pub);
         return ret;
     }
     printf("Unknown recipient %.*s\n", SHA256HEX, pubkeyhash);
     printf("The peer must be online, or import their public key as\n");
-    printf("%s/%.*s.pub.pem and restart\n", psig->cfg.dir.keys,
+    printf("%s/%.*s.pub.pem (or a group key as %.*s.grp) and restart\n",
+           psig->cfg.dir.keys, SHA256HEX, pubkeyhash,
            SHA256HEX, pubkeyhash);
     return -1;
 }

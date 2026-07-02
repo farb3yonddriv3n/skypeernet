@@ -113,6 +113,7 @@ enum command_e {
     COMMAND_TCP,                              /**< TCP-over-UDP tunnel data (deprecated/unused?) */
     COMMAND_QUERY,                            /**< Ask peer about another peer's reachability */
     COMMAND_QUERY_REPLY,                      /**< Response to reachability query */
+    COMMAND_KEY                         = 15, /**< CEK grant: RSA-wrapped file key for one recipient */
 };
 
 /**

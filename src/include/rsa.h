@@ -10,5 +10,6 @@ int rsa_decrypt(RSA *privkey, const unsigned char *src, const int srclen,
                 unsigned char **dst, int *dstlen);
 int rsa_encrypt(RSA *keypair, const unsigned char *src, const int srclen,
                 unsigned char **dst, int *dstlen);
+int rsa_pubkey_from_pem(sn *pem, RSA **key);
 
 #endif

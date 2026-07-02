@@ -227,6 +227,32 @@ int fileask_read(struct peer_s *p);
 int fileask_size(int *sz, void *userdata);
 
 /*
+ * KEY COMMAND HANDLERS
+ * ====================
+ * Key grant: give a peer access to an already-shared file (CEK) or to
+ * a group (symmetric group key).
+ *
+ * Payload format:
+ *   +---------+----------+------------------------------------+
+ *   | type(1) | hash(64) | base64(RSA(recipient_pub, secret)) |
+ *   +---------+----------+------------------------------------+
+ *
+ * type = KEY_TYPE_CEK:   hash is a file hash; receiver verifies the
+ *   secret unwraps with its own private key and stores the wrapped
+ *   blob as keys/<hash>.cek.
+ * type = KEY_TYPE_GROUP: hash is a group key hash; receiver verifies
+ *   SHA256(secret) == hash and stores base64(secret) as
+ *   keys/<hash>.grp, loading it immediately.
+ */
+
+#define KEY_TYPE_CEK   0
+#define KEY_TYPE_GROUP 1
+
+int key_write(struct data_s *d, void *userdata);
+int key_read(struct peer_s *p);
+int key_size(int *sz, void *userdata);
+
+/*
  * PING/PONG COMMAND HANDLERS
  * ==========================
  * Latency measurement and keepalive.

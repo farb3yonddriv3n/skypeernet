@@ -19,6 +19,34 @@ int config_keyexists(struct config_s *cfg, unsigned char *sharedname,
     return 0;
 }
 
+int config_groupkey_add(struct config_s *cfg, unsigned char *gkhash,
+                        unsigned char *gk)
+{
+    if (!cfg || !gkhash || !gk) return -1;
+    struct config_key_s *exists;
+    ifr(config_keyexists(cfg, gkhash, &exists));
+    if (exists) return 0;
+    cfg->keys.shared.array = realloc(cfg->keys.shared.array,
+                                     ++cfg->keys.shared.size *
+                                     sizeof(struct config_key_s));
+    if (!cfg->keys.shared.array) return -1;
+    struct config_key_s *cfgk = &cfg->keys.shared.array[cfg->keys.shared.size - 1];
+    memset(cfgk, 0, sizeof(*cfgk));
+    memcpy(cfgk->sharedname, gkhash, SHA256HEX);
+    cfgk->type = CONFIG_KEY_GROUP;
+    memcpy(cfgk->aes.key, gk, sizeof(cfgk->aes.key));
+    return 0;
+}
+
+static const char *config_keytype(struct config_key_s *k)
+{
+    switch (k->type) {
+        case CONFIG_KEY_GROUP:  return "group";
+        case CONFIG_KEY_PUBLIC: return "public";
+        default:                return "private (legacy)";
+    }
+}
+
 int config_keysdump(struct config_s *cfg)
 {
     int i;
@@ -28,8 +56,7 @@ int config_keysdump(struct config_s *cfg)
     for (i = 0; i < cfg->keys.shared.size; i++) {
         printf(" | %.*s | %s |\n", SHA256HEX,
                cfg->keys.shared.array[i].sharedname,
-               cfg->keys.shared.array[i].rsa.private ? "private (legacy)"
-                                                     : "public");
+               config_keytype(&cfg->keys.shared.array[i]));
     }
     return 0;
 }
@@ -154,6 +181,28 @@ int config_init(struct config_s *cfg)
         struct config_key_s *exists;
         ifr(config_keyexists(cfg, (unsigned char *)filename, &exists));
         if (exists) return 0;
+        // <gkhash>.grp holds a base64 symmetric group key
+        if (strstr(filename, ".grp")) {
+            sn_initz(fn, (char *)fullpath);
+            char *blob;
+            int n = eioie_fread(&blob, fn);
+            if (n <= 0) return 0;
+            size_t         ngk;
+            unsigned char *gk = base64_decode((unsigned char *)blob, n, &ngk);
+            free(blob);
+            if (!gk) return 0;
+            unsigned char gkhash[SHA256HEX];
+            sha256hex(gk, ngk, gkhash);
+            if (ngk != SHA256_DIGEST_LENGTH ||
+                memcmp(gkhash, filename, SHA256HEX) != 0) {
+                printf("Skipping invalid group key %s\n", fullpath);
+                free(gk);
+                return 0;
+            }
+            int ret = config_groupkey_add(cfg, (unsigned char *)filename, gk);
+            free(gk);
+            return ret;
+        }
         cfg->keys.shared.array = realloc(cfg->keys.shared.array,
                                          ++cfg->keys.shared.size * sizeof(struct config_key_s));
         if (!cfg->keys.shared.array) return -1;
@@ -163,6 +212,7 @@ int config_init(struct config_s *cfg)
         // <pubkeyhash>.pub.pem holds a peer's PUBLIC key (CEK recipient),
         // <pubkeyhash>.pem a peer's private key (legacy decryption only)
         if (strstr(filename, ".pub")) {
+            cfgk->type = CONFIG_KEY_PUBLIC;
             ifr(rsa_loadkey(PEM_read_RSAPublicKey, fullpath,
                             &cfgk->rsa.public,
                             &cfgk->str.public,

@@ -100,6 +100,7 @@ enum buffer_e {
     BUFFER_QUERY_REPLY,           /**< Reachability response (u.query_reply) */
     BUFFER_PING,                  /**< Ping probe (u.ping) */
     BUFFER_PONG,                  /**< Pong response (u.pong) */
+    BUFFER_KEY,                   /**< CEK grant for a file (u.key) */
 };
 
 /**
@@ -169,6 +170,13 @@ struct send_buffer_s {
         struct {
             double ts;  /**< Original timestamp from ping */
         } pong;
+
+        /** For BUFFER_KEY - key grant (file CEK or group key) */
+        struct {
+            char           ktype; /**< KEY_TYPE_CEK or KEY_TYPE_GROUP */
+            unsigned char *file;  /**< File hash or group key hash (SHA256HEX) */
+            sn             key;   /**< base64(RSA(recipient_pub, secret)) */
+        } key;
     } u;
 };
 
@@ -335,6 +343,10 @@ struct peer_s {
             /** Pong received */
             int (*pong)(struct peer_s *p, int host,
                         unsigned short port, double ts);
+            /** CEK grant received (COMMAND_KEY) */
+            int (*key)(struct peer_s *p, int host,
+                       unsigned short port,
+                       char *data, int len);
         } cb;
         void *data;  /**< User context pointer (e.g., distfs_s) */
     } user;

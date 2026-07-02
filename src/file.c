@@ -88,27 +88,84 @@ int file_cek_resolve(struct file_s *f, unsigned char **cek)
     for (i = 0; i < f->enc.slots.size; i++) {
         struct file_key_slot_s *s = &f->enc.slots.array[i];
         if (memcmp(s->to, psig->cfg.keys.local.hash.public,
-                   sizeof(s->to)) != 0) continue;
-        size_t         nwrapped;
-        unsigned char *wrapped = base64_decode((unsigned char *)s->key,
-                                               strnlen(s->key, sizeof(s->key)),
-                                               &nwrapped);
-        if (!wrapped) return -1;
-        unsigned char *dec;
-        int            ndec;
-        int ret = rsa_decrypt(psig->cfg.keys.local.rsa.private,
-                              wrapped, nwrapped, &dec, &ndec);
-        free(wrapped);
-        if (ret != 0) return -1;
-        if (ndec != FILE_CEK_SIZE) {
+                   sizeof(s->to)) == 0) {
+            // Slot addressed to us: RSA-unwrap with our own private key
+            size_t         nwrapped;
+            unsigned char *wrapped = base64_decode((unsigned char *)s->key,
+                                                   strnlen(s->key, sizeof(s->key)),
+                                                   &nwrapped);
+            if (!wrapped) return -1;
+            unsigned char *dec;
+            int            ndec;
+            int ret = rsa_decrypt(psig->cfg.keys.local.rsa.private,
+                                  wrapped, nwrapped, &dec, &ndec);
+            free(wrapped);
+            if (ret != 0) return -1;
+            if (ndec != FILE_CEK_SIZE) {
+                free(dec);
+                return -1;
+            }
+            memcpy(f->enc.cek.key, dec, FILE_CEK_SIZE);
             free(dec);
-            return -1;
+            f->enc.cek.ready = true;
+            *cek = f->enc.cek.key;
+            return 0;
         }
-        memcpy(f->enc.cek.key, dec, FILE_CEK_SIZE);
-        free(dec);
+        // Slot addressed to a group key we hold: AES-unwrap with it
+        struct config_key_s *gk;
+        ifr(config_keyexists(&psig->cfg, s->to, &gk));
+        if (!gk || gk->type != CONFIG_KEY_GROUP) continue;
+        size_t         ngslot;
+        unsigned char *gslot = base64_decode((unsigned char *)s->key,
+                                             strnlen(s->key, sizeof(s->key)),
+                                             &ngslot);
+        if (!gslot) return -1;
+        if (ngslot <= AES_IV_SIZE + AES_TAG_SIZE) {
+            free(gslot);
+            continue;
+        }
+        unsigned char out[FILE_CEK_SIZE + AES_TAG_SIZE];
+        int n = aes_decrypt(gslot + AES_IV_SIZE + AES_TAG_SIZE,
+                            ngslot - AES_IV_SIZE - AES_TAG_SIZE,
+                            NULL, 0,
+                            gslot + AES_IV_SIZE, gk->aes.key,
+                            gslot, out);
+        free(gslot);
+        if (n != FILE_CEK_SIZE) continue;
+        memcpy(f->enc.cek.key, out, FILE_CEK_SIZE);
         f->enc.cek.ready = true;
         *cek = f->enc.cek.key;
         return 0;
     }
+    // No slot for us: fall back to a directly-granted key (COMMAND_KEY)
+    // stored as keys/<filehash>.cek
+    char path[512];
+    snprintf(path, sizeof(path), "%s/%.*s.cek", psig->cfg.dir.keys,
+             SHA256HEX, f->meta.name);
+    bool exists;
+    ifr(os.fileexists(path, &exists));
+    if (!exists) return 0;
+    sn_initz(fn, path);
+    char *blob;
+    int n = eioie_fread(&blob, fn);
+    if (n <= 0) return 0;
+    size_t         nwrapped;
+    unsigned char *wrapped = base64_decode((unsigned char *)blob, n,
+                                           &nwrapped);
+    free(blob);
+    if (!wrapped) return 0;
+    unsigned char *dec = NULL;
+    int            ndec;
+    int ret = rsa_decrypt(psig->cfg.keys.local.rsa.private,
+                          wrapped, nwrapped, &dec, &ndec);
+    free(wrapped);
+    if (ret != 0 || ndec != FILE_CEK_SIZE) {
+        free(dec);
+        return 0;
+    }
+    memcpy(f->enc.cek.key, dec, FILE_CEK_SIZE);
+    free(dec);
+    f->enc.cek.ready = true;
+    *cek = f->enc.cek.key;
     return 0;
 }

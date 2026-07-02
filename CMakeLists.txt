@@ -62,6 +62,7 @@ src/payload/announce.c
 src/payload/auth.c
 src/payload/auth_reply.c
 src/payload/fileask.c
+src/payload/key.c
 src/payload/file.c
 src/payload/message.c
 src/payload/payload.c

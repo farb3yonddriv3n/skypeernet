@@ -21,6 +21,7 @@ static const struct { enum command_e cmd;
     { COMMAND_PONG,                     pong_write,     pong_size,     pong_read,     ack_reply },
     { COMMAND_QUERY,                    query_write,    query_size,    query_read,    ack_reply },
     { COMMAND_QUERY_REPLY,              queryrpl_write, queryrpl_size, queryrpl_read, ack_reply },
+    { COMMAND_KEY,                      key_write,      key_size,      key_read,      ack_reply },
 };
 
 static int exec(struct peer_s *parent, enum command_e cmd,
