@@ -112,12 +112,46 @@ int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc)
     struct config_key_s *key;
     *desc  = NULL;
     *ndesc = 0;
-    if (!f->meta.encrypted) {
+    if (f->enc.scheme == FILE_SCHEME_PLAIN) {
         int n = strnlen(f->meta.description.enc,
                         sizeof(f->meta.description.enc));
         *desc = malloc(n);
         if (!*desc) return -1;
         memcpy(*desc, f->meta.description.enc, n);
+        *ndesc = n;
+        return 0;
+    }
+    if (f->enc.scheme == FILE_SCHEME_CEK) {
+        unsigned char *cek;
+        ifr(file_cek_resolve(f, &cek));
+        if (!cek) return 0;
+        size_t         ndecoded;
+        unsigned char *decoded;
+        decoded = base64_decode((unsigned char *)f->meta.description.enc,
+                                strnlen(f->meta.description.enc,
+                                        sizeof(f->meta.description.enc)),
+                                &ndecoded);
+        if (!decoded) return -1;
+        if (ndecoded <= AES_IV_SIZE + AES_TAG_SIZE) {
+            free(decoded);
+            return -1;
+        }
+        int nct = ndecoded - AES_IV_SIZE - AES_TAG_SIZE;
+        unsigned char *out = malloc(nct);
+        if (!out) {
+            free(decoded);
+            return -1;
+        }
+        int n = aes_decrypt(decoded + AES_IV_SIZE + AES_TAG_SIZE, nct,
+                            NULL, 0,
+                            decoded + AES_IV_SIZE, cek,
+                            decoded, out);
+        free(decoded);
+        if (n < 1) {
+            free(out);
+            return -1;
+        }
+        *desc  = out;
         *ndesc = n;
         return 0;
     }

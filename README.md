@@ -268,29 +268,47 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 
 ## Encryption and Keys
 
+See `docs/encryption.md` for the full design.
+
 ### How Encryption Works
 
-By default, files in skypeernet are **encrypted with AES-256**. The encryption key is derived from the sharer's RSA private key:
+By default, every shared file is encrypted with **AES-256-GCM under a random
+per-file content key (CEK)**. The CEK is stored in the transaction as a "key
+slot", wrapped with the recipient's RSA public key. Your identity RSA keypair
+(`.priv.key` / `.pub.key`) is used for authentication and unwrapping key
+slots only — it never leaves your machine.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  FILE ENCRYPTION (when sharing)                                  │
 │                                                                   │
-│  Your RSA Private Key                                            │
-│         │                                                        │
-│         ▼                                                        │
-│  SHA256(private_key) ──► AES-256 Key                            │
+│  CEK = 32 random bytes (fresh per file)                          │
 │                              │                                   │
-│  Original File ──────────────┼──► Encrypted Chunks              │
+│  Original File ──────────────┼──► Encrypted Chunks               │
+│  Filename ───────────────────┼──► Encrypted Description          │
 │                              │                                   │
-│  Each chunk gets unique IV (timeiter)                           │
+│  Transaction key slots:                                          │
+│    { to: your_pubkeyhash, key: RSA(your_pubkey, CEK) }           │
+│                                                                   │
+│  Each chunk gets unique IV (timeiter)                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+To finalize (decrypt) a downloaded file, your peer looks for a key slot
+addressed to your public key hash and unwraps the CEK with your own private
+key. No slot for you = no access; the sharer must grant it.
+
+Encryption schemes (`"scheme"` in `lf r` output):
+
+| Scheme | Meaning |
+|--------|---------|
+| `0` plain  | not encrypted, anyone can download and finalize |
+| `1` legacy | pre-CEK blocks: AES key derived from the sharer's private key |
+| `2` cek    | per-file content key + key slots (current default) |
+
 ### Sharing Without Encryption
 
-Encryption is optional per file. Append `plain` to the `tadd` command to share
-a file unencrypted:
+Append `plain` to the `tadd` command to share a file unencrypted:
 
 ```bash
 > ta myfile.txt "my tags" plain
@@ -299,68 +317,36 @@ a file unencrypted:
 Plain files can be downloaded and finalized by **any** peer — no key exchange
 is needed, and the filename is visible to everyone in `lf r`
 (`"encrypted": false`). Chunks are stored and transferred as-is, so use this
-only for content you consider public. Files shared before this option existed
-are treated as encrypted.
+only for content you consider public.
 
-### Key Requirement for Downloading
+### Granting Access (roadmap)
 
-**Important:** To finalize (decrypt) a downloaded **encrypted** file, you MUST have the private key of the peer who originally shared it.
+Currently a CEK-encrypted file carries a single key slot for the sharer, so
+it is effectively private to its owner. Planned (see `docs/encryption.md`):
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  FILE DECRYPTION (when finalizing)                               │
-│                                                                   │
-│  Downloaded encrypted chunks                                     │
-│         │                                                        │
-│         │    Sharer's Private Key (from ~/keys/)                │
-│         │              │                                         │
-│         │              ▼                                         │
-│         │    SHA256(private_key) ──► AES-256 Key                │
-│         │              │                                         │
-│         └──────────────┼──► Decrypted File                      │
-│                                                                   │
-│  ⚠️  WITHOUT the key: finalization FAILS silently               │
-└─────────────────────────────────────────────────────────────────┘
-```
+- `ta <file> <tags> to <pubkeyhash>,...` — add key slots for other peers at
+  share time (their *public* keys are learned from the network or imported)
+- `ks <filehash> <pubkeyhash>` — grant access to an already-shared file by
+  sending the wrapped CEK directly, without re-mining
 
-### Managing Shared Keys
+### Legacy Blocks and Shared Keys
 
-Keys are stored in the `keys_directory` (default: `~/keys/`):
+Blocks created before the CEK scheme use the legacy scheme: the AES key is
+`SHA256(sharer's private key)`. To finalize such files you still need the
+sharer's private key imported into `keys_directory`:
 
 ```bash
 ~/keys/
-├── private.pem          # Your private key (auto-generated)
-├── public.pem           # Your public key (auto-generated)
-└── <pubkeyhash>.pem     # Shared keys from other peers (64-char hex names)
+└── <pubkeyhash>.pem     # legacy shared private keys (64-char hex names)
 ```
 
-**To download files from another peer:**
+1. Get the sharer's private key file (out-of-band)
+2. Rename it to their `pubkeyhash` with `.pem` extension and put it in `~/keys/`
+3. Restart spnpeer (keys are loaded at startup); check with `kd`
 
-1. Get their private key file (they must share it with you out-of-band)
-2. Rename it to their `pubkeyhash` (64 hex characters) with `.pem` extension
-3. Place it in your `~/keys/` directory
-4. Restart spnpeer (keys are loaded at startup)
-
-**Check loaded keys:**
-```bash
-> kd
- | My key |
- | a1b2c3d4e5f6...your_pubkeyhash...64chars |
- | Shared keys |
- | f6e5d4c3b2a1...their_pubkeyhash...64chars |
-```
-
-**Finding who shared a file:**
-```bash
-> lf r
-{
-  "files": [{
-    "name": "document.pdf",
-    "hash": "...",
-    "pubkeyhash": "f6e5d4c3b2a1..."   # ◄── You need this peer's private key
-  }]
-}
-```
+⚠️ This mechanism exists for backward compatibility only. Possessing a
+peer's private key allows full impersonation of that peer — never use it
+for new shares.
 
 ### Use Cases
 
@@ -368,15 +354,8 @@ Keys are stored in the `keys_directory` (default: `~/keys/`):
 |----------|--------------|---------------|
 | Download a `plain`-shared file | None | - |
 | Download your own files | Your private key | Already have it (auto) |
-| Download from trusted peer | Their private key | They share it with you |
-| Download from public peer | Their private key | They publish it |
-| Public file sharing | Shared group key | Distributed to group |
-
-### Security Implications
-
-- **Private sharing:** Only share your private key with trusted parties
-- **Public sharing:** If you want files publicly downloadable, publish your private key
-- **Group sharing:** Create a dedicated keypair for the group and distribute it
+| Download a peer's CEK file | A key slot addressed to you | Sharer grants it (roadmap) |
+| Download a legacy file | Sharer's private key | They share it (deprecated) |
 
 ## File Sharing Workflow
 

@@ -10,7 +10,7 @@ int file_chunks_alloc(struct file_s *f, const int size)
 
 int file_chunks(const char *filename, size_t nbytes,
                 struct file_chunk_s **chunks,
-                size_t *nchunks, bool encrypt)
+                size_t *nchunks, unsigned char *cek)
 {
     if (nbytes < 1 || !chunks || !nchunks || !filename) return -1;
 
@@ -35,20 +35,19 @@ int file_chunks(const char *filename, size_t nbytes,
         int nfpartenc = nfpart;
         memset(fc->timeiter, 0, sizeof(fc->timeiter));
         memset(fc->tag, 0, sizeof(fc->tag));
-        if (encrypt) {
+        if (cek) {
             fpartenc = malloc(fc->size);
             if (!fpartenc) return -1;
             unsigned char tag[AES_TAG_SIZE];
             ifr(os.gettimeiter(fc->timeiter, sizeof(fc->timeiter), i));
             nfpartenc = aes_encrypt(fpart, nfpart, NULL, 0,
-                                    psig->cfg.keys.local.aes.key,
+                                    cek,
                                     (unsigned char *)fc->timeiter,
                                     fpartenc, tag);
             if (nfpartenc < 1) return -1;
             fc->size = nfpartenc;
             size_t         nencoded;
-            unsigned char *encoded = NULL;
-            ifr(encx(&encoded, &nencoded, tag, sizeof(tag), &nfpartenc));
+            unsigned char *encoded = base64_encode(tag, sizeof(tag), &nencoded);
             if (!encoded) return -1;
             snprintf(fc->tag, sizeof(fc->tag), "%.*s", (int)nencoded, encoded);
             free(encoded);
@@ -74,4 +73,42 @@ int file_chunks(const char *filename, size_t nbytes,
 void file_chunks_free(struct file_chunk_s *chunks)
 {
     free(chunks);
+}
+
+int file_cek_resolve(struct file_s *f, unsigned char **cek)
+{
+    if (!f || !cek) return -1;
+    *cek = NULL;
+    if (f->enc.scheme != FILE_SCHEME_CEK) return 0;
+    if (f->enc.cek.ready) {
+        *cek = f->enc.cek.key;
+        return 0;
+    }
+    int i;
+    for (i = 0; i < f->enc.slots.size; i++) {
+        struct file_key_slot_s *s = &f->enc.slots.array[i];
+        if (memcmp(s->to, psig->cfg.keys.local.hash.public,
+                   sizeof(s->to)) != 0) continue;
+        size_t         nwrapped;
+        unsigned char *wrapped = base64_decode((unsigned char *)s->key,
+                                               strnlen(s->key, sizeof(s->key)),
+                                               &nwrapped);
+        if (!wrapped) return -1;
+        unsigned char *dec;
+        int            ndec;
+        int ret = rsa_decrypt(psig->cfg.keys.local.rsa.private,
+                              wrapped, nwrapped, &dec, &ndec);
+        free(wrapped);
+        if (ret != 0) return -1;
+        if (ndec != FILE_CEK_SIZE) {
+            free(dec);
+            return -1;
+        }
+        memcpy(f->enc.cek.key, dec, FILE_CEK_SIZE);
+        free(dec);
+        f->enc.cek.ready = true;
+        *cek = f->enc.cek.key;
+        return 0;
+    }
+    return 0;
 }

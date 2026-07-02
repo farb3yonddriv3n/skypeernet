@@ -6,6 +6,31 @@
 #define FILE_DELETED     FLAG(2) // considered to be deleted
 #define FILE_ENCRYPTED   FLAG(3) // file chunks are encrypted
 
+#define FILE_CEK_SIZE 32
+
+/**
+ * @brief File encryption scheme.
+ *
+ * PLAIN  - chunks stored/transferred unencrypted, anyone can finalize
+ * LEGACY - AES key derived from the sharer's RSA private key; the
+ *          downloader must import that private key (pre-CEK blocks)
+ * CEK    - random per-file AES-256 content key, wrapped per recipient
+ *          with the recipient's RSA public key (key slots)
+ */
+enum file_scheme_e {
+    FILE_SCHEME_PLAIN  = 0,
+    FILE_SCHEME_LEGACY = 1,
+    FILE_SCHEME_CEK    = 2,
+};
+
+/**
+ * @brief One CEK grant: the content key wrapped for one recipient.
+ */
+struct file_key_slot_s {
+    unsigned char to[SHA256HEX]; /**< Recipient's public key hash (hex) */
+    char          key[1024];     /**< base64(RSA-OAEP(recipient_pub, CEK)) */
+};
+
 struct file_chunk_s {
     size_t size;
     int    part;
@@ -35,7 +60,6 @@ struct file_s {
             int       flag;
         } description;
         bool          finalized;
-        bool          encrypted;
         char          tags[1024];
         unsigned char hash[SHA256HEX];
     } meta;
@@ -45,12 +69,16 @@ struct file_s {
         unsigned char        hash[SHA256HEX];
     } chunks;
     struct {
-        char public_key[1024];
-    } owner;
-    struct {
-        char public_key[1024];
-        char private_key[1024];
-    } encrypted;
+        enum file_scheme_e scheme;
+        struct {
+            struct file_key_slot_s *array;
+            int                     size;
+        } slots;
+        struct {
+            bool          ready;                /**< CEK resolved/cached */
+            unsigned char key[FILE_CEK_SIZE];
+        } cek;
+    } enc;
 
     struct transaction_s *parent;
     unsigned int flags;
@@ -59,7 +87,8 @@ struct file_s {
 int file_chunks_alloc(struct file_s *f, const int size);
 int file_chunks(const char *filename, size_t nbytes,
                 struct file_chunk_s **chunks,
-                size_t *nchunks, bool encrypt);
+                size_t *nchunks, unsigned char *cek);
 void file_chunks_free(struct file_chunk_s *chunks);
+int file_cek_resolve(struct file_s *f, unsigned char **cek);
 
 #endif

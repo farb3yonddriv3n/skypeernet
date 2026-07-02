@@ -24,20 +24,51 @@ static int hash_chunks(struct transaction_s *t,
     return 0;
 }
 
+static int hash_slots(struct file_s *f, unsigned char *dst_hash)
+{
+    if (!f || !dst_hash) return -1;
+    unsigned char prev[SHA256HEX];
+    memset(prev, 0, sizeof(prev));
+    memset(dst_hash, 0, SHA256HEX);
+    int i;
+    for (i = 0; i < f->enc.slots.size; i++) {
+        struct file_key_slot_s *s = &f->enc.slots.array[i];
+        char buffer[2048];
+        snprintf(buffer, sizeof(buffer), "%.*s%.*s%s",
+                 (int)sizeof(prev), prev,
+                 (int)sizeof(s->to), s->to,
+                 s->key);
+        sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
+        memcpy(prev, dst_hash, SHA256HEX);
+    }
+    return 0;
+}
+
 static int hash_meta(struct transaction_s *t,
                      unsigned char *dst_hash)
 {
     if (!t || !dst_hash) return -1;
+    struct file_s *f = &t->action.add;
+    // Scheme binding keeps pre-CEK (legacy) hashes byte-identical while
+    // making the scheme and key slots tamper-evident for new files:
+    //   legacy -> ""    plain -> "plain"    cek -> "cek" + slots hash
+    char bind[SHA256HEX + 8];
+    if (f->enc.scheme == FILE_SCHEME_LEGACY)
+        bind[0] = 0;
+    else if (f->enc.scheme == FILE_SCHEME_PLAIN)
+        snprintf(bind, sizeof(bind), "plain");
+    else {
+        unsigned char hslots[SHA256HEX];
+        ifr(hash_slots(f, hslots));
+        snprintf(bind, sizeof(bind), "cek%.*s", (int)sizeof(hslots), hslots);
+    }
     char buffer[4096];
-    // The "plain" marker binds the encrypted flag into the hash for
-    // unencrypted files while keeping hashes of pre-flag (encrypted)
-    // transactions unchanged.
     snprintf(buffer, sizeof(buffer), "%s%ld%s%s%s",
-             t->action.add.meta.name,
-             t->action.add.meta.size,
-             t->action.add.meta.description.enc,
-             t->action.add.meta.tags,
-             t->action.add.meta.encrypted ? "" : "plain");
+             f->meta.name,
+             f->meta.size,
+             f->meta.description.enc,
+             f->meta.tags,
+             bind);
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
     return 0;
 }
@@ -57,45 +88,100 @@ static int hash(unsigned char *hash_cmeta,
     return 0;
 }
 
+static int slot_add(struct file_s *f, unsigned char *pubkeyhash,
+                    RSA *pubkey, unsigned char *cek)
+{
+    if (!f || !pubkeyhash || !pubkey || !cek) return -1;
+    f->enc.slots.array = realloc(f->enc.slots.array,
+                                 ++f->enc.slots.size * sizeof(struct file_key_slot_s));
+    if (!f->enc.slots.array) return -1;
+    struct file_key_slot_s *s = &f->enc.slots.array[f->enc.slots.size - 1];
+    memset(s, 0, sizeof(*s));
+    memcpy(s->to, pubkeyhash, sizeof(s->to));
+    unsigned char *wrapped;
+    int            nwrapped;
+    ifr(rsa_encrypt(pubkey, cek, FILE_CEK_SIZE, &wrapped, &nwrapped));
+    size_t         nb64;
+    unsigned char *b64 = base64_encode(wrapped, nwrapped, &nb64);
+    free(wrapped);
+    if (!b64 || nb64 >= sizeof(s->key)) {
+        free(b64);
+        return -1;
+    }
+    snprintf(s->key, sizeof(s->key), "%.*s", (int)nb64, b64);
+    free(b64);
+    return 0;
+}
+
+static int desc_encrypt(struct file_s *f, const char *name,
+                        unsigned char *cek)
+{
+    if (!f || !name || !cek) return -1;
+    unsigned char iv[AES_IV_SIZE];
+    if (RAND_bytes(iv, sizeof(iv)) != 1) return -1;
+    unsigned char tag[AES_TAG_SIZE];
+    unsigned char buffer[sizeof(iv) + sizeof(tag) + 256];
+    int nct = aes_encrypt((unsigned char *)name, strlen(name), NULL, 0,
+                          cek, iv,
+                          buffer + sizeof(iv) + sizeof(tag), tag);
+    if (nct < 1) return -1;
+    memcpy(buffer, iv, sizeof(iv));
+    memcpy(buffer + sizeof(iv), tag, sizeof(tag));
+    size_t         nb64;
+    unsigned char *b64 = base64_encode(buffer, sizeof(iv) + sizeof(tag) + nct,
+                                       &nb64);
+    if (!b64 || nb64 >= sizeof(f->meta.description.enc)) {
+        free(b64);
+        return -1;
+    }
+    snprintf(f->meta.description.enc, sizeof(f->meta.description.enc),
+             "%.*s", (int)nb64, b64);
+    free(b64);
+    return 0;
+}
+
 static int init(struct transaction_s *t, struct transaction_param_s *param,
                 unsigned char *dst_hash)
 {
     if (!t || !param || !dst_hash) return -1;
     memset(&t->action.add, 0, sizeof(t->action.add));
+    struct file_s *f = &t->action.add;
     int ret;
     size_t size;
     if (os.filesize(param->action.add.pathname, &size) != 0) return -1;
-    t->action.add.meta.size = size;
-    t->action.add.meta.encrypted = param->action.add.encrypted;
+    f->meta.size = size;
+    unsigned char *cek = NULL;
+    if (param->action.add.encrypted) {
+        f->enc.scheme = FILE_SCHEME_CEK;
+        if (RAND_bytes(f->enc.cek.key, sizeof(f->enc.cek.key)) != 1) return -1;
+        f->enc.cek.ready = true;
+        cek = f->enc.cek.key;
+        ifr(slot_add(f, psig->cfg.keys.local.hash.public,
+                     psig->cfg.keys.local.rsa.public, cek));
+    } else
+        f->enc.scheme = FILE_SCHEME_PLAIN;
     ret = file_chunks(param->action.add.pathname, size,
-                      &t->action.add.chunks.array,
-                      &t->action.add.chunks.size,
-                      param->action.add.encrypted);
+                      &f->chunks.array,
+                      &f->chunks.size,
+                      cek);
     if (ret != 0) return -1;
-    ret = hash_chunks(t, t->action.add.chunks.hash);
+    ret = hash_chunks(t, f->chunks.hash);
     if (ret != 0) return -1;
 
-    snprintf(t->action.add.meta.name,
-             sizeof(t->action.add.meta.name),
+    snprintf(f->meta.name,
+             sizeof(f->meta.name),
              "%.*s",
-             (int )sizeof(t->action.add.chunks.hash),
-             t->action.add.chunks.hash);
-    if (param->action.add.encrypted) {
-        size_t         nencoded;
-        unsigned char *encoded;
-        ifr(encx(&encoded, &nencoded, (unsigned char *)param->action.add.name,
-                 strlen(param->action.add.name), NULL));
-        snprintf(t->action.add.meta.description.enc,
-                 (int )sizeof(t->action.add.meta.description.enc),
-                 "%.*s", (int )nencoded, encoded);
-        free(encoded);
+             (int )sizeof(f->chunks.hash),
+             f->chunks.hash);
+    if (cek) {
+        ifr(desc_encrypt(f, param->action.add.name, cek));
     } else
-        snprintf(t->action.add.meta.description.enc,
-                 (int )sizeof(t->action.add.meta.description.enc),
+        snprintf(f->meta.description.enc,
+                 (int )sizeof(f->meta.description.enc),
                  "%s", param->action.add.name);
-    snprintf(t->action.add.meta.tags, sizeof(t->action.add.meta.tags), "%s",
+    snprintf(f->meta.tags, sizeof(f->meta.tags), "%s",
              param->action.add.tags);
-    ret = hash_meta(t, t->action.add.meta.hash);
+    ret = hash_meta(t, f->meta.hash);
     if (ret != 0) return -1;
 
     memcpy(t->action.add.pubkeyhash, psig->cfg.keys.local.hash.public,
@@ -162,11 +248,34 @@ static int load(struct transaction_s *t, json_object *tobj)
     BIND_STRLEN(f->meta.name,        "name", obj, fmeta);
     BIND_INT64(f->meta.size,         "size", obj, fmeta);
 
-    // Blocks predating the encrypted flag carry encrypted files only.
-    f->meta.encrypted = true;
-    json_object *fenc;
-    if (json_object_object_get_ex(fmeta, "encrypted", &fenc))
-        f->meta.encrypted = json_object_get_boolean(fenc);
+    // Blocks predating the enc block use the legacy privkey-derived scheme.
+    f->enc.scheme = FILE_SCHEME_LEGACY;
+    json_object *jenc;
+    if (json_object_object_get_ex(fadd, "enc", &jenc)) {
+        json_object *jscheme;
+        json_object_object_get_ex(jenc, "scheme", &jscheme);
+        int scheme = json_object_get_int(jscheme);
+        if (scheme < FILE_SCHEME_PLAIN || scheme > FILE_SCHEME_CEK) return -1;
+        f->enc.scheme = scheme;
+        json_object *jslots;
+        json_object_object_get_ex(jenc, "slots", &jslots);
+        if (json_object_get_type(jslots) == json_type_array) {
+            array_list *slots_array = json_object_get_array(jslots);
+            int i;
+            for (i = 0; i < array_list_length(slots_array); i++) {
+                json_object *slot_item = array_list_get_idx(slots_array, i);
+                f->enc.slots.array = realloc(f->enc.slots.array,
+                                             ++f->enc.slots.size *
+                                             sizeof(struct file_key_slot_s));
+                if (!f->enc.slots.array) return -1;
+                struct file_key_slot_s *s =
+                    &f->enc.slots.array[f->enc.slots.size - 1];
+                memset(s, 0, sizeof(*s));
+                BIND_STR(s->to,     "to",  obj, slot_item);
+                BIND_STRLEN(s->key, "key", obj, slot_item);
+            }
+        }
+    }
 
     f->meta.description.flag = DESC_NONE;
     f->meta.finalized        = false;
@@ -230,12 +339,31 @@ static int save(struct transaction_s *t, json_object **parent)
     json_object *meta_hash = json_object_new_string_len((const char *)f->meta.hash,
                                                         sizeof(f->meta.hash));
     json_object_object_add(meta, "hash", meta_hash);
-    json_object *meta_enc = json_object_new_boolean(f->meta.encrypted);
-    json_object_object_add(meta, "encrypted", meta_enc);
+
+    if (f->enc.scheme != FILE_SCHEME_LEGACY) {
+        json_object *jenc = json_object_new_object();
+        json_object_object_add(*parent, "enc", jenc);
+        json_object *jscheme = json_object_new_int(f->enc.scheme);
+        json_object_object_add(jenc, "scheme", jscheme);
+        json_object *jslots = json_object_new_array();
+        json_object_object_add(jenc, "slots", jslots);
+        int si;
+        for (si = 0; si < f->enc.slots.size; si++) {
+            struct file_key_slot_s *s = &f->enc.slots.array[si];
+            json_object *slot = json_object_new_object();
+            json_object_array_add(jslots, slot);
+            json_object *sto = json_object_new_string_len((const char *)s->to,
+                                                          sizeof(s->to));
+            json_object_object_add(slot, "to", sto);
+            json_object *skey = json_object_new_string(s->key);
+            json_object_object_add(slot, "key", skey);
+        }
+    }
 
     json_object *chunks = json_object_new_object();
     json_object_object_add(*parent, "chunks", chunks);
-    json_object *chunks_hash = json_object_new_string((const char *)f->chunks.hash);
+    json_object *chunks_hash = json_object_new_string_len((const char *)f->chunks.hash,
+                                                          sizeof(f->chunks.hash));
     json_object_object_add(chunks, "hash", chunks_hash);
     json_object *chunks_array = json_object_new_array();
     json_object_object_add(chunks, "array", chunks_array);
@@ -312,8 +440,11 @@ static int dump(struct transaction_s *t, json_object **obj)
     json_object *decryptable = json_object_new_boolean(bdecryptable);
     json_object_object_add(*obj, "decryptable", decryptable);
 
-    json_object *encrypted = json_object_new_boolean(f->meta.encrypted);
+    json_object *encrypted = json_object_new_boolean(f->enc.scheme !=
+                                                     FILE_SCHEME_PLAIN);
     json_object_object_add(*obj, "encrypted", encrypted);
+    json_object *scheme = json_object_new_int(f->enc.scheme);
+    json_object_object_add(*obj, "scheme", scheme);
 
     json_object *finalized = json_object_new_boolean(f->meta.finalized);
     json_object_object_add(*obj, "finalized", finalized);
@@ -355,6 +486,7 @@ static int clean(struct transaction_s *t)
 {
     if (!t) return -1;
     file_chunks_free(t->action.add.chunks.array);
+    free(t->action.add.enc.slots.array);
     return 0;
 }
 

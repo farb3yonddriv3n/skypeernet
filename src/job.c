@@ -297,9 +297,53 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
             printf("       Make sure all chunks are downloaded (check with 'jd')\n");
             return -1;
         }
-        if (!f->meta.encrypted) {
+        if (f->enc.scheme == FILE_SCHEME_PLAIN) {
             ifr(eioie_fwrite(dst, "a", buffer, n));
             free(buffer);
+            continue;
+        }
+        if (f->enc.scheme == FILE_SCHEME_CEK) {
+            unsigned char *cek;
+            ifr(file_cek_resolve(f, &cek));
+            if (!cek) {
+                printf("Error: No key slot for this peer on file %.*s\n",
+                       nfile, file);
+                printf("       Ask the sharer to grant you access\n");
+                free(buffer);
+                return 0;
+            }
+            size_t         ntag;
+            unsigned char *tag;
+            tag = base64_decode((unsigned char *)f->chunks.array[i].tag,
+                                strnlen(f->chunks.array[i].tag,
+                                        sizeof(f->chunks.array[i].tag)),
+                                &ntag);
+            if (!tag || ntag != AES_TAG_SIZE) {
+                free(tag);
+                free(buffer);
+                return -1;
+            }
+            unsigned char *decrypted = malloc(f->chunks.array[i].size);
+            if (!decrypted) {
+                free(tag);
+                free(buffer);
+                return -1;
+            }
+            int dc = aes_decrypt((unsigned char *)buffer, n, NULL,
+                                 0, tag, cek,
+                                 (unsigned char *)f->chunks.array[i].timeiter,
+                                 decrypted);
+            free(tag);
+            if (dc < 1) {
+                printf("Error: Decryption failed for chunk %d/%d\n",
+                       i + 1, (int)f->chunks.size);
+                free(buffer);
+                free(decrypted);
+                return -1;
+            }
+            ifr(eioie_fwrite(dst, "a", (char *)decrypted, dc));
+            free(buffer);
+            free(decrypted);
             continue;
         }
         struct config_key_s *key;
