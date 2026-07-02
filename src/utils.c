@@ -112,6 +112,15 @@ int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc)
     struct config_key_s *key;
     *desc  = NULL;
     *ndesc = 0;
+    if (!f->meta.encrypted) {
+        int n = strnlen(f->meta.description.enc,
+                        sizeof(f->meta.description.enc));
+        *desc = malloc(n);
+        if (!*desc) return -1;
+        memcpy(*desc, f->meta.description.enc, n);
+        *ndesc = n;
+        return 0;
+    }
     ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
                          &key));
     if (key) {

@@ -14,8 +14,17 @@ static int transaction_locked(struct distfs_s *dfs, bool *locked)
 int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc,
                         int *dfserr)
 {
-    if (!dfs || !argv || argc != 3 || !dfserr) return -1;
+    if (!dfs || !argv || (argc != 3 && argc != 4) || !dfserr) return -1;
     if (strlen(argv[1]) > 128) return -1;
+    bool encrypted = true;
+    if (argc == 4) {
+        if (strcmp(argv[3], "plain") != 0) {
+            printf("Invalid argument '%s', expected 'plain'.\n", argv[3]);
+            *dfserr = 1;
+            return 0;
+        }
+        encrypted = false;
+    }
     int size;
     ifr(list.size(&dfs->transactions, &size));
     if (size > 0) {
@@ -32,6 +41,7 @@ int dfs_transaction_add(struct distfs_s *dfs, char **argv, int argc,
     param.type = TFILE_ADD;
     param.action.add.name = argv[1];
     param.action.add.tags = argv[2];
+    param.action.add.encrypted = encrypted;
     char pathname[256];
     snprintf(pathname, sizeof(pathname), "%s/%s", p->cfg.dir.finalized,
                                                   argv[1]);

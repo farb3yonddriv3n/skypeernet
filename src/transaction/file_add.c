@@ -29,11 +29,15 @@ static int hash_meta(struct transaction_s *t,
 {
     if (!t || !dst_hash) return -1;
     char buffer[4096];
-    snprintf(buffer, sizeof(buffer), "%s%ld%s%s",
+    // The "plain" marker binds the encrypted flag into the hash for
+    // unencrypted files while keeping hashes of pre-flag (encrypted)
+    // transactions unchanged.
+    snprintf(buffer, sizeof(buffer), "%s%ld%s%s%s",
              t->action.add.meta.name,
              t->action.add.meta.size,
              t->action.add.meta.description.enc,
-             t->action.add.meta.tags);
+             t->action.add.meta.tags,
+             t->action.add.meta.encrypted ? "" : "plain");
     sha256hex((unsigned char *)buffer, strlen(buffer), dst_hash);
     return 0;
 }
@@ -62,9 +66,11 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
     size_t size;
     if (os.filesize(param->action.add.pathname, &size) != 0) return -1;
     t->action.add.meta.size = size;
+    t->action.add.meta.encrypted = param->action.add.encrypted;
     ret = file_chunks(param->action.add.pathname, size,
                       &t->action.add.chunks.array,
-                      &t->action.add.chunks.size);
+                      &t->action.add.chunks.size,
+                      param->action.add.encrypted);
     if (ret != 0) return -1;
     ret = hash_chunks(t, t->action.add.chunks.hash);
     if (ret != 0) return -1;
@@ -74,14 +80,19 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
              "%.*s",
              (int )sizeof(t->action.add.chunks.hash),
              t->action.add.chunks.hash);
-    size_t         nencoded;
-    unsigned char *encoded;
-    ifr(encx(&encoded, &nencoded, (unsigned char *)param->action.add.name,
-             strlen(param->action.add.name), NULL));
-    snprintf(t->action.add.meta.description.enc,
-             (int )sizeof(t->action.add.meta.description.enc),
-             "%.*s", (int )nencoded, encoded);
-    free(encoded);
+    if (param->action.add.encrypted) {
+        size_t         nencoded;
+        unsigned char *encoded;
+        ifr(encx(&encoded, &nencoded, (unsigned char *)param->action.add.name,
+                 strlen(param->action.add.name), NULL));
+        snprintf(t->action.add.meta.description.enc,
+                 (int )sizeof(t->action.add.meta.description.enc),
+                 "%.*s", (int )nencoded, encoded);
+        free(encoded);
+    } else
+        snprintf(t->action.add.meta.description.enc,
+                 (int )sizeof(t->action.add.meta.description.enc),
+                 "%s", param->action.add.name);
     snprintf(t->action.add.meta.tags, sizeof(t->action.add.meta.tags), "%s",
              param->action.add.tags);
     ret = hash_meta(t, t->action.add.meta.hash);
@@ -151,6 +162,12 @@ static int load(struct transaction_s *t, json_object *tobj)
     BIND_STRLEN(f->meta.name,        "name", obj, fmeta);
     BIND_INT64(f->meta.size,         "size", obj, fmeta);
 
+    // Blocks predating the encrypted flag carry encrypted files only.
+    f->meta.encrypted = true;
+    json_object *fenc;
+    if (json_object_object_get_ex(fmeta, "encrypted", &fenc))
+        f->meta.encrypted = json_object_get_boolean(fenc);
+
     f->meta.description.flag = DESC_NONE;
     f->meta.finalized        = false;
 
@@ -213,6 +230,8 @@ static int save(struct transaction_s *t, json_object **parent)
     json_object *meta_hash = json_object_new_string_len((const char *)f->meta.hash,
                                                         sizeof(f->meta.hash));
     json_object_object_add(meta, "hash", meta_hash);
+    json_object *meta_enc = json_object_new_boolean(f->meta.encrypted);
+    json_object_object_add(meta, "encrypted", meta_enc);
 
     json_object *chunks = json_object_new_object();
     json_object_object_add(*parent, "chunks", chunks);
@@ -292,6 +311,9 @@ static int dump(struct transaction_s *t, json_object **obj)
 
     json_object *decryptable = json_object_new_boolean(bdecryptable);
     json_object_object_add(*obj, "decryptable", decryptable);
+
+    json_object *encrypted = json_object_new_boolean(f->meta.encrypted);
+    json_object_object_add(*obj, "encrypted", encrypted);
 
     json_object *finalized = json_object_new_boolean(f->meta.finalized);
     json_object_object_add(*obj, "finalized", finalized);

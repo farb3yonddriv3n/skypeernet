@@ -231,7 +231,7 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 
 | Command | Alias | Arguments | Description |
 |---------|-------|-----------|-------------|
-| `tadd` | `ta` | `<filename> <tags>` | Create transaction to share a file |
+| `tadd` | `ta` | `<filename> <tags> [plain]` | Create transaction to share a file; append `plain` to share it unencrypted |
 | `tshare` | `ts` | `<filehash>` | Re-share existing file from network |
 | `tlist` | `tl` | - | List pending transactions |
 | `bmine` | `bm` | - | Mine a block with pending transactions |
@@ -270,7 +270,7 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 
 ### How Encryption Works
 
-All files in skypeernet are **encrypted with AES-256**. The encryption key is derived from the sharer's RSA private key:
+By default, files in skypeernet are **encrypted with AES-256**. The encryption key is derived from the sharer's RSA private key:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -287,9 +287,24 @@ All files in skypeernet are **encrypted with AES-256**. The encryption key is de
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Sharing Without Encryption
+
+Encryption is optional per file. Append `plain` to the `tadd` command to share
+a file unencrypted:
+
+```bash
+> ta myfile.txt "my tags" plain
+```
+
+Plain files can be downloaded and finalized by **any** peer — no key exchange
+is needed, and the filename is visible to everyone in `lf r`
+(`"encrypted": false`). Chunks are stored and transferred as-is, so use this
+only for content you consider public. Files shared before this option existed
+are treated as encrypted.
+
 ### Key Requirement for Downloading
 
-**Important:** To finalize (decrypt) a downloaded file, you MUST have the private key of the peer who originally shared it.
+**Important:** To finalize (decrypt) a downloaded **encrypted** file, you MUST have the private key of the peer who originally shared it.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -351,6 +366,7 @@ Keys are stored in the `keys_directory` (default: `~/keys/`):
 
 | Scenario | Key Required | How to Get It |
 |----------|--------------|---------------|
+| Download a `plain`-shared file | None | - |
 | Download your own files | Your private key | Already have it (auto) |
 | Download from trusted peer | Their private key | They share it with you |
 | Download from public peer | Their private key | They publish it |

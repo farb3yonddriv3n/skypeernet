@@ -7,6 +7,7 @@ static int t_file_add(const char *filename, struct block_s *b)
     param.type = TFILE_ADD;
     param.action.add.name = (char *)filename;
     param.action.add.tags = "test,test";
+    param.action.add.encrypted = true;
     char pathname[256];
     snprintf(pathname, sizeof(pathname), "%s/%s", psig->cfg.dir.finalized, filename);
     param.action.add.pathname = pathname;

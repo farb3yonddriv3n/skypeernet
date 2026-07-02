@@ -10,7 +10,7 @@ int file_chunks_alloc(struct file_s *f, const int size)
 
 int file_chunks(const char *filename, size_t nbytes,
                 struct file_chunk_s **chunks,
-                size_t *nchunks)
+                size_t *nchunks, bool encrypt)
 {
     if (nbytes < 1 || !chunks || !nchunks || !filename) return -1;
 
@@ -31,30 +31,35 @@ int file_chunks(const char *filename, size_t nbytes,
         size_t         nfpart;
         if (os.filepart(filename, i * chunk_size, fc->size, (char **)&fpart,
                         &nfpart) != 0) return -1;
-        unsigned char *fpartenc = malloc(fc->size);
-        if (!fpartenc) return -1;
-        unsigned char tag[AES_TAG_SIZE];
+        unsigned char *fpartenc = fpart;
+        int nfpartenc = nfpart;
         memset(fc->timeiter, 0, sizeof(fc->timeiter));
-        ifr(os.gettimeiter(fc->timeiter, sizeof(fc->timeiter), i));
-        int nfpartenc = aes_encrypt(fpart, nfpart, NULL, 0,
+        memset(fc->tag, 0, sizeof(fc->tag));
+        if (encrypt) {
+            fpartenc = malloc(fc->size);
+            if (!fpartenc) return -1;
+            unsigned char tag[AES_TAG_SIZE];
+            ifr(os.gettimeiter(fc->timeiter, sizeof(fc->timeiter), i));
+            nfpartenc = aes_encrypt(fpart, nfpart, NULL, 0,
                                     psig->cfg.keys.local.aes.key,
                                     (unsigned char *)fc->timeiter,
                                     fpartenc, tag);
-        if (nfpartenc < 1) return -1;
-        fc->size = nfpartenc;
-        size_t         nencoded;
-        unsigned char *encoded = NULL;
-        ifr(encx(&encoded, &nencoded, tag, sizeof(tag), &nfpartenc));
-        if (!encoded) return -1;
-        snprintf(fc->tag, sizeof(fc->tag), "%.*s", (int)nencoded, encoded);
-        free(encoded);
+            if (nfpartenc < 1) return -1;
+            fc->size = nfpartenc;
+            size_t         nencoded;
+            unsigned char *encoded = NULL;
+            ifr(encx(&encoded, &nencoded, tag, sizeof(tag), &nfpartenc));
+            if (!encoded) return -1;
+            snprintf(fc->tag, sizeof(fc->tag), "%.*s", (int)nencoded, encoded);
+            free(encoded);
+        }
         sha256hex(fpartenc, nfpartenc, fc->hash.content);
         char cfilename[256];
         snprintf(cfilename, sizeof(cfilename), "%s/%.*s", psig->cfg.dir.download,
                                                           SHA256HEX, fc->hash.content);
         ifr(os.filewrite(cfilename, "wb", (char *)fpartenc, nfpartenc));
+        if (fpartenc != fpart) free(fpartenc);
         free(fpart);
-        free(fpartenc);
         char buffer[1024];
         snprintf(buffer, sizeof(buffer), "%ld,%d,%.*s",
                  fc->size, fc->part,

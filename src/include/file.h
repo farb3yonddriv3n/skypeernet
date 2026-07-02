@@ -35,6 +35,7 @@ struct file_s {
             int       flag;
         } description;
         bool          finalized;
+        bool          encrypted;
         char          tags[1024];
         unsigned char hash[SHA256HEX];
     } meta;
@@ -58,7 +59,7 @@ struct file_s {
 int file_chunks_alloc(struct file_s *f, const int size);
 int file_chunks(const char *filename, size_t nbytes,
                 struct file_chunk_s **chunks,
-                size_t *nchunks);
+                size_t *nchunks, bool encrypt);
 void file_chunks_free(struct file_chunk_s *chunks);
 
 #endif

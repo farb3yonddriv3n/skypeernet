@@ -297,6 +297,11 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
             printf("       Make sure all chunks are downloaded (check with 'jd')\n");
             return -1;
         }
+        if (!f->meta.encrypted) {
+            ifr(eioie_fwrite(dst, "a", buffer, n));
+            free(buffer);
+            continue;
+        }
         struct config_key_s *key;
         ifr(config_keyexists(cfg, f->pubkeyhash, &key));
         if (!key) {
