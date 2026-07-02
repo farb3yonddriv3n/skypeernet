@@ -231,7 +231,7 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 
 | Command | Alias | Arguments | Description |
 |---------|-------|-----------|-------------|
-| `tadd` | `ta` | `<filename> <tags> [plain]` | Create transaction to share a file; append `plain` to share it unencrypted |
+| `tadd` | `ta` | `<filename> <tags> [plain \| to <pubkeyhash>,...]` | Create transaction to share a file; `plain` = unencrypted, `to` = grant listed peers access |
 | `tshare` | `ts` | `<filehash>` | Re-share existing file from network |
 | `tlist` | `tl` | - | List pending transactions |
 | `bmine` | `bm` | - | Mine a block with pending transactions |
@@ -255,6 +255,7 @@ Configuration file: `/etc/skypeernet/peer.cfg` (or `tracker.cfg`)
 | `taskdump` | `ad` | - | Show active file transfer tasks |
 | `taskcancel` | `ac` | `<taskindex>` | Cancel a transfer task |
 | `keysdump` | `kd` | - | Show RSA key information |
+| `keysexport` | `kx` | - | Export own public key to `keys/<pubkeyhash>.pub.pem` for sharing |
 | `rdump` | `rd` | - | Dump rogue peer info |
 | `versiondump` | `v` | - | Show version information |
 
@@ -319,15 +320,33 @@ is needed, and the filename is visible to everyone in `lf r`
 (`"encrypted": false`). Chunks are stored and transferred as-is, so use this
 only for content you consider public.
 
-### Granting Access (roadmap)
+### Granting Access
 
-Currently a CEK-encrypted file carries a single key slot for the sharer, so
-it is effectively private to its owner. Planned (see `docs/encryption.md`):
+Add key slots for other peers at share time:
 
-- `ta <file> <tags> to <pubkeyhash>,...` — add key slots for other peers at
-  share time (their *public* keys are learned from the network or imported)
-- `ks <filehash> <pubkeyhash>` — grant access to an already-shared file by
-  sending the wrapped CEK directly, without re-mining
+```bash
+> ta myfile.txt "my tags" to <pubkeyhash>[,<pubkeyhash>...]
+```
+
+The recipient's **public** key is resolved automatically, in this order:
+
+1. `keys/<pubkeyhash>.pub.pem` — an imported public key file
+2. the live peer list — public keys are exchanged during peer discovery,
+   so any currently online peer can be granted access directly
+
+To let someone grant *you* access while you are offline, export your public
+key with `kx` and hand them the file; they place it in their keys directory
+and restart. Sharing a public key is safe — it cannot impersonate you or
+decrypt anything.
+
+```bash
+> kx
+Public key exported to keys/<your_pubkeyhash>.pub.pem
+```
+
+Planned (see `docs/encryption.md`): `ks <filehash> <pubkeyhash>` — grant
+access to an already-shared file by sending the wrapped CEK directly,
+without re-mining.
 
 ### Legacy Blocks and Shared Keys
 
@@ -354,7 +373,7 @@ for new shares.
 |----------|--------------|---------------|
 | Download a `plain`-shared file | None | - |
 | Download your own files | Your private key | Already have it (auto) |
-| Download a peer's CEK file | A key slot addressed to you | Sharer grants it (roadmap) |
+| Download a peer's CEK file | A key slot addressed to you | Sharer uses `ta ... to <yourhash>` |
 | Download a legacy file | Sharer's private key | They share it (deprecated) |
 
 ## File Sharing Workflow

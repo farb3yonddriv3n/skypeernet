@@ -38,6 +38,7 @@ struct transaction_param_s {
             const char *pathname;
             const char *tags;
             bool        encrypted;
+            const char *to; /**< comma-separated recipient pubkeyhashes */
         } add;
         struct {
             bool *valid;

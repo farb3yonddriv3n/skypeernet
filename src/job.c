@@ -348,7 +348,7 @@ static int finalize(struct peer_s *p, struct group_s *remote, unsigned char *fil
         }
         struct config_key_s *key;
         ifr(config_keyexists(cfg, f->pubkeyhash, &key));
-        if (!key) {
+        if (!key || !key->rsa.private) {
             printf("Error: Missing decryption key for file %.*s\n", nfile, file);
             printf("       Required key (pubkeyhash): %.*s\n",
                    (int)sizeof(f->pubkeyhash), f->pubkeyhash);

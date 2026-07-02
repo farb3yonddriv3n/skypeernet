@@ -315,6 +315,23 @@ static int dfs_keysdump(struct distfs_s *dfs, char **argv, int argc,
     return config_keysdump(&dfs->peer->cfg);
 }
 
+static int dfs_keysexport(struct distfs_s *dfs, char **argv, int argc,
+                          int *dfserr)
+{
+    if (!dfs || !dfserr) return -1;
+    struct config_s *cfg = &dfs->peer->cfg;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/%.*s.pub.pem", cfg->dir.keys,
+             (int )sizeof(cfg->keys.local.hash.public),
+             cfg->keys.local.hash.public);
+    ifr(eioie_fwrite(path, "w", cfg->keys.local.str.public.s,
+                     cfg->keys.local.str.public.n));
+    printf("Public key exported to %s\n", path);
+    printf("Hand this file to peers who want to grant you file access;\n");
+    printf("they place it in their keys directory and restart.\n");
+    return 0;
+}
+
 static const struct { const char *alias[8];
                       int         nalias;
                       int         argc;
@@ -323,6 +340,7 @@ static const struct { const char *alias[8];
                     } cmds[] = {
     { { "ta", "tadd"  },        2, 2, dfs_transaction_add   },
     { { "ta", "tadd"  },        2, 3, dfs_transaction_add   },
+    { { "ta", "tadd"  },        2, 4, dfs_transaction_add   },
     { { "ts", "tshare"  },      2, 1, dfs_transaction_share },
     { { "tl", "tlist" },        2, 0, dfs_transaction_list  },
     { { "bm", "bmine" },        2, 0, dfs_block_mine        },
@@ -334,6 +352,7 @@ static const struct { const char *alias[8];
     { { "jr", "jobremove" },    2, 1, dfs_job_remove        },
     { { "jc", "jobclean" },     2, 0, dfs_job_clean         },
     { { "kd", "keysdump" },     2, 0, dfs_keysdump          },
+    { { "kx", "keysexport" },   2, 0, dfs_keysexport        },
     { { "rd", "rdump" },        2, 0, dfs_rogue_dump        },
     { { "ad", "taskdump" },     2, 0, dfs_task_dump         },
     { { "ac", "taskcancel" },   2, 1, dfs_task_cancel       },

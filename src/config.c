@@ -26,7 +26,10 @@ int config_keysdump(struct config_s *cfg)
     printf(" | %.*s |\n", SHA256HEX, cfg->keys.local.hash.public);
     printf(" | Shared keys |\n");
     for (i = 0; i < cfg->keys.shared.size; i++) {
-        printf(" | %.*s |\n", SHA256HEX, cfg->keys.shared.array[i].sharedname);
+        printf(" | %.*s | %s |\n", SHA256HEX,
+               cfg->keys.shared.array[i].sharedname,
+               cfg->keys.shared.array[i].rsa.private ? "private (legacy)"
+                                                     : "public");
     }
     return 0;
 }
@@ -157,6 +160,15 @@ int config_init(struct config_s *cfg)
         struct config_key_s *cfgk = &cfg->keys.shared.array[cfg->keys.shared.size - 1];
         memset(cfgk, 0, sizeof(*cfgk));
         memcpy(cfgk->sharedname, filename, SHA256HEX);
+        // <pubkeyhash>.pub.pem holds a peer's PUBLIC key (CEK recipient),
+        // <pubkeyhash>.pem a peer's private key (legacy decryption only)
+        if (strstr(filename, ".pub")) {
+            ifr(rsa_loadkey(PEM_read_RSAPublicKey, fullpath,
+                            &cfgk->rsa.public,
+                            &cfgk->str.public,
+                            cfgk->hash.public));
+            return 0;
+        }
         ifr(rsa_loadkey(PEM_read_RSAPrivateKey, fullpath,
                         &cfgk->rsa.private,
                         &cfgk->str.private,
@@ -179,6 +191,8 @@ void config_free(struct config_s *cfg)
         for (i = 0; i < cfg->keys.shared.size; i++) {
             RSA_free(cfg->keys.shared.array[i].rsa.private);
             sn_free(cfg->keys.shared.array[i].str.private);
+            RSA_free(cfg->keys.shared.array[i].rsa.public);
+            sn_free(cfg->keys.shared.array[i].str.public);
         }
         free(cfg->keys.shared.array);
     }

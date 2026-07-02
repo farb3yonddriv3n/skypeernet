@@ -19,7 +19,7 @@ int decx(unsigned char **dst, int *ndst,
          unsigned char *src, int nsrc,
          struct config_key_s *key)
 {
-    if (!dst || !ndst || !src || !key) return -1;
+    if (!dst || !ndst || !src || !key || !key->rsa.private) return -1;
     size_t         ndecoded;
     unsigned char *decoded = base64_decode(src, nsrc, &ndecoded);
     if (!decoded) return -1;
@@ -157,7 +157,7 @@ int decode_desc(struct file_s *f, unsigned char **desc, int *ndesc)
     }
     ifr(config_keyexists(&psig->cfg, f->pubkeyhash,
                          &key));
-    if (key) {
+    if (key && key->rsa.private) {
         ifr(decx(desc, ndesc, (unsigned char *)f->meta.description.enc,
                  strlen(f->meta.description.enc), key));
     }

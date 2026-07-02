@@ -113,6 +113,74 @@ static int slot_add(struct file_s *f, unsigned char *pubkeyhash,
     return 0;
 }
 
+static int pubkey_from_pem(sn *pem, RSA **key)
+{
+    if (!pem || !key) return -1;
+    char tmpfile[256];
+    snprintf(tmpfile, sizeof(tmpfile), ".pubkey.slot.tmp");
+    ifr(eioie_fwrite(tmpfile, "w", pem->s, pem->n));
+    sn            str;
+    unsigned char hash[SHA256HEX];
+    ifr(rsa_loadkey(PEM_read_RSAPublicKey, tmpfile, key, &str, hash));
+    sn_free(str);
+    remove(tmpfile);
+    return 0;
+}
+
+static int recipient_slot(struct file_s *f, unsigned char *cek,
+                          const char *pubkeyhash)
+{
+    if (!f || !cek || !pubkeyhash) return -1;
+    if (dmemcmp(pubkeyhash, SHA256HEX,
+                psig->cfg.keys.local.hash.public,
+                sizeof(psig->cfg.keys.local.hash.public)))
+        return 0;
+    int i;
+    for (i = 0; i < f->enc.slots.size; i++)
+        if (memcmp(f->enc.slots.array[i].to, pubkeyhash, SHA256HEX) == 0)
+            return 0;
+    struct config_key_s *ck;
+    ifr(config_keyexists(&psig->cfg, (unsigned char *)pubkeyhash, &ck));
+    if (ck && ck->rsa.public)
+        return slot_add(f, (unsigned char *)pubkeyhash, ck->rsa.public, cek);
+    struct world_peer_s wp = { .found = NULL };
+    memcpy(wp.pubkeyhash, pubkeyhash, sizeof(wp.pubkeyhash));
+    ifr(list.map(&psig->peers, world.peer.findpubkeyhash, &wp));
+    if (wp.found && wp.found->pubkey.n > 0) {
+        RSA *pub = NULL;
+        ifr(pubkey_from_pem(&wp.found->pubkey, &pub));
+        int ret = slot_add(f, (unsigned char *)pubkeyhash, pub, cek);
+        RSA_free(pub);
+        return ret;
+    }
+    printf("Unknown recipient %.*s\n", SHA256HEX, pubkeyhash);
+    printf("The peer must be online, or import their public key as\n");
+    printf("%s/%.*s.pub.pem and restart\n", psig->cfg.dir.keys,
+           SHA256HEX, pubkeyhash);
+    return -1;
+}
+
+static int recipients_slots(struct file_s *f, unsigned char *cek,
+                            const char *to)
+{
+    if (!f || !cek || !to) return -1;
+    char list[4096];
+    if (strlen(to) >= sizeof(list)) return -1;
+    snprintf(list, sizeof(list), "%s", to);
+    char *save = NULL;
+    char *tok  = strtok_r(list, ",", &save);
+    while (tok) {
+        if (strlen(tok) != SHA256HEX) {
+            printf("Invalid recipient pubkeyhash '%s' (need %d hex chars)\n",
+                   tok, SHA256HEX);
+            return -1;
+        }
+        ifr(recipient_slot(f, cek, tok));
+        tok = strtok_r(NULL, ",", &save);
+    }
+    return 0;
+}
+
 static int desc_encrypt(struct file_s *f, const char *name,
                         unsigned char *cek)
 {
@@ -158,6 +226,8 @@ static int init(struct transaction_s *t, struct transaction_param_s *param,
         cek = f->enc.cek.key;
         ifr(slot_add(f, psig->cfg.keys.local.hash.public,
                      psig->cfg.keys.local.rsa.public, cek));
+        if (param->action.add.to)
+            ifr(recipients_slots(f, cek, param->action.add.to));
     } else
         f->enc.scheme = FILE_SCHEME_PLAIN;
     ret = file_chunks(param->action.add.pathname, size,
