@@ -26,6 +26,9 @@ enum api_e {
     API_ENDPOINTOPEN,
     API_ENDPOINTDUMP,
     API_ENDPOINTCLOSE,
+    API_TADD                   = 24, /**< Share a new file (encrypted/plain/targeted) */
+    API_TRACKER_GET,                 /**< Query the current tracker ip/port */
+    API_TRACKER_SET,                 /**< Change the tracker at runtime and re-announce */
 };
 
 struct module_api_s {

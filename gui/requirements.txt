@@ -1,0 +1,5 @@
+# skypeernet GUI dependencies.
+# Any one Qt binding works; the app auto-detects. PyQt5 is the most widely
+# packaged; PySide6 (LGPL) is a good alternative on newer systems.
+PyQt5>=5.15 ; sys_platform != ""
+# Alternatively:  PySide6>=6.4

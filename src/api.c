@@ -235,6 +235,87 @@ static int api_jobsdump_read(struct peer_s *p, json_object *obj)
     return api.write(p, API_JOBSDUMP, jobj, obj, 0);
 }
 
+static int api_tadd_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    char name[256];
+    char tags[1024];
+    char to[4096];
+    int  encrypted = 1;
+    json_object *tmp;
+    name[0] = 0; tags[0] = 0; to[0] = 0;
+    BIND_STRLEN(name, "name", tmp, obj);
+    BIND_STRLEN(tags, "tags", tmp, obj);
+    if (json_object_object_get_ex(obj, "encrypted", &tmp))
+        encrypted = json_object_get_boolean(tmp);
+    if (json_object_object_get_ex(obj, "to", &tmp))
+        snprintf(to, sizeof(to), "%s", json_object_get_string(tmp));
+    // Build the same argv dfs_transaction_add expects from the CLI:
+    //   plain:     ta <name> <tags>       plain
+    //   private:   ta <name> <tags>
+    //   targeted:  ta <name> <tags>  to   <csv>
+    char *argv[5];
+    int   argc;
+    argv[0] = NULL;
+    argv[1] = name;
+    argv[2] = tags;
+    if (!encrypted) {
+        argv[3] = "plain";
+        argc = 4;
+    } else if (to[0]) {
+        argv[3] = "to";
+        argv[4] = to;
+        argc = 5;
+    } else {
+        argc = 3;
+    }
+    int dfserr = 0;
+    ifr(dfs_transaction_add(p->user.data, argv, argc, &dfserr));
+    return api.write(p, API_TADD, NULL, obj, dfserr);
+}
+
+static int api_tracker_get_read(struct peer_s *p, json_object *obj)
+{
+    if (!p) return -1;
+    json_object *t = json_object_new_object();
+    json_object_object_add(t, "ip",
+                           json_object_new_string(p->cfg.net.tracker.ip));
+    json_object_object_add(t, "port",
+                           json_object_new_int(p->cfg.net.tracker.port));
+    return api.write(p, API_TRACKER_GET, t, obj, 0);
+}
+
+static int api_tracker_set_read(struct peer_s *p, json_object *obj)
+{
+    if (!p || !obj) return -1;
+    char ip[64];
+    int  port = 0;
+    json_object *tmp;
+    ip[0] = 0;
+    BIND_STRLEN(ip, "ip", tmp, obj);
+    if (json_object_object_get_ex(obj, "port", &tmp))
+        port = json_object_get_int(tmp);
+    struct in_addr addr;
+    int dfserr = 0;
+    if (ip[0] == 0 || port <= 0 || port > 65535 || inet_aton(ip, &addr) == 0) {
+        dfserr = 1;
+        return api.write(p, API_TRACKER_SET, NULL, obj, dfserr);
+    }
+    snprintf(p->cfg.net.tracker.ip, sizeof(p->cfg.net.tracker.ip), "%s", ip);
+    p->cfg.net.tracker.port = port;
+    p->net.remote.addr.sin_family = AF_INET;
+    p->net.remote.addr.sin_addr   = addr;
+    p->net.remote.addr.sin_port   = htons(port);
+    p->tracker.host = ADDR_IP(p->net.remote.addr);
+    p->tracker.port = ADDR_PORT(p->net.remote.addr);
+    // Re-announce to the new tracker (same call the daemon makes at startup).
+    if (payload.send(p, COMMAND_PEER_ANNOUNCE_PEER,
+                     p->tracker.host, p->tracker.port,
+                     0, 0, NULL, NULL) != 0)
+        dfserr = 2;
+    return api.write(p, API_TRACKER_SET, NULL, obj, dfserr);
+}
+
 static int api_jobadd_read(struct peer_s *p, json_object *obj)
 {
     if (!p || !obj) return -1;
@@ -425,6 +506,9 @@ static struct api_command_s cmds[] = {
     { API_TUNNELCLOSE,      api_tunnelclose_read     },
     { API_TUNNELDUMP,       api_tunneldump_read      },
     { API_ENDPOINTDUMP,     api_endpointdump_read    },
+    { API_TADD,             api_tadd_read            },
+    { API_TRACKER_GET,      api_tracker_get_read     },
+    { API_TRACKER_SET,      api_tracker_set_read     },
 };
 
 static int api_read(struct peer_s *p, const char *json, int len)

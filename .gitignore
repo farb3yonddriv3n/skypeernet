@@ -1,0 +1,16 @@
+# Build output
+/build/
+
+# Generated version files (produced by tools/version/set.sh at build time)
+/VERSION
+/src/include/spn_version.h
+
+# Runtime data
+# /localnet/  = peer/tracker working dirs created by tools/localnet/localnet.sh
+# /finalized/ = finalized shared-file store
+/localnet/
+/finalized/
+
+# Python
+__pycache__/
+*.py[cod]
